@@ -1,4 +1,4 @@
-module github.com/penguintechinc/project-template
+module github.com/penguintechinc/killkrill
 
 go 1.23.5
 
@@ -8,6 +8,10 @@ require (
 	github.com/redis/go-redis/v9 v9.7.3
 	gorm.io/driver/postgres v1.5.9
 	gorm.io/gorm v1.25.12
+	github.com/cilium/ebpf v0.12.3
+	github.com/google/gopacket v1.1.19
+	github.com/vishvananda/netlink v1.1.0
+	github.com/elastic/go-elasticsearch/v8 v8.11.1
 )
 
 require (

@@ -1,0 +1,72 @@
+# ElastAlert Configuration for KillKrill
+# Alerting system for Elasticsearch with PagerDuty and Slack integration
+
+# ElastAlert server settings
+rules_folder: /opt/elastalert/rules
+run_every:
+  minutes: 1
+
+buffer_time:
+  minutes: 15
+
+# Elasticsearch connection
+es_host: elasticsearch
+es_port: 9200
+es_username: ""
+es_password: ""
+
+# Index settings
+writeback_index: elastalert_status
+writeback_alias: elastalert_alerts
+
+# Alert settings
+alert_time_limit:
+  days: 2
+
+# Logging
+use_ssl: false
+verify_certs: false
+show_disabled_rules: false
+
+# Email settings (fallback)
+smtp_host: localhost
+smtp_port: 25
+from_addr: elastalert@killkrill.local
+
+# Query caching for performance
+use_count_query: true
+use_terms_query: true
+query_delay:
+  seconds: 30
+
+# Performance tuning
+max_query_size: 10000
+scroll_keepalive: 30s
+
+# Custom fields for all alerts
+alert_text_type: alert_text_only
+alert_text: |
+  KillKrill Alert: {0}
+
+  Rule: {1}
+  Time: {2}
+
+  Query: {3}
+
+  Matches: {4}
+
+# Include matched fields in alerts
+include:
+  - "@timestamp"
+  - "log.level"
+  - "service.name"
+  - "host.name"
+  - "message"
+  - "error.type"
+  - "error.message"
+  - "killkrill.source_id"
+
+# Timestamp format
+timestamp_field: "@timestamp"
+timestamp_type: iso
+timestamp_format: "%Y-%m-%dT%H:%M:%S.%fZ"

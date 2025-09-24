@@ -1,0 +1,156 @@
+# KillKrill Elasticsearch JVM Options
+# Optimized for high-performance log processing
+
+# ================================================================
+# Memory Settings (16GB recommended for 34GB system)
+# ================================================================
+
+# Heap size (must be the same for -Xms and -Xmx)
+-Xms16g
+-Xmx16g
+
+# ================================================================
+# Garbage Collector Settings
+# ================================================================
+
+# Use G1GC for better performance with large heaps
+-XX:+UseG1GC
+
+# G1GC specific settings
+-XX:MaxGCPauseMillis=200
+-XX:G1HeapRegionSize=32m
+-XX:G1NewSizePercent=30
+-XX:G1MaxNewSizePercent=40
+-XX:G1MixedGCCountTarget=8
+-XX:InitiatingHeapOccupancyPercent=45
+-XX:G1MixedGCLiveThresholdPercent=85
+-XX:G1HeapWastePercent=5
+
+# ================================================================
+# Memory Management
+# ================================================================
+
+# Use compressed ordinary object pointers (enabled automatically for heaps < 32GB)
+-XX:+UseCompressedOops
+-XX:+UseCompressedClassPointers
+
+# String deduplication to save memory
+-XX:+UseStringDeduplication
+
+# Optimize for container environments
+-XX:+UnlockExperimentalVMOptions
+-XX:+UseCGroupMemoryLimitForHeap
+
+# ================================================================
+# Performance Optimizations
+# ================================================================
+
+# JIT compiler optimizations
+-XX:+TieredCompilation
+-XX:TieredStopAtLevel=1
+
+# Reduce memory allocation overhead
+-XX:+AlwaysPreTouch
+
+# Optimize for multi-core systems
+-XX:+UseCondCardMark
+
+# ================================================================
+# Security and Stability
+# ================================================================
+
+# Disable explicit GC calls (let G1 handle it)
+-XX:+DisableExplicitGC
+
+# Exit on OutOfMemoryError to prevent zombie processes
+-XX:+ExitOnOutOfMemoryError
+
+# Create heap dump on OOM for debugging
+-XX:+HeapDumpOnOutOfMemoryError
+-XX:HeapDumpPath=/usr/share/elasticsearch/data/
+
+# ================================================================
+# Monitoring and Diagnostics
+# ================================================================
+
+# Enable JVM error logging
+-XX:ErrorFile=/usr/share/elasticsearch/logs/hs_err_pid%p.log
+
+# GC logging for performance monitoring
+-Xlog:gc*,gc+age=trace,safepoint:gc.log:time,level,tags
+-XX:+UseGCLogFileRotation
+-XX:NumberOfGCLogFiles=32
+-XX:GCLogFileSize=64m
+
+# ================================================================
+# I/O and File Settings
+# ================================================================
+
+# Temporary directory
+-Djava.io.tmpdir=${ES_TMPDIR}
+
+# Disable Lucene file system optimizations that can cause issues in containers
+-Dlog4j2.disable.jmx=true
+
+# ================================================================
+# Network and Security
+# ================================================================
+
+# Networking stack optimizations
+-Djava.net.preferIPv4Stack=true
+
+# Security manager (disabled for performance)
+-Djava.security.manager=default
+-Djava.security.policy==/usr/share/elasticsearch/config/elasticsearch.policy
+
+# ================================================================
+# Custom Elasticsearch Settings
+# ================================================================
+
+# File encoding
+-Dfile.encoding=UTF-8
+
+# DNS cache settings
+-Dnetworkaddress.cache.ttl=60
+-Dnetworkaddress.cache.negative.ttl=10
+
+# ================================================================
+# Log4j2 Configuration
+# ================================================================
+
+# Log4j2 system properties
+-Dlog4j2.shutdownHookEnabled=false
+-Dlog4j2.disable.jmx=true
+
+# ================================================================
+# Performance Profiling (uncomment for debugging)
+# ================================================================
+
+# Uncomment to enable JFR profiling
+# -XX:+FlightRecorder
+# -XX:StartFlightRecording=duration=60s,filename=/usr/share/elasticsearch/data/flight-recording.jfr
+
+# Uncomment to enable detailed GC analysis
+# -XX:+PrintGCDetails
+# -XX:+PrintGCTimeStamps
+# -XX:+PrintGCApplicationStoppedTime
+
+# ================================================================
+# Container-specific Settings
+# ================================================================
+
+# Ensure JVM respects container memory limits
+-XX:+UnlockExperimentalVMOptions
+-XX:+UseCGroupMemoryLimitForHeap
+-XX:MaxRAMFraction=2
+
+# ================================================================
+# Compatibility and Warnings
+# ================================================================
+
+# Suppress warnings for newer JDK versions
+-XX:+IgnoreUnrecognizedVMOptions
+
+# Enable modern instruction sets if available
+-XX:+UseSSE42Intrinsics
+-XX:+UseCRC32Intrinsics

@@ -1,0 +1,63 @@
+# KillKrill Grafana Datasources Configuration
+# Automatically provision datasources for monitoring
+
+apiVersion: 1
+
+datasources:
+  # Prometheus for metrics
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true
+    basicAuth: false
+    jsonData:
+      timeInterval: 15s
+      queryTimeout: 60s
+      httpMethod: POST
+    version: 1
+
+  # Elasticsearch for logs
+  - name: Elasticsearch
+    type: elasticsearch
+    access: proxy
+    url: http://elasticsearch:9200
+    database: "killkrill-logs-*"
+    basicAuth: false
+    isDefault: false
+    editable: true
+    jsonData:
+      index: "killkrill-logs-*"
+      timeField: "@timestamp"
+      esVersion: 8
+      interval: Daily
+      maxConcurrentShardRequests: 5
+      logMessageField: message
+      logLevelField: log.level
+    version: 1
+
+  # Loki for log aggregation (if available)
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    isDefault: false
+    editable: true
+    jsonData:
+      maxLines: 1000
+    version: 1
+
+  # Redis datasource for queue monitoring
+  - name: Redis
+    type: redis-datasource
+    access: proxy
+    url: redis://redis:6379
+    isDefault: false
+    editable: true
+    jsonData:
+      client: standalone
+      poolSize: 5
+      timeout: 10
+      pingInterval: 60
+    version: 1

@@ -1,0 +1,118 @@
+# Critical Error Alert Rule
+# Triggers on critical/error level logs and sends to PagerDuty + Slack
+
+name: "KillKrill Critical Errors"
+type: "frequency"
+index: "killkrill-logs-*"
+num_events: 1
+timeframe:
+  minutes: 5
+
+# Query for critical and error level logs
+filter:
+  - bool:
+      should:
+        - term:
+            log.level: "critical"
+        - term:
+            log.level: "error"
+        - term:
+            log.level: "fatal"
+        - term:
+            log.level: "emergency"
+        - term:
+            log.level: "alert"
+
+# Exclude known non-critical errors (customize as needed)
+filter:
+  - bool:
+      must_not:
+        - match:
+            message: "connection timeout"
+        - match:
+            service.name: "health-check"
+
+# Group alerts to prevent spam
+realert:
+  minutes: 30
+
+# Enhancement: Add error details
+include:
+  - "@timestamp"
+  - "log.level"
+  - "service.name"
+  - "host.name"
+  - "message"
+  - "error.type"
+  - "error.message"
+  - "error.stack_trace"
+  - "killkrill.source_id"
+  - "killkrill.protocol"
+
+# PagerDuty Alert
+alert:
+  - "pagerduty"
+
+pagerduty_service_key: !Env PAGERDUTY_SERVICE_KEY
+pagerduty_client_name: "KillKrill"
+pagerduty_event_type: "trigger"
+
+# PagerDuty alert customization
+pagerduty_incident_key: "killkrill-critical-{0}"
+pagerduty_incident_key_args:
+  - "service.name"
+
+# Slack Alert
+alert:
+  - "slack"
+
+slack_webhook_url: !Env SLACK_WEBHOOK_URL
+slack_channel_override: "#alerts"
+slack_username_override: "KillKrill-ElastAlert"
+slack_emoji_override: ":rotating_light:"
+
+# Slack message customization
+slack_title: "🚨 KillKrill Critical Error Alert"
+slack_title_link: "http://kibana:5601/app/discover"
+
+slack_text: |
+  *Service:* {service.name}
+  *Host:* {host.name}
+  *Level:* {log.level}
+  *Time:* {@timestamp}
+
+  *Message:* {message}
+
+  *Error Type:* {error.type}
+  *Error Details:* {error.message}
+
+slack_attach_kibana_discover_url: true
+slack_kibana_discover_app_url: "http://kibana:5601/app/discover"
+slack_kibana_discover_version: "8.11"
+slack_kibana_discover_index_pattern_id: "killkrill-logs-*"
+
+# Email fallback
+alert:
+  - "email"
+
+email:
+  - "admin@killkrill.local"
+
+email_subject: "KillKrill Critical Error: {service.name} on {host.name}"
+email_body: |
+  A critical error has been detected in KillKrill:
+
+  Service: {service.name}
+  Host: {host.name}
+  Level: {log.level}
+  Time: {@timestamp}
+
+  Message: {message}
+
+  Error Type: {error.type}
+  Error Details: {error.message}
+
+  Stack Trace:
+  {error.stack_trace}
+
+  View in Kibana: http://kibana:5601/app/discover

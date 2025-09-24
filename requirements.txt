@@ -1,51 +1,56 @@
-# Core Framework
-py4web==1.20241127.1
-pydal==20241031.1
+# KillKrill Python Dependencies
+# Core py4web framework (Python 3.12 for py4web compatibility)
+py4web>=1.20241127.1
+pydal>=20241031.1
+gunicorn>=23.0.0
 
-# Database Drivers
-psycopg2-binary==2.9.10
-redis==5.2.1
+# Redis and streaming
+redis>=5.2.1
+hiredis>=2.3.2
 
-# Web Server & WSGI
-gunicorn==23.0.0
-uvicorn[standard]==0.33.0
+# HTTP3/QUIC support
+httpx[http3]>=0.28.1
+hypercorn[h3]>=0.16.0
 
-# Security & Authentication
-PyJWT==2.10.1
-bcrypt==4.2.1
-cryptography==44.0.1
+# Networking and XDP (for high-performance packet processing)
+pyroute2>=0.7.12
+scapy>=2.5.0
+netaddr>=0.10.1
 
-# HTTP & API
-requests==2.32.4
-httpx==0.28.1
-aiohttp==3.12.14
+# Metrics and monitoring
+prometheus-client>=0.21.1
+structlog>=24.5.0
 
-# Configuration
-python-decouple==3.8
-click==8.1.8
+# Security and authentication
+PyJWT>=2.10.1
+cryptography>=44.0.1
+passlib>=1.7.4
+bcrypt>=4.2.1
 
-# Monitoring & Metrics
-prometheus-client==0.21.1
+# Data processing and validation
+pydantic>=2.7.0
+python-multipart>=0.0.6
+jsonschema>=4.23.0
 
-# Logging
-structlog==24.5.0
+# Elasticsearch integration
+elasticsearch>=8.9.0
 
-# Validation
-jsonschema==4.23.0
-email-validator==2.2.0
+# Configuration management
+python-decouple>=3.8
+click>=8.1.8
 
 # Utilities
-python-dateutil==2.9.0.post0
-pytz==2024.2
+python-dateutil>=2.9.0
+pytz>=2024.2
 
 # Development Dependencies (optional)
-pytest==8.3.4
-pytest-asyncio==0.25.0
-pytest-cov==6.0.0
-black==24.10.0
-isort==5.13.2
-flake8==7.1.1
-mypy==1.14.0
+pytest>=8.3.4
+pytest-asyncio>=0.25.0
+pytest-cov>=6.0.0
+black>=24.10.0
+isort>=5.13.2
+flake8>=7.1.1
+mypy>=1.14.0
 
 # License Server Integration
-# (Using requests for HTTP client - already included above)
+requests>=2.32.4

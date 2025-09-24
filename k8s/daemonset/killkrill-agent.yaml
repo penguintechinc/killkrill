@@ -1,0 +1,500 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: killkrill-agent
+  namespace: killkrill-system
+  labels:
+    app: killkrill-agent
+    component: log-metrics-collector
+    version: v1.0.0
+spec:
+  selector:
+    matchLabels:
+      app: killkrill-agent
+  template:
+    metadata:
+      labels:
+        app: killkrill-agent
+        component: log-metrics-collector
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: killkrill-agent
+      hostNetwork: true
+      hostPID: true
+      tolerations:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule
+      - operator: "Exists"
+        effect: "NoExecute"
+      - operator: "Exists"
+        effect: "NoSchedule"
+      nodeSelector:
+        kubernetes.io/os: linux
+      initContainers:
+      - name: setup-permissions
+        image: busybox:1.35
+        command:
+        - sh
+        - -c
+        - |
+          chmod 755 /var/log
+          chmod 644 /var/log/pods 2>/dev/null || true
+          chmod 644 /var/log/containers 2>/dev/null || true
+        volumeMounts:
+        - name: varlog
+          mountPath: /var/log
+        securityContext:
+          privileged: true
+      containers:
+      - name: killkrill-agent
+        image: penguintech/killkrill-agent:latest
+        imagePullPolicy: Always
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: NODE_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.hostIP
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: KILLKRILL_LOG_RECEIVER_URL
+          valueFrom:
+            configMapKeyRef:
+              name: killkrill-agent-config
+              key: log-receiver-url
+        - name: KILLKRILL_METRICS_RECEIVER_URL
+          valueFrom:
+            configMapKeyRef:
+              name: killkrill-agent-config
+              key: metrics-receiver-url
+        - name: KILLKRILL_LICENSE_KEY
+          valueFrom:
+            secretKeyRef:
+              name: killkrill-license
+              key: license-key
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: killkrill-agent-config
+              key: log-level
+              optional: true
+        - name: METRICS_INTERVAL
+          valueFrom:
+            configMapKeyRef:
+              name: killkrill-agent-config
+              key: metrics-interval
+              optional: true
+        - name: CLUSTER_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: killkrill-agent-config
+              key: cluster-name
+        ports:
+        - containerPort: 8080
+          name: metrics
+          protocol: TCP
+        - containerPort: 8443
+          name: webhook
+          protocol: TCP
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 1
+        securityContext:
+          privileged: true
+          runAsUser: 0
+          capabilities:
+            add:
+            - SYS_ADMIN
+            - SYS_RESOURCE
+            - SYS_PTRACE
+            - NET_ADMIN
+            - NET_RAW
+            - IPC_LOCK
+            - SYS_RAWIO
+        volumeMounts:
+        - name: varlog
+          mountPath: /var/log
+          readOnly: true
+        - name: varlibdockercontainers
+          mountPath: /var/lib/docker/containers
+          readOnly: true
+        - name: varlibcontainerdcontainers
+          mountPath: /var/lib/containerd/containers
+          readOnly: true
+        - name: proc
+          mountPath: /host/proc
+          readOnly: true
+        - name: sys
+          mountPath: /host/sys
+          readOnly: true
+        - name: dev
+          mountPath: /host/dev
+          readOnly: true
+        - name: run
+          mountPath: /host/run
+          readOnly: true
+        - name: modules
+          mountPath: /lib/modules
+          readOnly: true
+        - name: usr-src
+          mountPath: /usr/src
+          readOnly: true
+        - name: killkrill-config
+          mountPath: /etc/killkrill
+          readOnly: true
+        - name: ssl-certs
+          mountPath: /etc/ssl/certs
+          readOnly: true
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: varlog
+        hostPath:
+          path: /var/log
+      - name: varlibdockercontainers
+        hostPath:
+          path: /var/lib/docker/containers
+      - name: varlibcontainerdcontainers
+        hostPath:
+          path: /var/lib/containerd/containers
+      - name: proc
+        hostPath:
+          path: /proc
+      - name: sys
+        hostPath:
+          path: /sys
+      - name: dev
+        hostPath:
+          path: /dev
+      - name: run
+        hostPath:
+          path: /run
+      - name: modules
+        hostPath:
+          path: /lib/modules
+      - name: usr-src
+        hostPath:
+          path: /usr/src
+      - name: killkrill-config
+        configMap:
+          name: killkrill-agent-config
+      - name: ssl-certs
+        hostPath:
+          path: /etc/ssl/certs
+          type: DirectoryOrCreate
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 10%
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: killkrill-agent
+  namespace: killkrill-system
+  labels:
+    app: killkrill-agent
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: killkrill-agent
+  labels:
+    app: killkrill-agent
+rules:
+- apiGroups: [""]
+  resources:
+  - nodes
+  - nodes/proxy
+  - nodes/metrics
+  - services
+  - endpoints
+  - pods
+  - pods/log
+  - events
+  - namespaces
+  - configmaps
+  - secrets
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["extensions", "apps"]
+  resources:
+  - deployments
+  - daemonsets
+  - replicasets
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["metrics.k8s.io"]
+  resources:
+  - nodes
+  - pods
+  verbs: ["get", "list"]
+- apiGroups: [""]
+  resources:
+  - nodes/stats
+  verbs: ["get"]
+- nonResourceURLs:
+  - /metrics
+  - /api/v1/nodes/*/proxy/metrics
+  - /api/v1/nodes/*/proxy/metrics/cadvisor
+  verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: killkrill-agent
+  labels:
+    app: killkrill-agent
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: killkrill-agent
+subjects:
+- kind: ServiceAccount
+  name: killkrill-agent
+  namespace: killkrill-system
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: killkrill-agent-config
+  namespace: killkrill-system
+  labels:
+    app: killkrill-agent
+data:
+  log-receiver-url: "https://killkrill-log-receiver.killkrill-system.svc.cluster.local:8443"
+  metrics-receiver-url: "https://killkrill-metrics-receiver.killkrill-system.svc.cluster.local:8444"
+  log-level: "info"
+  metrics-interval: "30s"
+  cluster-name: "default-cluster"
+  config.yaml: |
+    # KillKrill Agent Configuration
+    agent:
+      node_name: "${NODE_NAME}"
+      node_ip: "${NODE_IP}"
+      cluster_name: "${CLUSTER_NAME}"
+
+    # Log collection configuration
+    logs:
+      enabled: true
+      paths:
+        - /var/log/pods/*/*/*.log
+        - /var/log/containers/*.log
+
+      # Container runtime detection
+      container_runtimes:
+        - docker
+        - containerd
+        - cri-o
+
+      # Log parsing and enrichment
+      parsers:
+        - name: kubernetes
+          format: json
+          time_key: time
+          time_format: "%Y-%m-%dT%H:%M:%S.%fZ"
+        - name: docker
+          format: json
+          time_key: time
+          time_format: "%Y-%m-%dT%H:%M:%S.%fZ"
+
+      # Kubernetes metadata enrichment
+      kubernetes:
+        enabled: true
+        pod_metadata:
+          - namespace
+          - pod_name
+          - container_name
+          - container_id
+          - labels
+          - annotations
+        node_metadata:
+          - node_name
+          - node_labels
+          - node_annotations
+
+      # Output configuration
+      output:
+        type: http3
+        url: "${KILLKRILL_LOG_RECEIVER_URL}"
+        headers:
+          Authorization: "Bearer ${KILLKRILL_LICENSE_KEY}"
+          X-Cluster-Name: "${CLUSTER_NAME}"
+        batch_size: 1000
+        flush_interval: "5s"
+        compression: gzip
+        retry_attempts: 3
+        retry_backoff: "1s"
+
+    # Metrics collection configuration
+    metrics:
+      enabled: true
+      interval: "${METRICS_INTERVAL}"
+
+      # Kubernetes metrics sources
+      sources:
+        # Node metrics from kubelet
+        - name: kubelet_node
+          url: "https://localhost:10250/metrics"
+          cert_file: /var/lib/kubelet/pki/kubelet-client-current.pem
+          key_file: /var/lib/kubelet/pki/kubelet-client-current.pem
+          ca_file: /var/lib/kubelet/pki/kubelet-ca.crt
+
+        # Container metrics from cAdvisor
+        - name: cadvisor
+          url: "https://localhost:10250/metrics/cadvisor"
+          cert_file: /var/lib/kubelet/pki/kubelet-client-current.pem
+          key_file: /var/lib/kubelet/pki/kubelet-client-current.pem
+          ca_file: /var/lib/kubelet/pki/kubelet-ca.crt
+
+        # Pod metrics from kubelet
+        - name: kubelet_pods
+          url: "https://localhost:10250/stats/summary"
+          cert_file: /var/lib/kubelet/pki/kubelet-client-current.pem
+          key_file: /var/lib/kubelet/pki/kubelet-client-current.pem
+          ca_file: /var/lib/kubelet/pki/kubelet-ca.crt
+
+        # Resource metrics from metrics-server
+        - name: resource_metrics
+          url: "https://metrics-server.kube-system.svc.cluster.local/metrics"
+
+        # Node exporter metrics (if available)
+        - name: node_exporter
+          url: "http://localhost:9100/metrics"
+          optional: true
+
+      # Metric enrichment with Kubernetes metadata
+      kubernetes:
+        enabled: true
+        enrich_pod_metrics: true
+        enrich_node_metrics: true
+        enrich_container_metrics: true
+
+      # Output configuration
+      output:
+        type: http3
+        url: "${KILLKRILL_METRICS_RECEIVER_URL}"
+        headers:
+          Authorization: "Bearer ${KILLKRILL_LICENSE_KEY}"
+          X-Cluster-Name: "${CLUSTER_NAME}"
+        batch_size: 500
+        flush_interval: "${METRICS_INTERVAL}"
+        compression: gzip
+        retry_attempts: 3
+        retry_backoff: "2s"
+
+    # Health and monitoring
+    health:
+      bind_address: "0.0.0.0:8080"
+      metrics_path: "/metrics"
+      health_path: "/healthz"
+      ready_path: "/ready"
+
+    # Security configuration
+    security:
+      tls:
+        enabled: true
+        cert_file: "/etc/killkrill/tls/tls.crt"
+        key_file: "/etc/killkrill/tls/tls.key"
+        ca_file: "/etc/killkrill/tls/ca.crt"
+        verify_server_cert: false  # Allow self-signed certs in dev
+        min_version: "1.2"
+        cipher_suites:
+          - "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"
+          - "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305"
+          - "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"
+
+    # Performance tuning
+    performance:
+      worker_threads: 4
+      buffer_size: "16MB"
+      queue_size: 10000
+      compression_level: 6
+      batch_timeout: "1s"
+      connection_pool_size: 10
+      keep_alive_timeout: "30s"
+
+    # Logging configuration
+    logging:
+      level: "${LOG_LEVEL}"
+      format: "json"
+      output: "stdout"
+      fields:
+        service: "killkrill-agent"
+        version: "v1.0.0"
+        cluster: "${CLUSTER_NAME}"
+        node: "${NODE_NAME}"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: killkrill-license
+  namespace: killkrill-system
+  labels:
+    app: killkrill-agent
+type: Opaque
+data:
+  # Base64 encoded license key - replace with actual license
+  license-key: UEVORy1YWFhYLVhYWFgtWFhYWC1YWFhYLVhYWFg=  # PENG-XXXX-XXXX-XXXX-XXXX-XXXX
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: killkrill-agent-metrics
+  namespace: killkrill-system
+  labels:
+    app: killkrill-agent
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  ports:
+  - name: metrics
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
+  selector:
+    app: killkrill-agent
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: killkrill-system
+  labels:
+    name: killkrill-system
+    app: killkrill

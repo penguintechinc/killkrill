@@ -1,0 +1,279 @@
+{
+  "index_patterns": ["killkrill-logs-*"],
+  "version": 1,
+  "priority": 100,
+  "template": {
+    "settings": {
+      "index": {
+        "number_of_shards": 1,
+        "number_of_replicas": 0,
+        "codec": "best_compression",
+        "refresh_interval": "5s",
+        "max_result_window": 100000,
+
+        "routing": {
+          "allocation": {
+            "require": {
+              "_tier_preference": "data_hot"
+            }
+          }
+        },
+
+        "queries": {
+          "cache": {
+            "enabled": true
+          }
+        },
+
+        "requests": {
+          "cache": {
+            "enable": true
+          }
+        },
+
+        "merge": {
+          "policy": {
+            "max_merge_at_once": 10,
+            "segments_per_tier": 10
+          },
+          "scheduler": {
+            "max_thread_count": 1
+          }
+        },
+
+        "translog": {
+          "flush_threshold_size": "1gb",
+          "sync_interval": "30s"
+        },
+
+        "sort": {
+          "field": "@timestamp",
+          "order": "desc"
+        }
+      }
+    },
+    "mappings": {
+      "dynamic_templates": [
+        {
+          "strings_as_keywords": {
+            "match_mapping_type": "string",
+            "match": "*_id",
+            "mapping": {
+              "type": "keyword",
+              "index": true,
+              "doc_values": true
+            }
+          }
+        },
+        {
+          "ip_addresses": {
+            "match": "*ip*",
+            "match_mapping_type": "string",
+            "mapping": {
+              "type": "ip"
+            }
+          }
+        },
+        {
+          "timestamps": {
+            "match": "*time*",
+            "match_mapping_type": "string",
+            "mapping": {
+              "type": "date",
+              "format": "strict_date_optional_time||epoch_millis||yyyy-MM-dd HH:mm:ss||yyyy-MM-dd'T'HH:mm:ss.SSSZ"
+            }
+          }
+        }
+      ],
+      "properties": {
+        "@timestamp": {
+          "type": "date",
+          "format": "strict_date_optional_time||epoch_millis"
+        },
+        "ecs": {
+          "properties": {
+            "version": {
+              "type": "keyword",
+              "index": false,
+              "doc_values": false
+            }
+          }
+        },
+        "event": {
+          "properties": {
+            "created": {
+              "type": "date"
+            },
+            "dataset": {
+              "type": "keyword",
+              "index": true
+            },
+            "ingested": {
+              "type": "date"
+            },
+            "kind": {
+              "type": "keyword",
+              "index": true
+            },
+            "module": {
+              "type": "keyword",
+              "index": true
+            },
+            "type": {
+              "type": "keyword",
+              "index": true
+            }
+          }
+        },
+        "log": {
+          "properties": {
+            "level": {
+              "type": "keyword",
+              "index": true,
+              "doc_values": true
+            },
+            "logger": {
+              "type": "keyword",
+              "index": true
+            }
+          }
+        },
+        "message": {
+          "type": "text",
+          "index": true,
+          "analyzer": "standard",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 8192
+            }
+          }
+        },
+        "service": {
+          "properties": {
+            "name": {
+              "type": "keyword",
+              "index": true,
+              "doc_values": true
+            },
+            "type": {
+              "type": "keyword",
+              "index": true
+            }
+          }
+        },
+        "host": {
+          "properties": {
+            "name": {
+              "type": "keyword",
+              "index": true,
+              "doc_values": true
+            },
+            "ip": {
+              "type": "ip",
+              "index": true
+            }
+          }
+        },
+        "source": {
+          "properties": {
+            "ip": {
+              "type": "ip",
+              "index": true
+            },
+            "geo": {
+              "properties": {
+                "location": {
+                  "type": "geo_point"
+                },
+                "country_name": {
+                  "type": "keyword"
+                },
+                "city_name": {
+                  "type": "keyword"
+                }
+              }
+            }
+          }
+        },
+        "error": {
+          "properties": {
+            "type": {
+              "type": "keyword",
+              "index": true
+            },
+            "message": {
+              "type": "text",
+              "index": true,
+              "analyzer": "standard"
+            },
+            "stack_trace": {
+              "type": "text",
+              "index": false,
+              "doc_values": false
+            }
+          }
+        },
+        "trace": {
+          "properties": {
+            "id": {
+              "type": "keyword",
+              "index": true
+            },
+            "span": {
+              "properties": {
+                "id": {
+                  "type": "keyword",
+                  "index": true
+                }
+              }
+            },
+            "transaction": {
+              "properties": {
+                "id": {
+                  "type": "keyword",
+                  "index": true
+                }
+              }
+            }
+          }
+        },
+        "killkrill": {
+          "properties": {
+            "source_id": {
+              "type": "integer",
+              "index": true,
+              "doc_values": true
+            },
+            "protocol": {
+              "type": "keyword",
+              "index": true
+            },
+            "facility": {
+              "type": "keyword",
+              "index": true
+            },
+            "raw_log": {
+              "type": "text",
+              "index": false,
+              "doc_values": false
+            },
+            "message_id": {
+              "type": "keyword",
+              "index": false,
+              "doc_values": false
+            }
+          }
+        },
+        "labels": {
+          "type": "object",
+          "dynamic": true
+        },
+        "tags": {
+          "type": "keyword",
+          "index": true
+        }
+      }
+    }
+  }
+}

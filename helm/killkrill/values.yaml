@@ -1,0 +1,534 @@
+# KillKrill Helm Chart Values
+# Default configuration for enterprise-scale deployment
+
+# Global configuration
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+  storageClass: ""
+
+# License configuration (Required)
+license:
+  key: ""  # Required: PenguinTech license key
+  product: "killkrill"
+  server: "https://license.penguintech.io"
+
+# KillKrill application components
+killkrill:
+  # Log Receiver (HTTP3/QUIC + UDP Syslog)
+  logReceiver:
+    enabled: true
+    replicaCount: 2
+    image:
+      repository: killkrill/log-receiver
+      tag: "latest"
+      pullPolicy: IfNotPresent
+
+    resources:
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+      requests:
+        cpu: 500m
+        memory: 1Gi
+
+    # XDP configuration
+    xdp:
+      enabled: true
+      interface: "eth0"
+
+    # Syslog configuration
+    syslog:
+      portRange: "10000-11000"
+      startPort: 10000
+      endPort: 11000
+
+    service:
+      type: ClusterIP
+      httpPort: 8081
+      syslogPorts: "10000-11000"
+
+    # Security context for XDP (requires privileged)
+    securityContext:
+      privileged: true
+      capabilities:
+        add:
+          - NET_ADMIN
+          - SYS_ADMIN
+
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+
+  # Metrics Receiver (HTTP3/QUIC)
+  metricsReceiver:
+    enabled: true
+    replicaCount: 2
+    image:
+      repository: killkrill/metrics-receiver
+      tag: "latest"
+      pullPolicy: IfNotPresent
+
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
+
+    service:
+      type: ClusterIP
+      port: 8082
+
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+
+  # Log Worker (Redis Streams to ELK)
+  logWorker:
+    enabled: true
+    replicaCount: 3
+    image:
+      repository: killkrill/log-worker
+      tag: "latest"
+      pullPolicy: IfNotPresent
+
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
+
+    # Processing configuration
+    workers: 4
+    batchSize: 1000
+
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+
+  # Metrics Worker (Redis Streams to Prometheus)
+  metricsWorker:
+    enabled: true
+    replicaCount: 2
+    image:
+      repository: killkrill/metrics-worker
+      tag: "latest"
+      pullPolicy: IfNotPresent
+
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
+
+    # Processing configuration
+    workers: 4
+    batchSize: 1000
+    pushInterval: 15
+
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+
+  # Manager (py4web WebUI with infrastructure management)
+  manager:
+    enabled: true
+    replicaCount: 1
+    image:
+      repository: killkrill/manager
+      tag: "latest"
+      pullPolicy: IfNotPresent
+
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
+
+    service:
+      type: ClusterIP
+      port: 8080
+
+    # Infrastructure management APIs
+    infrastructure:
+      # Embedded views configuration
+      embeddedViews:
+        enabled: true
+        prometheus:
+          enabled: true
+          url: ""  # Auto-detected if empty
+        grafana:
+          enabled: true
+          url: ""  # Auto-detected if empty
+        kibana:
+          enabled: true
+          url: ""  # Auto-detected if empty
+        elasticsearch:
+          enabled: true
+          url: ""  # Auto-detected if empty
+
+      # Configuration API settings
+      configApis:
+        enabled: true
+        prometheus:
+          enabled: true
+          endpoint: ""  # Auto-detected if empty
+        elasticsearch:
+          enabled: true
+          endpoint: ""  # Auto-detected if empty
+
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+
+# Infrastructure Dependencies
+postgresql:
+  enabled: true
+  auth:
+    postgresPassword: "killkrill123"
+    username: "killkrill"
+    password: "killkrill123"
+    database: "killkrill"
+
+  primary:
+    persistence:
+      enabled: true
+      size: 20Gi
+      storageClass: ""
+
+    resources:
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+      requests:
+        cpu: 500m
+        memory: 1Gi
+
+redis:
+  enabled: true
+  auth:
+    enabled: true
+    password: "killkrill123"
+
+  master:
+    persistence:
+      enabled: true
+      size: 10Gi
+      storageClass: ""
+
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
+
+  replica:
+    replicaCount: 1
+
+# Elasticsearch configuration
+elasticsearch:
+  enabled: true
+  clusterName: "killkrill-elasticsearch"
+
+  # Master nodes
+  master:
+    replicas: 1
+    heapSize: 8g
+    resources:
+      limits:
+        cpu: 2000m
+        memory: 16Gi
+      requests:
+        cpu: 1000m
+        memory: 8Gi
+
+    persistence:
+      enabled: true
+      size: 100Gi
+      storageClass: ""
+
+  # Data nodes
+  data:
+    replicas: 2
+    heapSize: 8g
+    resources:
+      limits:
+        cpu: 2000m
+        memory: 16Gi
+      requests:
+        cpu: 1000m
+        memory: 8Gi
+
+    persistence:
+      enabled: true
+      size: 200Gi
+      storageClass: ""
+
+  # Performance settings
+  esConfig:
+    elasticsearch.yml: |
+      indices.queries.cache.enabled: true
+      indices.queries.cache.size: 10%
+      indices.requests.cache.enabled: true
+      indices.requests.cache.size: 2%
+      indices.memory.index_buffer_size: 30%
+      cluster.routing.allocation.disk.threshold.enabled: true
+      cluster.routing.allocation.disk.watermark.low: 85%
+      cluster.routing.allocation.disk.watermark.high: 90%
+      cluster.routing.allocation.disk.watermark.flood_stage: 95%
+
+# Kibana configuration
+kibana:
+  enabled: true
+  replicas: 1
+
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+    requests:
+      cpu: 500m
+      memory: 1Gi
+
+  elasticsearchHosts: "http://killkrill-elasticsearch:9200"
+
+  kibanaConfig:
+    kibana.yml: |
+      server.name: killkrill-kibana
+      server.host: 0.0.0.0
+      elasticsearch.hosts: ["http://killkrill-elasticsearch:9200"]
+      elasticsearch.requestTimeout: 90000
+      elasticsearch.shardTimeout: 30000
+
+# Prometheus configuration
+prometheus:
+  enabled: true
+
+  server:
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+      external_labels:
+        cluster: 'killkrill'
+        environment: 'production'
+
+    retention: "15d"
+
+    persistentVolume:
+      enabled: true
+      size: 50Gi
+      storageClass: ""
+
+    resources:
+      limits:
+        cpu: 2000m
+        memory: 8Gi
+      requests:
+        cpu: 500m
+        memory: 2Gi
+
+    # KillKrill-specific scrape configs
+    extraScrapeConfigs: |
+      - job_name: 'killkrill-manager'
+        static_configs:
+          - targets: ['killkrill-manager:8080']
+        scrape_interval: 15s
+        metrics_path: /metrics
+
+      - job_name: 'killkrill-log-receiver'
+        static_configs:
+          - targets: ['killkrill-log-receiver:8081']
+        scrape_interval: 15s
+        metrics_path: /metrics
+
+      - job_name: 'killkrill-metrics-receiver'
+        static_configs:
+          - targets: ['killkrill-metrics-receiver:8082']
+        scrape_interval: 15s
+        metrics_path: /metrics
+
+  # AlertManager configuration
+  alertmanager:
+    enabled: true
+
+    persistentVolume:
+      enabled: true
+      size: 5Gi
+      storageClass: ""
+
+    config:
+      global:
+        smtp_smarthost: 'localhost:587'
+        smtp_from: 'alerts@killkrill.local'
+
+      route:
+        group_by: ['alertname', 'cluster', 'service']
+        group_wait: 10s
+        group_interval: 10s
+        repeat_interval: 1h
+        receiver: 'default-receiver'
+
+        routes:
+          - match:
+              severity: critical
+            receiver: 'critical-alerts'
+            group_wait: 0s
+            repeat_interval: 5m
+
+      receivers:
+        - name: 'default-receiver'
+          email_configs:
+            - to: 'admin@killkrill.local'
+              subject: '[KillKrill] Alert: {{ .GroupLabels.alertname }}'
+
+        - name: 'critical-alerts'
+          email_configs:
+            - to: 'admin@killkrill.local'
+              subject: '[KillKrill CRITICAL] {{ .GroupLabels.alertname }}'
+
+# Grafana configuration
+grafana:
+  enabled: true
+
+  adminPassword: "killkrill123"
+
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+    requests:
+      cpu: 250m
+      memory: 512Mi
+
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClassName: ""
+
+  # Data source configuration
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+        - name: Prometheus
+          type: prometheus
+          url: http://killkrill-prometheus:9090
+          access: proxy
+          isDefault: true
+        - name: Elasticsearch
+          type: elasticsearch
+          url: http://killkrill-elasticsearch:9200
+          access: proxy
+          database: "killkrill-logs-*"
+          interval: Daily
+          timeField: "@timestamp"
+
+  # Dashboard providers
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: 'killkrill'
+          orgId: 1
+          folder: 'KillKrill'
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/killkrill
+
+# ElastAlert configuration (ELK alerting)
+elastalert:
+  enabled: true
+
+  replicaCount: 1
+
+  image:
+    repository: jertel/elastalert2
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1Gi
+    requests:
+      cpu: 250m
+      memory: 512Mi
+
+  # ElastAlert configuration
+  config:
+    rules_folder: /opt/elastalert/rules
+    run_every:
+      minutes: 1
+    buffer_time:
+      minutes: 15
+    es_host: killkrill-elasticsearch
+    es_port: 9200
+    writeback_index: elastalert_status
+    alert_time_limit:
+      days: 2
+
+# Ingress configuration
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: killkrill.local
+      paths:
+        - path: /
+          pathType: Prefix
+          service: killkrill-manager
+          port: 8080
+    - host: grafana.killkrill.local
+      paths:
+        - path: /
+          pathType: Prefix
+          service: killkrill-grafana
+          port: 3000
+    - host: kibana.killkrill.local
+      paths:
+        - path: /
+          pathType: Prefix
+          service: killkrill-kibana
+          port: 5601
+  tls: []
+
+# Network policies
+networkPolicy:
+  enabled: false
+  ingress: []
+  egress: []
+
+# Pod security configuration
+podSecurityPolicy:
+  enabled: false
+
+# Service monitor for Prometheus operator
+serviceMonitor:
+  enabled: false
+  interval: 30s
+  scrapeTimeout: 10s
+  labels: {}
+
+# Backup configuration
+backup:
+  enabled: false
+  schedule: "0 2 * * *"
+  retention: 30
+  s3:
+    bucket: ""
+    region: ""
+    accessKey: ""
+    secretKey: ""

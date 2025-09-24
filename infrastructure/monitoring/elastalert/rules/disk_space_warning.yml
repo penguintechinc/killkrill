@@ -1,0 +1,73 @@
+# Disk Space Warning Alert Rule
+# Triggers on disk space warnings in logs
+
+name: "KillKrill Disk Space Warning"
+type: "any"
+index: "killkrill-logs-*"
+
+# Check every 5 minutes
+timeframe:
+  minutes: 5
+
+# Match disk space related messages
+filter:
+  - bool:
+      should:
+        - match:
+            message: "disk space"
+        - match:
+            message: "low disk"
+        - match:
+            message: "disk full"
+        - match:
+            message: "no space left"
+        - match:
+            message: "filesystem full"
+        - bool:
+            must:
+              - term:
+                  log.level: "warning"
+              - match:
+                  message: "space"
+
+# Prevent spam
+realert:
+  minutes: 60
+
+include:
+  - "@timestamp"
+  - "service.name"
+  - "host.name"
+  - "message"
+  - "log.level"
+
+# Slack Alert for disk space warnings
+alert:
+  - "slack"
+
+slack_webhook_url: !Env SLACK_WEBHOOK_URL
+slack_channel_override: "#infrastructure"
+slack_username_override: "KillKrill-ElastAlert"
+slack_emoji_override: ":warning:"
+
+slack_title: "💾 KillKrill Disk Space Warning"
+
+slack_text: |
+  *Host:* {host.name}
+  *Service:* {service.name}
+  *Level:* {log.level}
+  *Time:* {@timestamp}
+
+  *Message:* {message}
+
+  Action may be required to prevent service disruption.
+
+# Email to ops team
+alert:
+  - "email"
+
+email:
+  - "ops@killkrill.local"
+  - "admin@killkrill.local"
+
+email_subject: "KillKrill Disk Space Warning: {host.name}"

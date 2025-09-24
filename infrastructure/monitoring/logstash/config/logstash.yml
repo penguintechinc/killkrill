@@ -1,0 +1,59 @@
+# KillKrill Logstash Configuration
+# Performance-optimized settings for high-volume log processing
+
+# Node settings
+node.name: killkrill-logstash-01
+
+# Pipeline settings for performance
+pipeline:
+  workers: 8
+  batch:
+    size: 1000
+    delay: 50
+  unsafe_shutdown: false
+
+# Queue settings for reliability and performance
+queue:
+  type: persisted
+  max_events: 2000000
+  max_bytes: 2gb
+  checkpoint.writes: 1024
+  checkpoint.interval: 1000
+  drain: true
+
+# Dead letter queue
+dead_letter_queue:
+  enable: true
+  max_bytes: 1gb
+  flush_interval: 5000
+
+# Performance settings
+config:
+  reload:
+    automatic: true
+    interval: 3s
+
+# HTTP API settings
+http:
+  host: "0.0.0.0"
+  port: 9600
+
+# Logging
+log:
+  level: info
+  format: plain
+
+# Path settings
+path:
+  data: /usr/share/logstash/data
+  logs: /usr/share/logstash/logs
+  queue: /usr/share/logstash/data/queue
+
+# Monitoring
+monitoring:
+  enabled: false
+
+# X-Pack settings
+xpack:
+  monitoring:
+    enabled: false

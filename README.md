@@ -6,84 +6,86 @@
 [![License](https://img.shields.io/badge/License-Limited%20AGPL3-blue.svg)](LICENSE.md)
 
 ```
- ____            _           _     _____                    _       _
-|  _ \ _ __ ___ (_) ___  ___| |_  |_   _|__ _ __ ___  _ __ | | __ _| |_ ___
-| |_) | '__/ _ \| |/ _ \/ __| __|   | |/ _ \ '_ ` _ \| '_ \| |/ _` | __/ _ \
-|  __/| | | (_) | |  __/ (__| |_    | |  __/ | | | | | |_) | | (_| | ||  __/
-|_|   |_|  \___/| |\___|\___|\__|   |_|\___|_| |_| |_| .__/|_|\__,_|\__\___|
-               _/ |                                  |_|
-              |__/
+ _  ___ _ _ _   _  _____ _ _ _
+| |/ (_) | | | |/ /_ _| | | |
+| ' <| | | | | ' < | || | | |
+|_|\_\_|_|_|_|_|\_\___|_|_|_|
+
+Centralized Log & Metrics Ingestion Platform
+High-Performance • Zero Duplication • Enterprise Ready
 ```
 
-# 🏗️ Enterprise Project Template
+# KillKrill - Centralized Log & Metrics Ingestion Platform
 
-**The Ultimate Multi-Language Development Foundation**
+**Enterprise-Grade Centralized Logging and Metrics Collection**
 
-This comprehensive project template provides a production-ready foundation for enterprise software development, incorporating best practices from Penguin Tech Inc projects. Built with security, scalability, and developer experience at its core, it offers standardized tooling for Go, Python, and Node.js applications with integrated licensing, monitoring, and enterprise-grade infrastructure.
-## ✨ Why Choose This Template?
+KillKrill is a comprehensive centralized platform for ingesting logs and metrics from all PenguinTech applications. It provides high-performance HTTP3/QUIC and UDP Syslog receivers with Redis Streams queuing, ensuring zero duplication while delivering to ELK stack for logs and Prometheus for metrics.
+## ✨ Key Features
 
-### 🏭 Enterprise-Ready Architecture
-Built for production from day one with multi-language support (Go 1.23+, Python 3.12/3.13, Node.js 18+), comprehensive CI/CD pipelines, and enterprise-grade security scanning.
+### 🏭 Centralized Collection
+- **Single Platform**: Unified ingestion for all PenguinTech application logs and metrics
+- **Zero Duplication**: Redis Streams consumer groups guarantee single processing
+- **High Throughput**: Designed for enterprise-scale log and metrics volume
 
-### 🔒 Security First
-- **8-stage security validation** including Trivy, CodeQL, and Semgrep scanning
-- **TLS 1.2 minimum enforcement**, preferring TLS 1.3
-- **Automated vulnerability detection** with Dependabot and Socket.dev integration
-- **Secrets management** with environment-based configuration
+### 🔒 Security & Authentication
+- **Multi-Protocol Security**: API key, JWT, mTLS authentication
+- **IP/CIDR Filtering**: Support for single IPs and subnet notation (192.168.1.0/24)
+- **TLS 1.2+ Enforcement**: Secure transport with HTTP3/QUIC support
+- **XDP Packet Validation**: High-performance packet filtering at kernel level
 
 ### 🚀 Performance Optimized
-- **Multi-architecture Docker builds** (amd64/arm64) with Debian-slim base images
-- **Parallel CI/CD workflows** for optimized build times
-- **eBPF/XDP networking** support for high-performance applications
-- **Connection pooling** and caching strategies built-in
+- **XDP Integration**: Kernel-level packet processing for minimal latency
+- **Redis Streams**: High-performance queuing with guaranteed delivery
+- **HTTP3/QUIC**: Modern transport protocols for optimal performance
+- **Zero-Copy Processing**: Optimized data paths for maximum throughput
 
-### 🏢 PenguinTech License Server Integration
-- **Centralized feature gating** with `https://license.penguintech.io`
-- **Universal JSON response format** across all products
-- **Multi-tier licensing** (community/professional/enterprise)
-- **Usage tracking and compliance** reporting
+### 🏢 Enterprise Integration
+- **PenguinTech Licensing**: Integrated with `https://license.penguintech.io`
+- **ELK Stack**: Pre-configured Elasticsearch, Logstash, and Kibana
+- **Prometheus Stack**: Metrics collection with Grafana dashboards
+- **Real-time Monitoring**: Comprehensive metrics and alerting
 
-### 🔄 Self-Healing & Monitoring
-- **Built-in health checks** and self-healing capabilities
-- **Prometheus metrics** and Grafana dashboard integration
-- **Structured logging** with configurable verbosity levels
-- **Real-time monitoring** and alerting
-
-### 🌐 Multi-Environment Support
-- **Air-gapped deployment** ready with local caching
-- **Container orchestration** with Kubernetes and Helm
-- **Environment-specific configurations** for dev/staging/production
-- **Blue-green deployment** support with automated rollbacks
+### 🔄 Reliable Processing
+- **Consumer Groups**: Guaranteed single processing per destination
+- **Message ACK**: Required acknowledgment prevents data loss
+- **Failure Recovery**: Automatic handling of failed workers
+- **Health Monitoring**: Real-time status of all components
 
 ## 🛠️ Quick Start
 
 ```bash
 # Clone and setup
-git clone <your-repository-url>
-cd your-project
+git clone https://github.com/penguintechinc/killkrill.git
+cd killkrill
 make setup                    # Install dependencies and setup environment
 make dev                      # Start development environment
 ```
 
-## 📚 Key Components
+### Access Services
+- **Manager UI**: http://localhost:8080 (Source management and configuration)
+- **Grafana**: http://localhost:3000 (Metrics dashboards and monitoring)
+- **Kibana**: http://localhost:5601 (Log search and analysis)
+- **Prometheus**: http://localhost:9090 (Metrics collection)
 
-### Core Technologies
-- **Languages**: Go 1.23+, Python 3.12/3.13, Node.js 18+
-- **Databases**: PostgreSQL with PyDAL/GORM, Redis/Valkey caching
-- **Containers**: Docker with multi-stage builds, Kubernetes deployment
-- **Monitoring**: Prometheus, Grafana, structured logging
+## 🏗️ Architecture
 
-### Security Features
-- Multi-factor authentication (MFA) and JWT tokens
-- Role-based access control (RBAC)
-- Automated security scanning and vulnerability management
-- Compliance audit logging (SOC2, ISO27001 ready)
+### Data Flow
+```
+Logs: Applications → killkrill-receiver → Redis Streams → killkrill-processor → Elasticsearch API
+Metrics: Applications → killkrill-metrics → Redis Streams → killkrill-processor → Prometheus API
+```
 
-### Development Workflow
-- Comprehensive test coverage (unit, integration, e2e)
-- Automated code quality checks (linting, formatting, type checking)
-- Version management with semantic versioning
-- Feature branch workflow with required reviews
+### Core Components
+- **killkrill-receiver**: Log ingestion with HTTP3/QUIC + UDP Syslog, XDP validation
+- **killkrill-metrics**: Centralized metrics collection API (HTTP3/QUIC)
+- **killkrill-processor**: Redis Streams consumer, outputs to Elasticsearch and Prometheus APIs
+- **killkrill-manager**: py4web WebUI for management and configuration
+- **Infrastructure**: ELK Stack + Prometheus + Redis Streams + PostgreSQL + ElastAlert
+
+### Processing Guarantee
+- Redis Streams consumer groups ensure zero duplication
+- Message acknowledgment prevents data loss
+- Failed worker recovery maintains processing continuity
 
 ## 📖 Documentation
 

@@ -1,0 +1,285 @@
+groups:
+  - name: killkrill.rules
+    rules:
+      # Service Health Alerts
+      - alert: KillKrillServiceDown
+        expr: up{job=~"killkrill-.*"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          service: "{{ $labels.job }}"
+          component: application
+        annotations:
+          summary: "KillKrill service {{ $labels.job }} is down"
+          description: "KillKrill service {{ $labels.job }} on instance {{ $labels.instance }} has been down for more than 30 seconds."
+          runbook_url: "https://runbooks.killkrill.local/service-down"
+
+      # High Error Rate Alerts
+      - alert: KillKrillHighErrorRate
+        expr: rate(killkrill_logs_processing_errors_total[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: high
+          service: killkrill-processor
+          component: application
+        annotations:
+          summary: "High error rate in KillKrill log processing"
+          description: "KillKrill is experiencing a high error rate of {{ $value | humanizePercentage }} in log processing for the last 5 minutes."
+          runbook_url: "https://runbooks.killkrill.local/high-error-rate"
+
+      # Queue Size Alerts
+      - alert: KillKrillQueueBacklog
+        expr: killkrill_queue_size > 10000
+        for: 5m
+        labels:
+          severity: warning
+          service: killkrill-processor
+          component: application
+        annotations:
+          summary: "KillKrill queue backlog detected"
+          description: "KillKrill queue {{ $labels.stream }} has {{ $value }} messages, indicating processing lag."
+          runbook_url: "https://runbooks.killkrill.local/queue-backlog"
+
+      - alert: KillKrillQueueCritical
+        expr: killkrill_queue_size > 50000
+        for: 2m
+        labels:
+          severity: critical
+          service: killkrill-processor
+          component: application
+        annotations:
+          summary: "KillKrill queue critically backlogged"
+          description: "KillKrill queue {{ $labels.stream }} has {{ $value }} messages, system may be overwhelmed."
+          runbook_url: "https://runbooks.killkrill.local/queue-critical"
+
+      # Processing Performance Alerts
+      - alert: KillKrillSlowProcessing
+        expr: histogram_quantile(0.95, rate(killkrill_log_processing_seconds_bucket[5m])) > 1.0
+        for: 3m
+        labels:
+          severity: warning
+          service: killkrill-processor
+          component: application
+        annotations:
+          summary: "KillKrill processing is slow"
+          description: "95th percentile processing time is {{ $value }}s, indicating performance degradation."
+          runbook_url: "https://runbooks.killkrill.local/slow-processing"
+
+      # Memory and Resource Alerts
+      - alert: KillKrillHighMemoryUsage
+        expr: container_memory_usage_bytes{name=~"killkrill-.*"} / container_spec_memory_limit_bytes > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          service: "{{ $labels.name }}"
+          component: infrastructure
+        annotations:
+          summary: "KillKrill service using high memory"
+          description: "{{ $labels.name }} is using {{ $value | humanizePercentage }} of available memory."
+          runbook_url: "https://runbooks.killkrill.local/high-memory"
+
+      - alert: KillKrillHighCPUUsage
+        expr: rate(container_cpu_usage_seconds_total{name=~"killkrill-.*"}[5m]) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          service: "{{ $labels.name }}"
+          component: infrastructure
+        annotations:
+          summary: "KillKrill service using high CPU"
+          description: "{{ $labels.name }} is using {{ $value | humanizePercentage }} CPU."
+          runbook_url: "https://runbooks.killkrill.local/high-cpu"
+
+      # XDP Filtering Alerts
+      - alert: KillKrillXDPHighBlockRate
+        expr: (killkrill_xdp_packets_blocked / killkrill_xdp_packets_total) > 0.5
+        for: 2m
+        labels:
+          severity: warning
+          service: killkrill-receiver
+          component: security
+        annotations:
+          summary: "High packet block rate in XDP filter"
+          description: "XDP filter is blocking {{ $value | humanizePercentage }} of packets, may indicate attack or misconfiguration."
+          runbook_url: "https://runbooks.killkrill.local/xdp-high-block"
+
+      # License and Authentication Alerts
+      - alert: KillKrillLicenseExpiringSoon
+        expr: killkrill_license_expires_in_seconds < 86400 * 7  # 7 days
+        for: 1m
+        labels:
+          severity: high
+          service: killkrill-manager
+          component: licensing
+        annotations:
+          summary: "KillKrill license expiring soon"
+          description: "KillKrill license expires in {{ $value | humanizeDuration }}."
+          runbook_url: "https://runbooks.killkrill.local/license-expiring"
+
+      - alert: KillKrillLicenseExpired
+        expr: killkrill_license_valid == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: killkrill-manager
+          component: licensing
+        annotations:
+          summary: "KillKrill license has expired"
+          description: "KillKrill license is no longer valid. Service functionality may be limited."
+          runbook_url: "https://runbooks.killkrill.local/license-expired"
+
+      # Syslog Server Alerts
+      - alert: KillKrillSyslogServerDown
+        expr: killkrill_active_syslog_servers < killkrill_configured_syslog_servers
+        for: 1m
+        labels:
+          severity: high
+          service: killkrill-receiver
+          component: application
+        annotations:
+          summary: "KillKrill syslog servers not fully operational"
+          description: "Only {{ $value }} out of expected syslog servers are running."
+          runbook_url: "https://runbooks.killkrill.local/syslog-server-down"
+
+      # Rate Limiting Alerts
+      - alert: KillKrillRateLimitExceeded
+        expr: rate(killkrill_rate_limit_exceeded_total[5m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+          service: killkrill-receiver
+          component: security
+        annotations:
+          summary: "High rate of rate limit violations"
+          description: "{{ $value }} rate limit violations per second, may indicate abuse."
+          runbook_url: "https://runbooks.killkrill.local/rate-limit-exceeded"
+
+  - name: killkrill.infrastructure
+    rules:
+      # Redis Health
+      - alert: RedisDown
+        expr: redis_up{job="redis"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          service: redis
+          component: infrastructure
+        annotations:
+          summary: "Redis is down"
+          description: "Redis instance {{ $labels.instance }} is not responding."
+          runbook_url: "https://runbooks.killkrill.local/redis-down"
+
+      - alert: RedisHighMemoryUsage
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          service: redis
+          component: infrastructure
+        annotations:
+          summary: "Redis high memory usage"
+          description: "Redis memory usage is {{ $value | humanizePercentage }}."
+          runbook_url: "https://runbooks.killkrill.local/redis-memory"
+
+      # PostgreSQL Health
+      - alert: PostgreSQLDown
+        expr: pg_up{job="postgres"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          service: postgres
+          component: infrastructure
+        annotations:
+          summary: "PostgreSQL is down"
+          description: "PostgreSQL instance {{ $labels.instance }} is not responding."
+          runbook_url: "https://runbooks.killkrill.local/postgres-down"
+
+      - alert: PostgreSQLHighConnections
+        expr: pg_stat_database_numbackends / pg_settings_max_connections > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          service: postgres
+          component: infrastructure
+        annotations:
+          summary: "PostgreSQL high connection count"
+          description: "PostgreSQL has {{ $value | humanizePercentage }} connections in use."
+          runbook_url: "https://runbooks.killkrill.local/postgres-connections"
+
+      # Elasticsearch Health
+      - alert: ElasticsearchDown
+        expr: elasticsearch_cluster_health_status{color="red"} == 1
+        for: 1m
+        labels:
+          severity: critical
+          service: elasticsearch
+          component: infrastructure
+        annotations:
+          summary: "Elasticsearch cluster is red"
+          description: "Elasticsearch cluster health is red, data loss may occur."
+          runbook_url: "https://runbooks.killkrill.local/elasticsearch-red"
+
+      - alert: ElasticsearchYellow
+        expr: elasticsearch_cluster_health_status{color="yellow"} == 1
+        for: 5m
+        labels:
+          severity: warning
+          service: elasticsearch
+          component: infrastructure
+        annotations:
+          summary: "Elasticsearch cluster is yellow"
+          description: "Elasticsearch cluster health is yellow, some replicas are unassigned."
+          runbook_url: "https://runbooks.killkrill.local/elasticsearch-yellow"
+
+      - alert: ElasticsearchHighDiskUsage
+        expr: elasticsearch_filesystem_data_available_bytes / elasticsearch_filesystem_data_size_bytes < 0.1
+        for: 5m
+        labels:
+          severity: critical
+          service: elasticsearch
+          component: infrastructure
+        annotations:
+          summary: "Elasticsearch low disk space"
+          description: "Elasticsearch has less than 10% disk space remaining."
+          runbook_url: "https://runbooks.killkrill.local/elasticsearch-disk"
+
+  - name: killkrill.security
+    rules:
+      # Authentication Failures
+      - alert: KillKrillAuthFailures
+        expr: rate(killkrill_auth_failures_total[5m]) > 5
+        for: 2m
+        labels:
+          severity: warning
+          service: killkrill-manager
+          component: security
+        annotations:
+          summary: "High authentication failure rate"
+          description: "{{ $value }} authentication failures per second detected."
+          runbook_url: "https://runbooks.killkrill.local/auth-failures"
+
+      # Suspicious Activity
+      - alert: KillKrillSuspiciousActivity
+        expr: rate(killkrill_packets_dropped_total{reason="ip_not_allowed"}[5m]) > 100
+        for: 1m
+        labels:
+          severity: high
+          service: killkrill-receiver
+          component: security
+        annotations:
+          summary: "High rate of blocked packets"
+          description: "{{ $value }} packets per second being blocked due to IP restrictions."
+          runbook_url: "https://runbooks.killkrill.local/blocked-packets"
+
+      # Certificate Expiration
+      - alert: KillKrillCertificateExpiringSoon
+        expr: ssl_certificate_expiry_seconds < 86400 * 30  # 30 days
+        for: 1m
+        labels:
+          severity: warning
+          service: killkrill-receiver
+          component: security
+        annotations:
+          summary: "SSL certificate expiring soon"
+          description: "SSL certificate expires in {{ $value | humanizeDuration }}."
+          runbook_url: "https://runbooks.killkrill.local/cert-expiring"

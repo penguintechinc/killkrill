@@ -7,7 +7,7 @@
 .DEFAULT_GOAL := help
 
 # Variables
-PROJECT_NAME := project-template
+PROJECT_NAME := killkrill
 VERSION := $(shell cat .version 2>/dev/null || echo "development")
 DOCKER_REGISTRY := ghcr.io
 DOCKER_ORG := penguintechinc
@@ -24,7 +24,7 @@ RESET := \033[0m
 
 # Help target
 help: ## Show this help message
-	@echo "$(BLUE)$(PROJECT_NAME) Development Commands$(RESET)"
+	@echo "$(BLUE)KillKrill - Centralized Log & Metrics Ingestion Platform$(RESET)"
 	@echo ""
 	@echo "$(GREEN)Setup Commands:$(RESET)"
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / && /Setup/ {printf "  $(YELLOW)%-20s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -91,8 +91,12 @@ setup-git-hooks: ## Setup - Install Git pre-commit hooks
 
 # Development Commands
 dev: ## Development - Start development environment
-	@echo "$(BLUE)Starting development environment...$(RESET)"
-	@docker-compose up -d postgres redis
+	@echo "$(BLUE)Starting KillKrill development environment...$(RESET)"
+	@docker-compose up -d postgres redis elasticsearch kibana prometheus grafana
+	@echo "$(YELLOW)Waiting for Elasticsearch to be ready...$(RESET)"
+	@sleep 30
+	@./scripts/setup-elasticsearch.sh
+	@echo "$(YELLOW)Starting KillKrill services...$(RESET)"
 	@sleep 5
 	@$(MAKE) dev-services
 

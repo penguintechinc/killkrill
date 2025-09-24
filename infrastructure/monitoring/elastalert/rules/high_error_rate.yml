@@ -1,0 +1,89 @@
+# High Error Rate Alert Rule
+# Triggers when error rate exceeds threshold
+
+name: "KillKrill High Error Rate"
+type: "percentage_match"
+index: "killkrill-logs-*"
+
+# Time window for analysis
+timeframe:
+  minutes: 10
+
+# Minimum number of events to consider
+min_events: 50
+
+# Alert if error rate > 10%
+max_percentage: 10
+
+# Query for error conditions
+query_key: "service.name"
+
+# Match errors
+match_bucket_filter:
+  bool:
+    should:
+      - term:
+          log.level: "error"
+      - term:
+          log.level: "critical"
+      - term:
+          log.level: "fatal"
+
+# Prevent alert spam
+realert:
+  minutes: 15
+
+# Group by service
+aggregation_key: "service.name"
+
+include:
+  - "@timestamp"
+  - "service.name"
+  - "host.name"
+  - "log.level"
+  - "message"
+  - "killkrill.source_id"
+
+# Slack Alert for high error rates
+alert:
+  - "slack"
+
+slack_webhook_url: !Env SLACK_WEBHOOK_URL
+slack_channel_override: "#alerts"
+slack_username_override: "KillKrill-ElastAlert"
+slack_emoji_override: ":warning:"
+
+slack_title: "⚠️ KillKrill High Error Rate Detected"
+slack_title_link: "http://kibana:5601/app/discover"
+
+slack_text: |
+  *Service:* {service.name}
+  *Error Rate:* {percentage}% over last 10 minutes
+  *Total Events:* {denominator}
+  *Error Events:* {numerator}
+
+  This indicates a potential service degradation that requires investigation.
+
+slack_attach_kibana_discover_url: true
+slack_kibana_discover_app_url: "http://kibana:5601/app/discover"
+
+# PagerDuty for severe error rates (>25%)
+alert:
+  - "pagerduty"
+
+# Only trigger PagerDuty for very high error rates
+pagerduty_service_key: !Env PAGERDUTY_SERVICE_KEY
+pagerduty_client_name: "KillKrill"
+
+# Custom threshold for PagerDuty
+use_count_query: true
+doc_type: "_doc"
+
+enhancement:
+  - "percentage_match_enhancement"
+
+# Only send to PagerDuty if percentage > 25%
+filter:
+  - range:
+      percentage:
+        gt: 25

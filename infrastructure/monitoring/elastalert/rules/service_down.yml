@@ -1,0 +1,96 @@
+# Service Down Alert Rule
+# Triggers when no logs are received from a service for extended period
+
+name: "KillKrill Service Down"
+type: "flatline"
+index: "killkrill-logs-*"
+timeframe:
+  minutes: 10
+
+# Threshold: alert if no events for 10 minutes
+threshold: 1
+
+# Group by service to track individual services
+query_key: "service.name"
+
+# Only consider active services (those that had logs recently)
+use_terms_query: true
+terms_size: 100
+
+# Base query to include only application logs
+filter:
+  - bool:
+      must:
+        - exists:
+            field: "service.name"
+        - bool:
+            must_not:
+              - term:
+                  service.name: "health-check"
+
+# Prevent alert spam
+realert:
+  minutes: 30
+
+include:
+  - "@timestamp"
+  - "service.name"
+  - "host.name"
+  - "killkrill.source_id"
+
+# PagerDuty Alert for service down (critical)
+alert:
+  - "pagerduty"
+
+pagerduty_service_key: !Env PAGERDUTY_SERVICE_KEY
+pagerduty_client_name: "KillKrill"
+pagerduty_event_type: "trigger"
+pagerduty_incident_key: "killkrill-service-down-{0}"
+pagerduty_incident_key_args:
+  - "service.name"
+
+# Slack Alert
+alert:
+  - "slack"
+
+slack_webhook_url: !Env SLACK_WEBHOOK_URL
+slack_channel_override: "#alerts"
+slack_username_override: "KillKrill-ElastAlert"
+slack_emoji_override: ":exclamation:"
+
+slack_title: "📡 KillKrill Service Down Alert"
+slack_title_link: "http://kibana:5601/app/discover"
+
+slack_text: |
+  *Service:* {service.name}
+  *Status:* No logs received for 10+ minutes
+  *Last Seen:* {@timestamp}
+
+  This could indicate:
+  • Service is down or crashed
+  • Network connectivity issues
+  • Log forwarding problems
+
+  Please investigate immediately.
+
+# Email fallback
+alert:
+  - "email"
+
+email:
+  - "admin@killkrill.local"
+
+email_subject: "KillKrill Service Down: {service.name}"
+email_body: |
+  WARNING: Service appears to be down
+
+  Service: {service.name}
+  Last Activity: {@timestamp}
+  Duration: No logs for 10+ minutes
+
+  This indicates that the service may have stopped sending logs,
+  which could mean the service is down or experiencing issues.
+
+  Please check the service status immediately.
+
+  View logs in Kibana: http://kibana:5601/app/discover

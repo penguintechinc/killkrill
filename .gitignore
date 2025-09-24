@@ -424,6 +424,13 @@ tramp
 */web/apps/.service/*/*/*
 */web/apps/.service/*
 
+# KillKrill specific
+.PLAN
+.TODO
+apps/*/logs/
+infrastructure/monitoring/*/data/
+xdp_programs/
+
 # Misc
 *.orig
 *.rej

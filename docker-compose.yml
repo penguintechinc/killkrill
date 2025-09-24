@@ -4,11 +4,11 @@ services:
   # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
-    container_name: project-template-postgres
+    container_name: killkrill-postgres
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-project_template}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-killkrill}
+      POSTGRES_USER: ${POSTGRES_USER:-killkrill}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-killkrill123}
       POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
@@ -16,19 +16,19 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./infrastructure/docker/postgres/init:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-project_template}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-killkrill} -d ${POSTGRES_DB:-killkrill}"]
       interval: 10s
       timeout: 5s
       retries: 5
     restart: unless-stopped
     networks:
-      - app-network
+      - killkrill-network
 
-  # Redis Cache
+  # Redis Streams (Primary queuing system)
   redis:
     image: redis:7-alpine
-    container_name: project-template-redis
-    command: redis-server --requirepass ${REDIS_PASSWORD:-password} --appendonly yes
+    container_name: killkrill-redis
+    command: redis-server --requirepass ${REDIS_PASSWORD:-killkrill123} --appendonly yes --maxmemory 1gb --maxmemory-policy allkeys-lru
     ports:
       - "${REDIS_PORT:-6379}:6379"
     volumes:
@@ -41,101 +41,355 @@ services:
       retries: 5
     restart: unless-stopped
     networks:
-      - app-network
+      - killkrill-network
 
-  # Go API Service
-  api:
+  # Elasticsearch (ELK Stack) - Performance Optimized
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: killkrill-elasticsearch
+    environment:
+      - node.name=killkrill-es-01
+      - cluster.name=killkrill-cluster
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - xpack.security.enabled=false
+      - xpack.security.enrollment.enabled=false
+
+      # Memory settings (50% of available RAM, max 32GB for compressed OOPs)
+      - "ES_JAVA_OPTS=-Xms16g -Xmx16g -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap"
+
+      # Performance tuning
+      - "cluster.routing.allocation.disk.threshold.enabled=true"
+      - "cluster.routing.allocation.disk.watermark.low=85%"
+      - "cluster.routing.allocation.disk.watermark.high=90%"
+      - "cluster.routing.allocation.disk.watermark.flood_stage=95%"
+
+      # Index settings for performance
+      - "indices.memory.index_buffer_size=30%"
+      - "indices.memory.min_index_buffer_size=96mb"
+      - "indices.fielddata.cache.size=20%"
+      - "indices.requests.cache.size=2%"
+      - "indices.queries.cache.size=10%"
+
+      # Thread pool optimization
+      - "thread_pool.write.queue_size=1000"
+      - "thread_pool.search.queue_size=1000"
+      - "thread_pool.get.queue_size=1000"
+
+      # Network and HTTP settings
+      - "network.host=0.0.0.0"
+      - "http.max_content_length=500mb"
+      - "http.compression=true"
+      - "http.compression_level=3"
+
+      # Query caching
+      - "indices.queries.cache.count=10000"
+      - "indices.queries.cache.size=10%"
+      - "indices.requests.cache.expire=5m"
+
+      # Shard settings
+      - "cluster.max_shards_per_node=10000"
+      - "action.auto_create_index=true"
+
+      # Logging optimization
+      - "logger.org.elasticsearch.deprecation=ERROR"
+
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 262144
+        hard: 262144
+      nproc: 8192
+    ports:
+      - "${ELASTICSEARCH_PORT:-9200}:9200"
+      - "${ELASTICSEARCH_TRANSPORT_PORT:-9300}:9300"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+      - ./infrastructure/monitoring/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
+      - ./infrastructure/monitoring/elasticsearch/jvm.options:/usr/share/elasticsearch/config/jvm.options
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=10s || exit 1"]
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      start_period: 45s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 34g
+        reservations:
+          memory: 32g
+    networks:
+      - killkrill-network
+
+  # Logstash (ELK Stack) - Performance Optimized
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.11.0
+    container_name: killkrill-logstash
+    volumes:
+      - ./infrastructure/monitoring/logstash/pipeline:/usr/share/logstash/pipeline
+      - ./infrastructure/monitoring/logstash/config:/usr/share/logstash/config
+      - ./infrastructure/monitoring/logstash/templates:/usr/share/logstash/templates
+    ports:
+      - "${LOGSTASH_PORT:-5044}:5044"
+      - "${LOGSTASH_SYSLOG_PORT:-5514}:5514/udp"
+      - "${LOGSTASH_API_PORT:-9600}:9600"
+    environment:
+      # Memory optimization for high throughput
+      - "LS_JAVA_OPTS=-Xmx4g -Xms4g -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+
+      # Logstash settings
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-killkrill123}
+      - LOGSTASH_INTERNAL_PASSWORD=${LOGSTASH_PASSWORD:-logstash123}
+
+      # Performance tuning
+      - "pipeline.workers=8"
+      - "pipeline.batch.size=1000"
+      - "pipeline.batch.delay=50"
+      - "queue.type=persisted"
+      - "queue.max_events=2000000"
+      - "queue.max_bytes=2gb"
+      - "dead_letter_queue.enable=true"
+      - "dead_letter_queue.max_bytes=1gb"
+
+      # Output optimization
+      - "output.elasticsearch.bulk_path=/_bulk"
+      - "output.elasticsearch.flush_size=1000"
+      - "output.elasticsearch.idle_flush_time=5"
+
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9600/_node/stats?pretty || exit 1"]
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 6g
+        reservations:
+          memory: 4g
+    networks:
+      - killkrill-network
+
+  # Kibana (ELK Stack)
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: killkrill-kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_USERNAME=${KIBANA_USERNAME:-}
+      - ELASTICSEARCH_PASSWORD=${KIBANA_PASSWORD:-}
+      - server.host=0.0.0.0
+      - server.name=killkrill-kibana
+    ports:
+      - "${KIBANA_PORT:-5601}:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - killkrill-network
+
+  # ElastAlert for ELK Alerting (PagerDuty + Slack)
+  elastalert:
+    image: jertel/elastalert2:latest
+    container_name: killkrill-elastalert
+    volumes:
+      - ./infrastructure/monitoring/elastalert/elastalert.yml:/opt/elastalert/config.yml
+      - ./infrastructure/monitoring/elastalert/rules:/opt/elastalert/rules
+    environment:
+      - ELASTICSEARCH_HOST=elasticsearch
+      - ELASTICSEARCH_PORT=9200
+      - ELASTICSEARCH_USERNAME=""
+      - ELASTICSEARCH_PASSWORD=""
+      - ELASTICSEARCH_USE_SSL=False
+      - PAGERDUTY_SERVICE_KEY=${PAGERDUTY_SERVICE_KEY:-}
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - killkrill-network
+
+  # KillKrill Log Receiver (HTTP3/QUIC + UDP Syslog)
+  log-receiver:
     build:
       context: .
-      dockerfile: apps/api/Dockerfile
-    container_name: project-template-api
+      dockerfile: apps/log-receiver/Dockerfile
+    container_name: killkrill-log-receiver
+    privileged: true  # Required for XDP functionality
+    cap_add:
+      - NET_ADMIN
+      - SYS_ADMIN
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-project_template}?sslmode=disable
-      - REDIS_URL=redis://:${REDIS_PASSWORD:-password}@redis:6379/0
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-killkrill}:${POSTGRES_PASSWORD:-killkrill123}@postgres:5432/${POSTGRES_DB:-killkrill}?sslmode=disable
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-killkrill123}@redis:6379/0
       - LICENSE_KEY=${LICENSE_KEY}
-      - PRODUCT_NAME=${PRODUCT_NAME:-project-template}
+      - PRODUCT_NAME=${PRODUCT_NAME:-killkrill}
       - LICENSE_SERVER_URL=${LICENSE_SERVER_URL:-https://license.penguintech.io}
-      - PORT=8080
-      - GIN_MODE=${GIN_MODE:-debug}
+      - RECEIVER_HTTP_PORT=8081
+      - RECEIVER_SYSLOG_PORT_START=10000
+      - RECEIVER_SYSLOG_PORT_END=11000
       - LOG_LEVEL=${LOG_LEVEL:-info}
     ports:
-      - "${API_PORT:-8080}:8080"
+      - "${RECEIVER_HTTP_PORT:-8081}:8081"
+      - "${RECEIVER_SYSLOG_PORT_RANGE:-10000-11000}:10000-11000/udp"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8081/healthz"]
       interval: 30s
       timeout: 10s
       retries: 3
     restart: unless-stopped
     networks:
-      - app-network
+      - killkrill-network
 
-  # Python Web Application (py4web)
-  web-python:
+  # KillKrill Metrics Receiver (HTTP3/QUIC API)
+  metrics-receiver:
     build:
       context: .
-      dockerfile: apps/web/Dockerfile
-    container_name: project-template-web-python
+      dockerfile: apps/metrics-receiver/Dockerfile
+    container_name: killkrill-metrics-receiver
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-project_template}?sslmode=disable
-      - REDIS_URL=redis://:${REDIS_PASSWORD:-password}@redis:6379/1
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-killkrill}:${POSTGRES_PASSWORD:-killkrill123}@postgres:5432/${POSTGRES_DB:-killkrill}?sslmode=disable
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-killkrill123}@redis:6379/1
       - LICENSE_KEY=${LICENSE_KEY}
-      - PRODUCT_NAME=${PRODUCT_NAME:-project-template}
+      - PRODUCT_NAME=${PRODUCT_NAME:-killkrill}
+      - LICENSE_SERVER_URL=${LICENSE_SERVER_URL:-https://license.penguintech.io}
+      - METRICS_PORT=8082
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    ports:
+      - "${METRICS_PORT:-8082}:8082"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - killkrill-network
+
+  # KillKrill Log Worker (Redis Streams to ELK)
+  log-worker:
+    build:
+      context: .
+      dockerfile: apps/log-worker/Dockerfile
+    container_name: killkrill-log-worker
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-killkrill}:${POSTGRES_PASSWORD:-killkrill123}@postgres:5432/${POSTGRES_DB:-killkrill}?sslmode=disable
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-killkrill123}@redis:6379/2
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - PROMETHEUS_GATEWAY=http://prometheus:9090
+      - LICENSE_KEY=${LICENSE_KEY}
+      - PRODUCT_NAME=${PRODUCT_NAME:-killkrill}
+      - LICENSE_SERVER_URL=${LICENSE_SERVER_URL:-https://license.penguintech.io}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    depends_on:
+      redis:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "ps aux | grep processor | grep -v grep || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - killkrill-network
+
+  # KillKrill Metrics Worker (Redis Streams to Prometheus)
+  metrics-worker:
+    build:
+      context: .
+      dockerfile: apps/metrics-worker/Dockerfile
+    container_name: killkrill-metrics-worker
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-killkrill}:${POSTGRES_PASSWORD:-killkrill123}@postgres:5432/${POSTGRES_DB:-killkrill}?sslmode=disable
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-killkrill123}@redis:6379/3
+      - PROMETHEUS_GATEWAY=http://prometheus:9090
+      - LICENSE_KEY=${LICENSE_KEY}
+      - PRODUCT_NAME=${PRODUCT_NAME:-killkrill}
+      - LICENSE_SERVER_URL=${LICENSE_SERVER_URL:-https://license.penguintech.io}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - PROCESSOR_WORKERS=${PROCESSOR_WORKERS:-4}
+      - MAX_BATCH_SIZE=${MAX_BATCH_SIZE:-1000}
+      - PROMETHEUS_PUSH_INTERVAL=${PROMETHEUS_PUSH_INTERVAL:-15}
+    depends_on:
+      redis:
+        condition: service_healthy
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "ps aux | grep metrics-worker | grep -v grep || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - killkrill-network
+
+  # KillKrill Manager (py4web WebUI)
+  manager:
+    build:
+      context: .
+      dockerfile: apps/manager/Dockerfile
+    container_name: killkrill-manager
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-killkrill}:${POSTGRES_PASSWORD:-killkrill123}@postgres:5432/${POSTGRES_DB:-killkrill}?sslmode=disable
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-killkrill123}@redis:6379/3
+      - LICENSE_KEY=${LICENSE_KEY}
+      - PRODUCT_NAME=${PRODUCT_NAME:-killkrill}
       - LICENSE_SERVER_URL=${LICENSE_SERVER_URL:-https://license.penguintech.io}
       - PY4WEB_APPS_FOLDER=/app/apps
       - PY4WEB_HOST=0.0.0.0
-      - PY4WEB_PORT=8000
+      - PY4WEB_PORT=8080
     ports:
-      - "${WEB_PYTHON_PORT:-8000}:8000"
+      - "${MANAGER_PORT:-8080}:8080"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
       interval: 30s
       timeout: 10s
       retries: 3
     restart: unless-stopped
     networks:
-      - app-network
-
-  # Node.js Web Application
-  web-node:
-    build:
-      context: web
-      dockerfile: Dockerfile
-    container_name: project-template-web-node
-    environment:
-      - NODE_ENV=${NODE_ENV:-development}
-      - PORT=3000
-      - LICENSE_KEY=${LICENSE_KEY}
-      - PRODUCT_NAME=${PRODUCT_NAME:-project-template}
-      - LICENSE_SERVER_URL=${LICENSE_SERVER_URL:-https://license.penguintech.io}
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-project_template}?sslmode=disable
-      - REDIS_URL=redis://:${REDIS_PASSWORD:-password}@redis:6379/2
-    ports:
-      - "${WEB_NODE_PORT:-3000}:3000"
-    depends_on:
-      - redis
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    restart: unless-stopped
-    networks:
-      - app-network
+      - killkrill-network
 
   # Prometheus Monitoring
   prometheus:
     image: prom/prometheus:latest
-    container_name: project-template-prometheus
+    container_name: killkrill-prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
@@ -143,53 +397,96 @@ services:
       - '--web.console.templates=/etc/prometheus/consoles'
       - '--storage.tsdb.retention.time=200h'
       - '--web.enable-lifecycle'
+      - '--web.enable-remote-write-receiver'
     ports:
       - "${PROMETHEUS_PORT:-9090}:9090"
     volumes:
       - ./infrastructure/monitoring/prometheus:/etc/prometheus
       - prometheus_data:/prometheus
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:9090/-/healthy || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     networks:
-      - app-network
+      - killkrill-network
+    restart: unless-stopped
+
+  # Prometheus AlertManager
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: killkrill-alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=http://localhost:9093'
+      - '--web.route-prefix=/'
+      - '--cluster.listen-address=0.0.0.0:9094'
+    ports:
+      - "${ALERTMANAGER_PORT:-9093}:9093"
+    volumes:
+      - ./infrastructure/monitoring/alertmanager:/etc/alertmanager
+      - alertmanager_data:/alertmanager
+    environment:
+      - PAGERDUTY_SERVICE_KEY=${PAGERDUTY_SERVICE_KEY:-}
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}
+      - SMTP_SMARTHOST=${SMTP_SERVER:-localhost}:${SMTP_PORT:-587}
+      - SMTP_FROM=${SMTP_SENDER:-noreply@killkrill.local}
+      - SMTP_AUTH_USERNAME=${SMTP_USER:-}
+      - SMTP_AUTH_PASSWORD=${SMTP_PASSWORD:-}
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:9093/-/healthy || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - killkrill-network
     restart: unless-stopped
 
   # Grafana Dashboard
   grafana:
     image: grafana/grafana:latest
-    container_name: project-template-grafana
+    container_name: killkrill-grafana
     environment:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-killkrill123}
       - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel,grafana-worldmap-panel
     ports:
-      - "${GRAFANA_PORT:-3001}:3000"
+      - "${GRAFANA_PORT:-3000}:3000"
     volumes:
       - grafana_data:/var/lib/grafana
       - ./infrastructure/monitoring/grafana/provisioning:/etc/grafana/provisioning
       - ./infrastructure/monitoring/grafana/dashboards:/var/lib/grafana/dashboards
     depends_on:
-      - prometheus
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     networks:
-      - app-network
+      - killkrill-network
     restart: unless-stopped
 
-  # Nginx Reverse Proxy
-  nginx:
-    image: nginx:alpine
-    container_name: project-template-nginx
+  # AlertManager (Prometheus alerting)
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: killkrill-alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=http://localhost:9093'
     ports:
-      - "${NGINX_HTTP_PORT:-80}:80"
-      - "${NGINX_HTTPS_PORT:-443}:443"
+      - "${ALERTMANAGER_PORT:-9093}:9093"
     volumes:
-      - ./infrastructure/docker/nginx/nginx.conf:/etc/nginx/nginx.conf
-      - ./infrastructure/docker/nginx/conf.d:/etc/nginx/conf.d
-      - ./infrastructure/docker/nginx/ssl:/etc/nginx/ssl
-      - nginx_logs:/var/log/nginx
+      - ./infrastructure/monitoring/alertmanager:/etc/alertmanager
+      - alertmanager_data:/alertmanager
     depends_on:
-      - api
-      - web-python
-      - web-node
+      - prometheus
     networks:
-      - app-network
+      - killkrill-network
     restart: unless-stopped
 
 volumes:
@@ -197,13 +494,18 @@ volumes:
     driver: local
   redis_data:
     driver: local
+  elasticsearch_data:
+    driver: local
   prometheus_data:
     driver: local
   grafana_data:
     driver: local
-  nginx_logs:
+  alertmanager_data:
     driver: local
 
 networks:
-  app-network:
+  killkrill-network:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
