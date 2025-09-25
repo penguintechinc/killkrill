@@ -1,11 +1,11 @@
-# KillKrill Elasticsearch Configuration
-# Performance-optimized configuration for high-volume log ingestion
+# KillKrill Elasticsearch Configuration - Development
+# Minimal configuration for Elasticsearch 8.11
 
 # ======================== Elasticsearch Configuration =========================
 
 # Cluster settings
-cluster.name: killkrill-cluster
-node.name: killkrill-es-01
+cluster.name: killkrill-dev
+node.name: killkrill-es-dev
 node.roles: [master, data, ingest, transform]
 
 # Network settings
@@ -13,66 +13,54 @@ network.host: 0.0.0.0
 http.port: 9200
 transport.port: 9300
 
-# Discovery settings (single node for now)
+# Discovery settings (single node)
 discovery.type: single-node
 
-# Security (disabled for internal use)
+# Security (disabled for development)
 xpack.security.enabled: false
 xpack.security.enrollment.enabled: false
 xpack.ml.enabled: false
 
 # ======================== Performance Tuning =========================
 
-# Memory settings
-bootstrap.memory_lock: true
+# Memory settings (disabled for containerized development)
+bootstrap.memory_lock: false
 
 # Index settings for high throughput
 indices.memory.index_buffer_size: 30%
 indices.memory.min_index_buffer_size: 96mb
 
 # Query performance
-indices.queries.cache.enabled: true
 indices.queries.cache.size: 10%
 indices.queries.cache.count: 10000
 
 # Request cache for aggregations
-indices.requests.cache.enabled: true
 indices.requests.cache.size: 2%
-indices.requests.cache.expire: 5m
 
 # Field data cache (use sparingly)
 indices.fielddata.cache.size: 20%
 
 # ======================== Thread Pools =========================
 
-# Search thread pool
-thread_pool.search.size: 13
-thread_pool.search.queue_size: 1000
+# Search thread pool (optimized for development)
+thread_pool.search.size: 2
+thread_pool.search.queue_size: 500
 
-# Write thread pool
-thread_pool.write.size: 13
-thread_pool.write.queue_size: 1000
+# Write thread pool (limited by system)
+thread_pool.write.size: 2
+thread_pool.write.queue_size: 200
 
 # Get thread pool
-thread_pool.get.size: 13
-thread_pool.get.queue_size: 1000
+thread_pool.get.size: 2
+thread_pool.get.queue_size: 100
 
-# ======================== Indexing Performance =========================
+# ======================== Cluster Settings =========================
 
-# Refresh interval for real-time search vs indexing performance
-index.refresh_interval: 5s
-
-# Number of replicas (0 for single node)
-index.number_of_replicas: 0
-
-# Shard settings
-index.number_of_shards: 1
 cluster.max_shards_per_node: 10000
 
 # Routing allocation
 cluster.routing.allocation.enable: all
 cluster.routing.allocation.node_concurrent_recoveries: 2
-cluster.routing.allocation.disk.threshold.enabled: true
 cluster.routing.allocation.disk.watermark.low: 85%
 cluster.routing.allocation.disk.watermark.high: 90%
 cluster.routing.allocation.disk.watermark.flood_stage: 95%
@@ -102,41 +90,10 @@ logger.org.elasticsearch.discovery: WARN
 
 # ======================== Recovery Settings =========================
 
-# Cluster recovery settings
-gateway.recover_after_nodes: 1
-gateway.expected_nodes: 1
-gateway.recover_after_time: 5m
-
 # Index recovery
 indices.recovery.max_bytes_per_sec: 100mb
-indices.recovery.concurrent_streams: 3
 
-# ======================== Monitoring =========================
-
-# Monitoring settings for production
-xpack.monitoring.enabled: false
-
-# ======================== Index Lifecycle Management =========================
-
-# Enable ILM for automatic index management
-xpack.ilm.enabled: true
-
-# ======================== Machine Learning =========================
-
-# Disable ML to save resources (can be enabled if needed)
-xpack.ml.enabled: false
-
-# ======================== Transform =========================
-
-# Enable transforms for data aggregation
-xpack.transform.enabled: true
-
-# ======================== Snapshot Settings =========================
-
-# Path for snapshots (can be configured for backups)
-path.repo: ["/usr/share/elasticsearch/backup"]
-
-# ======================== Custom Settings =========================
+# ======================== Circuit Breaker =========================
 
 # Circuit breaker settings to prevent OOM
 indices.breaker.total.use_real_memory: true
@@ -144,15 +101,8 @@ indices.breaker.total.limit: 70%
 indices.breaker.fielddata.limit: 40%
 indices.breaker.request.limit: 40%
 
+# ======================== Search Settings =========================
+
 # Search settings
 search.max_buckets: 65536
 search.default_search_timeout: 60s
-
-# Index settings for log data
-index.codec: best_compression
-index.merge.policy.max_merge_at_once: 10
-index.merge.policy.segments_per_tier: 10
-index.merge.scheduler.max_thread_count: 1
-
-# Disable swapping
-bootstrap.mlockall: true

@@ -90,15 +90,81 @@ setup-git-hooks: ## Setup - Install Git pre-commit hooks
 	@chmod +x .git/hooks/commit-msg
 
 # Development Commands
-dev: ## Development - Start development environment
-	@echo "$(BLUE)Starting KillKrill development environment...$(RESET)"
-	@docker-compose up -d postgres redis elasticsearch kibana prometheus grafana
+dev: ## Development - Start minimal development environment (~3.5GB RAM)
+	@echo "$(BLUE)Starting KillKrill development environment (minimal resources)...$(RESET)"
+	@echo "$(YELLOW)Resource Usage: ~3.5GB RAM total (well under 32GB limit)$(RESET)"
+	@docker-compose -f docker-compose.dev.yml up -d
+	@echo "$(YELLOW)Waiting for Elasticsearch to be ready...$(RESET)"
+	@sleep 30
+	@./scripts/setup-elasticsearch.sh
+	@echo "$(GREEN)KillKrill development environment started!$(RESET)"
+	@echo ""
+	@echo "$(YELLOW)Access Points:$(RESET)"
+	@echo "  Manager:     http://localhost:8080"
+	@echo "  Kibana:      http://localhost:5601"
+	@echo "  Grafana:     http://localhost:3000 (admin/admin)"
+	@echo "  Prometheus:  http://localhost:9090"
+	@echo ""
+
+dev-full: ## Development - Start full development environment (production specs)
+	@echo "$(BLUE)Starting KillKrill FULL development environment...$(RESET)"
+	@docker-compose up -d
 	@echo "$(YELLOW)Waiting for Elasticsearch to be ready...$(RESET)"
 	@sleep 30
 	@./scripts/setup-elasticsearch.sh
 	@echo "$(YELLOW)Starting KillKrill services...$(RESET)"
 	@sleep 5
 	@$(MAKE) dev-services
+
+status: ## Development - Show status of all services
+	@echo "$(BLUE)KillKrill Service Status:$(RESET)"
+	@docker-compose -f docker-compose.dev.yml ps
+
+logs: ## Development - Show logs from all services
+	@docker-compose -f docker-compose.dev.yml logs -f
+
+restart: ## Development - Restart all services
+	@echo "$(BLUE)Restarting KillKrill services...$(RESET)"
+	@docker-compose -f docker-compose.dev.yml restart
+
+stop: ## Development - Stop all services
+	@echo "$(BLUE)Stopping KillKrill services...$(RESET)"
+	@docker-compose -f docker-compose.dev.yml stop
+
+down: ## Development - Stop and remove all services
+	@echo "$(BLUE)Stopping and removing KillKrill services...$(RESET)"
+	@docker-compose -f docker-compose.dev.yml down
+
+clean: ## Development - Clean up containers, networks, and volumes
+	@echo "$(BLUE)Cleaning up KillKrill environment...$(RESET)"
+	@docker-compose -f docker-compose.dev.yml down -v
+	@docker system prune -f
+
+test-logs: ## Development - Send test logs to verify ingestion
+	@echo "$(BLUE)Sending test logs...$(RESET)"
+	@curl -X POST http://localhost:8081/api/v1/logs \
+		-H "Content-Type: application/json" \
+		-H "Authorization: Bearer PENG-DEMO-DEMO-DEMO-DEMO-DEMO" \
+		-d '{"timestamp": "'$$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)'", "log_level": "info", "message": "Test log from Makefile", "service_name": "test-service"}' \
+		&& echo "$(GREEN)Test log sent successfully$(RESET)" \
+		|| echo "$(RED)Failed to send test log$(RESET)"
+
+test-metrics: ## Development - Send test metrics to verify ingestion
+	@echo "$(BLUE)Sending test metrics...$(RESET)"
+	@curl -X POST http://localhost:8082/api/v1/metrics \
+		-H "Content-Type: application/json" \
+		-H "Authorization: Bearer PENG-DEMO-DEMO-DEMO-DEMO-DEMO" \
+		-d '{"name": "test_counter", "type": "counter", "value": 1, "labels": {"service": "makefile-test"}, "timestamp": '$$(date +%s)'}' \
+		&& echo "$(GREEN)Test metric sent successfully$(RESET)" \
+		|| echo "$(RED)Failed to send test metric$(RESET)"
+
+health: ## Development - Check health of all services
+	@echo "$(BLUE)Checking KillKrill service health...$(RESET)"
+	@echo "Manager:        $$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/healthz 2>/dev/null || echo 'DOWN')"
+	@echo "Log Receiver:   $$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8081/healthz 2>/dev/null || echo 'DOWN')"
+	@echo "Metrics Recv:   $$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8082/healthz 2>/dev/null || echo 'DOWN')"
+	@echo "Elasticsearch:  $$(curl -s -o /dev/null -w '%{http_code}' http://localhost:9200/_cluster/health 2>/dev/null || echo 'DOWN')"
+	@echo "Prometheus:     $$(curl -s -o /dev/null -w '%{http_code}' http://localhost:9090/-/healthy 2>/dev/null || echo 'DOWN')"
 
 dev-services: ## Development - Start all services for development
 	@echo "$(BLUE)Starting development services...$(RESET)"

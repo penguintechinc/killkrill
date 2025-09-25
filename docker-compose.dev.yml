@@ -1,0 +1,280 @@
+version: '3.8'
+
+services:
+  # Core Infrastructure - Minimal Resources
+  postgres:
+    image: postgres:15-alpine
+    container_name: killkrill-postgres-dev
+    environment:
+      POSTGRES_DB: killkrill
+      POSTGRES_USER: killkrill
+      POSTGRES_PASSWORD: killkrill123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+    mem_limit: 256m
+    cpus: 0.5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: killkrill-redis-dev
+    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru --save ""
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data_dev:/data
+    mem_limit: 128m
+    cpus: 0.25
+    restart: unless-stopped
+
+  # Elasticsearch - Development Configuration
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: killkrill-elasticsearch-dev
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false
+      - xpack.security.enrollment.enabled=false
+      - cluster.name=killkrill-dev
+      - node.name=killkrill-es-dev
+      - bootstrap.memory_lock=false
+      - indices.memory.index_buffer_size=10%
+      - thread_pool.write.queue_size=200
+      - thread_pool.search.queue_size=500
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elasticsearch_data_dev:/usr/share/elasticsearch/data
+      - ./infrastructure/monitoring/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+    mem_limit: 1g
+    cpus: 0.5
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Kibana - Lightweight Configuration
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: killkrill-kibana-dev
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - SERVER_NAME=killkrill-kibana-dev
+      - XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY=killkrill-dev-key-32-chars-long
+      - XPACK_SECURITY_ENCRYPTIONKEY=killkrill-dev-key-32-chars-long
+      - XPACK_REPORTING_ENCRYPTIONKEY=killkrill-dev-key-32-chars-long
+      - SERVER_MAXPAYLOADBYTES=1048576
+      - LOGGING_ROOT_LEVEL=warn
+    ports:
+      - "5601:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    mem_limit: 512m
+    cpus: 0.5
+    restart: unless-stopped
+
+  # Prometheus - Development Configuration
+  prometheus:
+    image: prom/prometheus:v2.47.0
+    container_name: killkrill-prometheus-dev
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=7d'
+      - '--storage.tsdb.retention.size=1GB'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+      - '--log.level=warn'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infrastructure/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infrastructure/monitoring/prometheus/alerts/:/etc/prometheus/alerts/:ro
+      - prometheus_data_dev:/prometheus
+    mem_limit: 256m
+    cpus: 0.25
+    restart: unless-stopped
+
+  # Grafana - Lightweight
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: killkrill-grafana-dev
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=redis-datasource
+      - GF_SERVER_ROOT_URL=http://localhost:3000
+      - GF_DATABASE_TYPE=sqlite3
+      - GF_LOG_LEVEL=warn
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data_dev:/var/lib/grafana
+      - ./infrastructure/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+    mem_limit: 128m
+    cpus: 0.25
+    restart: unless-stopped
+
+  # KillKrill Services - Development Mode
+  killkrill-manager:
+    build:
+      context: .
+      dockerfile: apps/manager/Dockerfile
+    container_name: killkrill-manager-dev
+    environment:
+      - NODE_ENV=development
+      - LOG_LEVEL=debug
+      - DATABASE_URL=postgresql://killkrill:killkrill123@postgres:5432/killkrill
+      - REDIS_URL=redis://redis:6379
+      - LICENSE_KEY=${LICENSE_KEY:-PENG-DEMO-DEMO-DEMO-DEMO-DEMO}
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - PROMETHEUS_URL=http://prometheus:9090
+      - GRAFANA_URL=http://grafana:3000
+      - KIBANA_URL=http://kibana:5601
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+      - redis
+      - elasticsearch
+      - prometheus
+    mem_limit: 256m
+    cpus: 0.25
+    restart: unless-stopped
+    volumes:
+      - ./apps/manager:/app/apps/manager:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  killkrill-log-receiver:
+    build:
+      context: .
+      dockerfile: apps/log-receiver/Dockerfile
+    container_name: killkrill-log-receiver-dev
+    environment:
+      - LOG_LEVEL=debug
+      - DATABASE_URL=postgresql://killkrill:killkrill123@postgres:5432/killkrill
+      - REDIS_URL=redis://redis:6379
+      - LICENSE_KEY=${LICENSE_KEY:-PENG-DEMO-DEMO-DEMO-DEMO-DEMO}
+      - RECEIVER_PORT=8081
+      - SYSLOG_PORT_START=10000
+      - SYSLOG_PORT_END=10010
+      - WORKER_THREADS=2
+    ports:
+      - "8081:8081"
+      - "8443:8443"  # HTTP3/QUIC
+      - "514:514/udp"  # Syslog
+      - "10000-10010:10000-10010/udp"  # Dynamic syslog ports
+    depends_on:
+      - postgres
+      - redis
+    privileged: true  # Required for XDP
+    cap_add:
+      - NET_ADMIN
+      - SYS_ADMIN
+    mem_limit: 256m
+    cpus: 0.5
+    restart: unless-stopped
+    volumes:
+      - ./apps/log-receiver:/app/apps/log-receiver:ro
+
+  killkrill-metrics-receiver:
+    build:
+      context: .
+      dockerfile: apps/metrics-receiver/Dockerfile
+    container_name: killkrill-metrics-receiver-dev
+    environment:
+      - LOG_LEVEL=debug
+      - DATABASE_URL=postgresql://killkrill:killkrill123@postgres:5432/killkrill
+      - REDIS_URL=redis://redis:6379
+      - LICENSE_KEY=${LICENSE_KEY:-PENG-DEMO-DEMO-DEMO-DEMO-DEMO}
+      - RECEIVER_PORT=8082
+    ports:
+      - "8082:8082"
+      - "8444:8444"  # HTTP3/QUIC
+    depends_on:
+      - postgres
+      - redis
+    mem_limit: 256m
+    cpus: 0.25
+    restart: unless-stopped
+    volumes:
+      - ./apps/metrics-receiver:/app/apps/metrics-receiver:ro
+
+  killkrill-log-worker:
+    build:
+      context: .
+      dockerfile: apps/log-worker/Dockerfile
+    container_name: killkrill-log-worker-dev
+    environment:
+      - LOG_LEVEL=debug
+      - DATABASE_URL=postgresql://killkrill:killkrill123@postgres:5432/killkrill
+      - REDIS_URL=redis://redis:6379
+      - LICENSE_KEY=${LICENSE_KEY:-PENG-DEMO-DEMO-DEMO-DEMO-DEMO}
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - WORKER_THREADS=2
+      - BATCH_SIZE=100
+      - FLUSH_INTERVAL=5s
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    mem_limit: 256m
+    cpus: 0.25
+    restart: unless-stopped
+    volumes:
+      - ./apps/log-worker:/app/apps/log-worker:ro
+
+  killkrill-metrics-worker:
+    build:
+      context: .
+      dockerfile: apps/metrics-worker/Dockerfile
+    container_name: killkrill-metrics-worker-dev
+    environment:
+      - LOG_LEVEL=debug
+      - DATABASE_URL=postgresql://killkrill:killkrill123@postgres:5432/killkrill
+      - REDIS_URL=redis://redis:6379
+      - LICENSE_KEY=${LICENSE_KEY:-PENG-DEMO-DEMO-DEMO-DEMO-DEMO}
+      - PROMETHEUS_GATEWAY=http://prometheus:9090
+      - WORKER_THREADS=2
+      - BATCH_SIZE=100
+      - FLUSH_INTERVAL=10s
+    depends_on:
+      - prometheus
+      - redis
+    mem_limit: 256m
+    cpus: 0.25
+    restart: unless-stopped
+    volumes:
+      - ./apps/metrics-worker:/app/apps/metrics-worker:ro
+
+volumes:
+  postgres_data_dev:
+    driver: local
+  redis_data_dev:
+    driver: local
+  elasticsearch_data_dev:
+    driver: local
+  prometheus_data_dev:
+    driver: local
+  grafana_data_dev:
+    driver: local
+
+networks:
+  default:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

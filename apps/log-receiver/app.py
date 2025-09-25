@@ -75,7 +75,9 @@ redis_client = redis.from_url(REDIS_URL, decode_responses=True)
 license_client = PenguinTechLicenseClient(LICENSE_KEY, PRODUCT_NAME)
 
 # Database setup
-db = DAL(DATABASE_URL, migrate=True, fake_migrate=False)
+# PyDAL expects 'postgres://' scheme instead of 'postgresql://'
+pydal_database_url = DATABASE_URL.replace('postgresql://', 'postgres://')
+db = DAL(pydal_database_url, migrate=True, fake_migrate=False)
 
 # Define tables for log sources
 db.define_table('log_sources',
@@ -648,7 +650,6 @@ if __name__ == '__main__':
 
     # Initialize XDP filter
     try:
-        global xdp_filter_manager, xdp_filter_active
         xdp_filter_manager = XDPFilterManager()
 
         if xdp_filter_manager.is_available():

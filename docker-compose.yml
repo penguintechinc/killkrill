@@ -84,7 +84,6 @@ services:
 
       # Query caching
       - "indices.queries.cache.count=10000"
-      - "indices.queries.cache.size=10%"
       - "indices.requests.cache.expire=5m"
 
       # Shard settings

@@ -18,6 +18,7 @@ from py4web import action, request, response, Field, DAL
 from py4web.utils.cors import CORS
 from prometheus_client import Counter, Histogram, Gauge, CollectorRegistry, generate_latest
 import pydantic
+
 from netaddr import IPNetwork
 import jwt
 
@@ -62,8 +63,9 @@ METRICS_PORT = int(os.getenv('METRICS_PORT', 8082))
 redis_client = redis.from_url(REDIS_URL, decode_responses=True)
 license_client = PenguinTechLicenseClient(LICENSE_KEY, PRODUCT_NAME)
 
-# Database setup
-db = DAL(DATABASE_URL, migrate=True, fake_migrate=False)
+# Database setup - Convert postgresql:// to postgres:// for PyDAL compatibility
+pydal_database_url = DATABASE_URL.replace('postgresql://', 'postgres://')
+db = DAL(pydal_database_url, migrate=True, fake_migrate=False)
 
 # Define tables
 db.define_table('metric_sources',
@@ -360,16 +362,15 @@ def update_active_sources():
     except Exception as e:
         logger.error("Error updating active sources metric", error=str(e))
 
-if __name__ == '__main__':
-    # Validate license on startup
+# Initialize license and periodic tasks on module load
+try:
     license_status = license_client.validate()
     if not license_status.get('valid'):
         logger.error("Invalid license", status=license_status)
-        sys.exit(1)
-
-    logger.info("Starting KillKrill Metrics Receiver",
-                port=METRICS_PORT,
-                license_tier=license_status.get('tier'))
+    else:
+        logger.info("KillKrill Metrics Receiver initialized",
+                    port=METRICS_PORT,
+                    license_tier=license_status.get('tier'))
 
     # Start periodic tasks
     import threading
@@ -386,10 +387,5 @@ if __name__ == '__main__':
 
     threading.Thread(target=periodic_tasks, daemon=True).start()
 
-    # Start server
-    from py4web import main
-    main.start(
-        host='0.0.0.0',
-        port=METRICS_PORT,
-        apps_folder=os.path.dirname(__file__)
-    )
+except Exception as e:
+    logger.error("Initialization error", error=str(e))
