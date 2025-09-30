@@ -469,24 +469,116 @@ services:
       - killkrill-network
     restart: unless-stopped
 
-  # AlertManager (Prometheus alerting)
-  alertmanager:
-    image: prom/alertmanager:latest
-    container_name: killkrill-alertmanager
-    command:
-      - '--config.file=/etc/alertmanager/alertmanager.yml'
-      - '--storage.path=/alertmanager'
-      - '--web.external-url=http://localhost:9093'
+  # Fleet MySQL Database
+  fleet-mysql:
+    image: mysql:8.0
+    container_name: killkrill-fleet-mysql
+    environment:
+      MYSQL_DATABASE: ${FLEET_MYSQL_DATABASE:-fleet}
+      MYSQL_USER: ${FLEET_MYSQL_USER:-fleet}
+      MYSQL_PASSWORD: ${FLEET_MYSQL_PASSWORD:-fleet123}
+      MYSQL_ROOT_PASSWORD: ${FLEET_MYSQL_ROOT_PASSWORD:-fleetroot123}
+      MYSQL_CHARSET: utf8mb4
+      MYSQL_COLLATION: utf8mb4_unicode_ci
     ports:
-      - "${ALERTMANAGER_PORT:-9093}:9093"
+      - "${FLEET_MYSQL_PORT:-3307}:3306"
     volumes:
-      - ./infrastructure/monitoring/alertmanager:/etc/alertmanager
-      - alertmanager_data:/alertmanager
-    depends_on:
-      - prometheus
+      - fleet_mysql_data:/var/lib/mysql
+      - ./infrastructure/docker/fleet-mysql/init:/docker-entrypoint-initdb.d
+    command: --default-authentication-plugin=mysql_native_password --sql-mode=STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "fleet", "-pfleet123"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
     networks:
       - killkrill-network
+
+  # Fleet Redis Cache
+  fleet-redis:
+    image: redis:7-alpine
+    container_name: killkrill-fleet-redis
+    command: redis-server --requirepass ${FLEET_REDIS_PASSWORD:-fleetredis123} --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    ports:
+      - "${FLEET_REDIS_PORT:-6380}:6379"
+    volumes:
+      - fleet_redis_data:/data
+      - ./infrastructure/docker/fleet-redis/redis.conf:/etc/redis/redis.conf
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
+    networks:
+      - killkrill-network
+
+  # Fleet Server
+  fleet-server:
+    image: fleetdm/fleet:v4.57.0
+    container_name: killkrill-fleet-server
+    command: fleet serve
+    environment:
+      # Database configuration
+      - FLEET_MYSQL_ADDRESS=fleet-mysql:3306
+      - FLEET_MYSQL_DATABASE=${FLEET_MYSQL_DATABASE:-fleet}
+      - FLEET_MYSQL_USERNAME=${FLEET_MYSQL_USER:-fleet}
+      - FLEET_MYSQL_PASSWORD=${FLEET_MYSQL_PASSWORD:-fleet123}
+
+      # Redis configuration
+      - FLEET_REDIS_ADDRESS=fleet-redis:6379
+      - FLEET_REDIS_PASSWORD=${FLEET_REDIS_PASSWORD:-fleetredis123}
+
+      # Server configuration
+      - FLEET_SERVER_ADDRESS=0.0.0.0:8080
+      - FLEET_SERVER_CERT=/etc/fleet/server.cert
+      - FLEET_SERVER_KEY=/etc/fleet/server.key
+      - FLEET_LOGGING_LEVEL=${FLEET_LOG_LEVEL:-info}
+
+      # Authentication
+      - FLEET_AUTH_JWT_KEY=${FLEET_JWT_KEY:-supersecretfleetjwtkey123456}
+      - FLEET_AUTH_BCRYPT_COST=12
+
+      # License (optional)
+      - FLEET_LICENSE_KEY=${FLEET_LICENSE_KEY:-}
+
+      # Prometheus metrics
+      - FLEET_PROMETHEUS_ADDRESS=0.0.0.0:8081
+
+      # Osquery results and status logs forwarding to KillKrill
+      - FLEET_OSQUERY_STATUS_LOG_PLUGIN=kinesis
+      - FLEET_OSQUERY_RESULT_LOG_PLUGIN=kinesis
+      - FLEET_KINESIS_ENDPOINT_URL=http://log-receiver:8081
+      - FLEET_KINESIS_ACCESS_KEY_ID=${FLEET_KINESIS_ACCESS_KEY:-fleet}
+      - FLEET_KINESIS_SECRET_ACCESS_KEY=${FLEET_KINESIS_SECRET_KEY:-fleetlogs123}
+      - FLEET_KINESIS_STS_ASSUME_ROLE_ARN=""
+      - FLEET_KINESIS_STATUS_STREAM=fleet-status-logs
+      - FLEET_KINESIS_RESULT_STREAM=fleet-result-logs
+      - FLEET_KINESIS_REGION=us-east-1
+
+    ports:
+      - "${FLEET_PORT:-8084}:8080"
+      - "${FLEET_METRICS_PORT:-8085}:8081"
+    volumes:
+      - ./infrastructure/fleet/certs:/etc/fleet:ro
+      - ./infrastructure/fleet/config:/etc/fleet/config:ro
+    depends_on:
+      fleet-mysql:
+        condition: service_healthy
+      fleet-redis:
+        condition: service_healthy
+      log-receiver:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+    restart: unless-stopped
+    networks:
+      - killkrill-network
 
 volumes:
   postgres_data:
@@ -500,6 +592,10 @@ volumes:
   grafana_data:
     driver: local
   alertmanager_data:
+    driver: local
+  fleet_mysql_data:
+    driver: local
+  fleet_redis_data:
     driver: local
 
 networks:

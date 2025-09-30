@@ -55,5 +55,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
 EXPOSE 8081
 EXPOSE 10000-11000/udp
 
-# Start application with py4web
-CMD ["py4web", "run", "flask_app.py", "--host", "0.0.0.0", "--port", "8081", "--password_file", "password.txt"]
+# Start application with py4web in correct apps structure
+CMD ["py4web", "run", "apps", "--host", "0.0.0.0", "--port", "8081", "--app_names", "logreceiver"]

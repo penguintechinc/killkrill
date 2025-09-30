@@ -1,14 +1,7 @@
-#!/usr/bin/env python3
-"""
-KillKrill Manager - Enterprise Observability Management Interface
-Proper py4web application structure
-"""
-
 import os
-import sys
 from datetime import datetime
-from py4web import action, request, response, Field
-from pydal import DAL
+from flask import Flask, request, jsonify
+from pydal import DAL, Field
 from prometheus_client import Counter, generate_latest
 import redis
 
@@ -19,37 +12,32 @@ REDIS_URL = os.environ.get('REDIS_URL', 'redis://redis:6379')
 # Convert URL scheme for PyDAL compatibility
 pydal_database_url = DATABASE_URL.replace('postgresql://', 'postgres://')
 
+# Initialize Flask app
+app = Flask(__name__)
+
 # Initialize components
+redis_client = redis.from_url(REDIS_URL, decode_responses=True)
+db = DAL(pydal_database_url, migrate=True, fake_migrate=False)
+
+# Create basic tables if they don't exist
 try:
-    redis_client = redis.from_url(REDIS_URL, decode_responses=True)
-    db = DAL(pydal_database_url, migrate=True, fake_migrate=False)
+    db.define_table('health_checks',
+        Field('timestamp', 'datetime', default=datetime.utcnow),
+        Field('status', 'string', default='ok'),
+        Field('component', 'string'),
+        migrate=True
+    )
+    db.commit()
+except Exception as table_error:
+    print(f"Note: Table creation skipped - {table_error}")
 
-    # Create basic tables if they don't exist
-    try:
-        db.define_table('health_checks',
-            Field('timestamp', 'datetime', default=datetime.utcnow),
-            Field('status', 'string', default='ok'),
-            Field('component', 'string'),
-            migrate=True
-        )
-        db.commit()
-    except Exception as table_error:
-        # Table likely already exists, that's fine
-        print(f"Note: Table creation skipped - {table_error}")
-        pass
-    print(f"✓ KillKrill Manager initialized successfully")
-    print(f"✓ Database connected: {DATABASE_URL}")
-    print(f"✓ Redis connected: {REDIS_URL}")
-
-except Exception as e:
-    print(f"✗ Initialization error: {e}")
-    sys.exit(1)
+print(f"✓ KillKrill Manager initialized")
 
 # Metrics
 health_checks = Counter('killkrill_manager_health_checks_total', 'Health checks', ['status'])
 
-@action('index')
-@action('index.html')
+@app.route('/', methods=['GET'])
+@app.route('/index.html', methods=['GET'])
 def index():
     """Basic index page"""
     return """
@@ -66,7 +54,7 @@ def index():
     </html>
     """
 
-@action('healthz')
+@app.route('/healthz', methods=['GET'])
 def healthz():
     """Health check endpoint"""
     try:
@@ -79,8 +67,7 @@ def healthz():
 
         health_checks.labels(status='ok').inc()
 
-        response.headers['Content-Type'] = 'application/json'
-        return {
+        return jsonify({
             'status': 'healthy',
             'timestamp': datetime.utcnow().isoformat(),
             'service': 'killkrill-manager',
@@ -88,19 +75,20 @@ def healthz():
                 'database': 'ok',
                 'redis': 'ok'
             }
-        }
+        })
     except Exception as e:
         health_checks.labels(status='error').inc()
-        response.status = 503
-        response.headers['Content-Type'] = 'application/json'
-        return {
+        return jsonify({
             'status': 'unhealthy',
             'error': str(e),
             'timestamp': datetime.utcnow().isoformat()
-        }
+        }), 503
 
-@action('metrics')
+@app.route('/metrics', methods=['GET'])
 def metrics():
     """Prometheus metrics endpoint"""
-    response.headers['Content-Type'] = 'text/plain; version=0.0.4; charset=utf-8'
-    return generate_latest()
+    from flask import Response
+    return Response(generate_latest(), mimetype='text/plain; version=0.0.4; charset=utf-8')
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=8080, debug=False)
