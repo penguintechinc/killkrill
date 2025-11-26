@@ -1,0 +1,1 @@
+# Metrics receiver app initialization

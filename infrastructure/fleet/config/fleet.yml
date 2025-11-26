@@ -1,0 +1,75 @@
+# Fleet Configuration
+mysql:
+  address: fleet-mysql:3306
+  database: fleet
+  username: fleet
+  password: fleet123
+  max_open_conns: 50
+  max_idle_conns: 50
+  conn_max_lifetime: 0
+
+redis:
+  address: fleet-redis:6379
+  password: fleetredis123
+  database: 0
+
+server:
+  address: 0.0.0.0:8080
+  cert: /etc/fleet/server.cert
+  key: /etc/fleet/server.key
+
+auth:
+  jwt_key: supersecretfleetjwtkey123456
+  bcrypt_cost: 12
+
+app:
+  token_key: supersecretfleetapptokenkey123456
+  token_key_id: default
+
+session:
+  key_size: 64
+  duration: 90000
+
+logging:
+  level: info
+
+license:
+  key: ""
+
+osquery:
+  # Status and result log forwarding configuration
+  status_log_plugin: kinesis
+  result_log_plugin: kinesis
+
+  # Forward logs to KillKrill log-receiver
+  kinesis_endpoint_url: "http://log-receiver:8081"
+  kinesis_access_key_id: fleet
+  kinesis_secret_access_key: fleetlogs123
+  kinesis_sts_assume_role_arn: ""
+  kinesis_status_stream: fleet-status-logs
+  kinesis_result_stream: fleet-result-logs
+  kinesis_region: us-east-1
+
+# Prometheus metrics configuration
+prometheus:
+  basic_auth:
+    username: ""
+    password: ""
+
+# Vulnerabilities database settings
+vulnerabilities:
+  databases_path: /tmp/vuln-data
+
+# Activity audit log
+activity:
+  # Forward activity logs to KillKrill
+  audit_log_plugin: kinesis
+  kinesis_endpoint_url: "http://log-receiver:8081"
+  kinesis_access_key_id: fleet
+  kinesis_secret_access_key: fleetlogs123
+  kinesis_stream: fleet-activity-logs
+  kinesis_region: us-east-1
+
+# Software inventory settings
+software_inventory:
+  enable_software_inventory: true

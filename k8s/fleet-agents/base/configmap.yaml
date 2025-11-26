@@ -1,0 +1,86 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fleet-agent-config
+  namespace: fleet-agents
+  labels:
+    app.kubernetes.io/name: fleet-agent
+    app.kubernetes.io/part-of: killkrill
+data:
+  orbit.yml: |
+    # Fleet Agent Configuration for Kubernetes Nodes
+    fleet_url: https://killkrill-fleet.local:8084
+    enroll_secret: FLEET_ENROLL_SECRET_PLACEHOLDER
+
+    # Agent identification
+    host_identifier: hostname
+
+    # Logging configuration
+    log_level: info
+    log_file: /var/log/orbit/orbit.log
+
+    # Update configuration
+    update_interval: 10s
+    config_refresh: 10s
+
+    # TLS settings
+    tls_skip_verify: true  # Set to false in production
+
+    # Osquery configuration optimized for Kubernetes
+    osquery:
+      config_refresh: 10
+      distributed_interval: 10
+      logger_snapshot_event_type: true
+      schedule_splay_percent: 10
+      events_expiry: 3600
+      schedule_timeout: 0
+      schedule_max_drift: 60
+      disable_events: false
+      enable_monitor: true
+      enable_bpf_events: true
+
+    # Kubernetes node configuration
+    kubernetes:
+      monitor_containers: true
+      collect_pod_metrics: true
+      monitor_cluster_resources: true
+      collect_node_metrics: true
+
+    # Fleet desktop (disable for server environments)
+    desktop_enabled: false
+
+    # Orbit auto-update
+    orbit_update_disabled: false
+    osqueryd_path: /opt/orbit/bin/osqueryd
+
+    # File paths
+    root_directory: /opt/orbit
+    cert_path: /opt/orbit/server.pem
+
+  k8s-monitoring-queries.yml: |
+    # Kubernetes-specific monitoring queries
+    queries:
+      kubernetes_info:
+        query: SELECT * FROM kubernetes_info;
+        interval: 300
+        description: Basic Kubernetes cluster information
+
+      kubernetes_pods:
+        query: SELECT * FROM kubernetes_pods;
+        interval: 60
+        description: Running pods information
+
+      kubernetes_services:
+        query: SELECT * FROM kubernetes_services;
+        interval: 300
+        description: Kubernetes services
+
+      docker_containers:
+        query: SELECT * FROM docker_containers;
+        interval: 60
+        description: Docker containers on the node
+
+      docker_images:
+        query: SELECT * FROM docker_images;
+        interval: 300
+        description: Docker images available on the node

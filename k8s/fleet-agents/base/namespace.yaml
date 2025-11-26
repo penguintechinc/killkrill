@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: fleet-agents
+  labels:
+    name: fleet-agents
+    app.kubernetes.io/name: fleet-agents
+    app.kubernetes.io/part-of: killkrill
+    app.kubernetes.io/managed-by: kustomize

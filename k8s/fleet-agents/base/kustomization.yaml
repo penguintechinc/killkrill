@@ -1,0 +1,35 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: fleet-agents-base
+  annotations:
+    config.kubernetes.io/local-config: "true"
+
+resources:
+  - namespace.yaml
+  - rbac.yaml
+  - configmap.yaml
+  - daemonset.yaml
+
+commonLabels:
+  app.kubernetes.io/name: fleet-agent
+  app.kubernetes.io/part-of: killkrill
+
+namespace: fleet-agents
+
+images:
+  - name: fleetdm/orbit
+    newTag: latest
+
+configMapGenerator:
+  - name: fleet-agent-config
+    files:
+      - orbit.yml=orbit.yml
+      - k8s-monitoring-queries.yml=k8s-monitoring-queries.yml
+    options:
+      disableNameSuffixHash: true
+
+replicas:
+  - name: fleet-agent
+    count: 1

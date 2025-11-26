@@ -1,0 +1,243 @@
+groups:
+  - name: fleet-health
+    rules:
+      - alert: FleetServerDown
+        expr: up{job="fleet-server"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          service: fleet
+          component: server
+        annotations:
+          summary: "Fleet server is down"
+          description: "Fleet server at {{ $labels.instance }} has been down for more than 30 seconds"
+          runbook_url: "https://docs.killkrill.com/runbooks/fleet-server-down"
+
+      - alert: FleetDatabaseConnectionLost
+        expr: fleet_mysql_connection_status == 0
+        for: 10s
+        labels:
+          severity: critical
+          service: fleet
+          component: database
+        annotations:
+          summary: "Fleet database connection lost"
+          description: "Fleet server cannot connect to MySQL database"
+          runbook_url: "https://docs.killkrill.com/runbooks/fleet-database-connection"
+
+      - alert: FleetRedisConnectionLost
+        expr: fleet_redis_connection_status == 0
+        for: 10s
+        labels:
+          severity: warning
+          service: fleet
+          component: cache
+        annotations:
+          summary: "Fleet Redis connection lost"
+          description: "Fleet server cannot connect to Redis cache"
+          runbook_url: "https://docs.killkrill.com/runbooks/fleet-redis-connection"
+
+  - name: fleet-agents
+    rules:
+      - alert: FleetAgentOffline
+        expr: increase(fleet_hosts_offline_total[5m]) > 0
+        for: 2m
+        labels:
+          severity: warning
+          service: fleet
+          component: agents
+        annotations:
+          summary: "Fleet agents going offline"
+          description: "{{ $value }} Fleet agents have gone offline in the last 5 minutes"
+
+      - alert: FleetAgentCriticalOffline
+        expr: (fleet_hosts_offline / fleet_hosts_total) * 100 > 20
+        for: 5m
+        labels:
+          severity: critical
+          service: fleet
+          component: agents
+        annotations:
+          summary: "Critical number of Fleet agents offline"
+          description: "{{ $value | humanizePercentage }} of Fleet agents are offline"
+          runbook_url: "https://docs.killkrill.com/runbooks/fleet-agents-offline"
+
+      - alert: FleetNoAgentsOnline
+        expr: fleet_hosts_online == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: fleet
+          component: agents
+        annotations:
+          summary: "No Fleet agents online"
+          description: "All Fleet agents appear to be offline - check network connectivity and agent status"
+
+  - name: fleet-performance
+    rules:
+      - alert: FleetHighQueryLatency
+        expr: histogram_quantile(0.95, fleet_query_duration_seconds_bucket) > 10
+        for: 5m
+        labels:
+          severity: warning
+          service: fleet
+          component: performance
+        annotations:
+          summary: "Fleet query latency is high"
+          description: "95th percentile query latency is {{ $value | humanizeDuration }} which is above 10s threshold"
+
+      - alert: FleetHighErrorRate
+        expr: rate(fleet_http_requests_total{status=~"5.."}[5m]) / rate(fleet_http_requests_total[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+          service: fleet
+          component: api
+        annotations:
+          summary: "Fleet HTTP error rate is high"
+          description: "Fleet API error rate is {{ $value | humanizePercentage }} over the last 5 minutes"
+
+      - alert: FleetMemoryUsageHigh
+        expr: process_resident_memory_bytes{job="fleet-server"} / 1024 / 1024 / 1024 > 2
+        for: 5m
+        labels:
+          severity: warning
+          service: fleet
+          component: resources
+        annotations:
+          summary: "Fleet server memory usage is high"
+          description: "Fleet server memory usage is {{ $value | humanize }}GB, above 2GB threshold"
+
+  - name: fleet-security
+    rules:
+      - alert: FleetSecurityEventSpike
+        expr: increase(fleet_security_events_total[5m]) > 10
+        for: 30s
+        labels:
+          severity: warning
+          service: fleet
+          component: security
+        annotations:
+          summary: "Spike in Fleet security events"
+          description: "{{ $value }} security events detected in the last 5 minutes"
+          runbook_url: "https://docs.killkrill.com/runbooks/fleet-security-events"
+
+      - alert: FleetCriticalVulnerabilityDetected
+        expr: fleet_vulnerability_count{severity="critical"} > 0
+        for: 0s
+        labels:
+          severity: critical
+          service: fleet
+          component: security
+        annotations:
+          summary: "Critical vulnerabilities detected"
+          description: "{{ $value }} critical vulnerabilities detected across Fleet-managed hosts"
+          runbook_url: "https://docs.killkrill.com/runbooks/critical-vulnerabilities"
+
+      - alert: FleetComplianceViolation
+        expr: increase(fleet_compliance_violations_total[1h]) > 0
+        for: 0s
+        labels:
+          severity: warning
+          service: fleet
+          component: compliance
+        annotations:
+          summary: "Compliance violations detected"
+          description: "{{ $value }} new compliance violations in the last hour"
+
+  - name: fleet-data-integration
+    rules:
+      - alert: FleetLogIngestionStopped
+        expr: rate(killkrill_fleet_logs_received_total[5m]) == 0
+        for: 2m
+        labels:
+          severity: warning
+          service: fleet
+          component: logs
+        annotations:
+          summary: "Fleet log ingestion stopped"
+          description: "No Fleet logs received in the last 2 minutes - check log forwarding configuration"
+          runbook_url: "https://docs.killkrill.com/runbooks/fleet-log-ingestion"
+
+      - alert: FleetLogIngestionLag
+        expr: time() - fleet_latest_log_timestamp > 300
+        for: 1m
+        labels:
+          severity: warning
+          service: fleet
+          component: logs
+        annotations:
+          summary: "Fleet log ingestion lag detected"
+          description: "Latest Fleet log is {{ $value | humanizeDuration }} old - check processing pipeline"
+
+      - alert: FleetMetricsIntegrationDown
+        expr: up{job="fleet-server", metrics_path="/metrics"} == 0
+        for: 1m
+        labels:
+          severity: warning
+          service: fleet
+          component: metrics
+        annotations:
+          summary: "Fleet metrics endpoint unavailable"
+          description: "Cannot scrape metrics from Fleet server - Prometheus integration may be broken"
+
+  - name: fleet-infrastructure
+    rules:
+      - alert: FleetMySQLDiskSpaceHigh
+        expr: (node_filesystem_avail_bytes{mountpoint="/var/lib/mysql"} / node_filesystem_size_bytes{mountpoint="/var/lib/mysql"}) * 100 < 10
+        for: 2m
+        labels:
+          severity: critical
+          service: fleet
+          component: database
+        annotations:
+          summary: "Fleet MySQL disk space critically low"
+          description: "Fleet MySQL disk usage is at {{ $value | humanizePercentage }} - immediate action required"
+          runbook_url: "https://docs.killkrill.com/runbooks/mysql-disk-space"
+
+      - alert: FleetMySQLConnectionsHigh
+        expr: mysql_global_status_threads_connected{instance="fleet-mysql:3306"} > 80
+        for: 2m
+        labels:
+          severity: warning
+          service: fleet
+          component: database
+        annotations:
+          summary: "Fleet MySQL connection count is high"
+          description: "Fleet MySQL has {{ $value }} active connections, approaching limits"
+
+      - alert: FleetRedisMemoryUsageHigh
+        expr: redis_memory_used_bytes{instance="fleet-redis:6379"} / redis_memory_max_bytes{instance="fleet-redis:6379"} > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          service: fleet
+          component: cache
+        annotations:
+          summary: "Fleet Redis memory usage is high"
+          description: "Fleet Redis memory usage is at {{ $value | humanizePercentage }}"
+
+  - name: fleet-ai-integration
+    rules:
+      - alert: FleetAIAnalysisFailed
+        expr: increase(killkrill_ai_analysis_requests_total{status="error"}[1h]) > 3
+        for: 0s
+        labels:
+          severity: warning
+          service: fleet
+          component: ai-analysis
+        annotations:
+          summary: "Fleet AI analysis failures detected"
+          description: "{{ $value }} AI analysis requests failed in the last hour - check AI endpoint configuration"
+          runbook_url: "https://docs.killkrill.com/runbooks/ai-analysis-failures"
+
+      - alert: FleetAIAnalysisStale
+        expr: time() - fleet_last_ai_analysis_timestamp > 14400  # 4 hours
+        for: 0s
+        labels:
+          severity: warning
+          service: fleet
+          component: ai-analysis
+        annotations:
+          summary: "Fleet AI analysis is stale"
+          description: "Last AI analysis was {{ $value | humanizeDuration }} ago - check scheduled analysis"

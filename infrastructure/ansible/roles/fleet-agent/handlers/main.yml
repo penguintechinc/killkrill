@@ -1,0 +1,29 @@
+---
+# Fleet Agent Handlers
+
+- name: reload systemd
+  systemd:
+    daemon_reload: yes
+
+- name: restart fleet agent
+  systemd:
+    name: orbit
+    state: restarted
+    daemon_reload: yes
+
+- name: start fleet agent
+  systemd:
+    name: orbit
+    state: started
+    enabled: yes
+
+- name: stop fleet agent
+  systemd:
+    name: orbit
+    state: stopped
+
+- name: validate fleet config
+  command: /opt/orbit/bin/orbit/orbit --config {{ fleet_agent_config_dir }}/orbit.yml --validate
+  register: config_validation
+  failed_when: config_validation.rc != 0
+  changed_when: false

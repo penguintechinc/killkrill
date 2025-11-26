@@ -1,0 +1,58 @@
+# Fleet Agent Deployment Inventory
+# Configure your hypervisor hosts and VM nodes here
+
+hypervisors:
+  hosts:
+    # Example hypervisor hosts - update with your actual hosts
+    hypervisor-01:
+      ansible_host: 192.168.1.10
+      ansible_user: root
+      fleet_enroll_secret: "{{ fleet_enroll_secret }}"
+      host_type: hypervisor
+      hypervisor_platform: proxmox  # or vmware, kvm, etc.
+
+    hypervisor-02:
+      ansible_host: 192.168.1.11
+      ansible_user: root
+      fleet_enroll_secret: "{{ fleet_enroll_secret }}"
+      host_type: hypervisor
+      hypervisor_platform: proxmox
+
+vm_nodes:
+  hosts:
+    # Example VM nodes - update with your actual VMs
+    k8s-master-01:
+      ansible_host: 192.168.1.20
+      ansible_user: ubuntu
+      fleet_enroll_secret: "{{ fleet_enroll_secret }}"
+      host_type: kubernetes_node
+      node_role: master
+
+    k8s-worker-01:
+      ansible_host: 192.168.1.21
+      ansible_user: ubuntu
+      fleet_enroll_secret: "{{ fleet_enroll_secret }}"
+      host_type: kubernetes_node
+      node_role: worker
+
+# Group variables
+all:
+  vars:
+    # Fleet server configuration
+    fleet_server_url: "https://{{ fleet_server_hostname }}:8084"
+    fleet_server_hostname: "killkrill-fleet.local"
+    fleet_enroll_secret: "{{ vault_fleet_enroll_secret | default('changeme-fleet-secret-123') }}"
+
+    # Agent configuration
+    fleet_agent_version: "latest"
+    fleet_agent_config_dir: "/opt/orbit"
+    fleet_agent_log_level: "info"
+
+    # System monitoring queries
+    fleet_enable_system_monitoring: true
+    fleet_enable_security_monitoring: true
+    fleet_enable_performance_monitoring: true
+
+    # Integration with KillKrill
+    killkrill_log_receiver: "http://{{ groups['killkrill_cluster'][0] }}:8081"
+    killkrill_metrics_receiver: "http://{{ groups['killkrill_cluster'][0] }}:8082"

@@ -1,0 +1,134 @@
+---
+# Fleet Agent Installation and Configuration Tasks
+
+- name: Detect OS family and version
+  set_fact:
+    os_family: "{{ ansible_os_family | lower }}"
+    os_version: "{{ ansible_distribution_version }}"
+    arch: "{{ ansible_architecture }}"
+
+- name: Set Fleet agent download URL based on OS and architecture
+  set_fact:
+    fleet_agent_url: >-
+      {% if os_family == 'debian' %}
+      https://github.com/fleetdm/fleet/releases/latest/download/fleetd-linux-{{ 'amd64' if arch == 'x86_64' else 'arm64' }}.deb
+      {% elif os_family == 'redhat' %}
+      https://github.com/fleetdm/fleet/releases/latest/download/fleetd-linux-{{ 'amd64' if arch == 'x86_64' else 'arm64' }}.rpm
+      {% else %}
+      https://github.com/fleetdm/fleet/releases/latest/download/fleetd-linux-{{ 'amd64' if arch == 'x86_64' else 'arm64' }}.tar.gz
+      {% endif %}
+
+- name: Install Fleet agent on Debian/Ubuntu
+  block:
+    - name: Download Fleet agent .deb package
+      get_url:
+        url: "{{ fleet_agent_url }}"
+        dest: "/tmp/fleetd.deb"
+        mode: '0644'
+        timeout: 120
+
+    - name: Install Fleet agent package
+      apt:
+        deb: "/tmp/fleetd.deb"
+        state: present
+
+    - name: Clean up downloaded package
+      file:
+        path: "/tmp/fleetd.deb"
+        state: absent
+  when: os_family == 'debian'
+
+- name: Install Fleet agent on RHEL/CentOS
+  block:
+    - name: Download Fleet agent .rpm package
+      get_url:
+        url: "{{ fleet_agent_url }}"
+        dest: "/tmp/fleetd.rpm"
+        mode: '0644'
+        timeout: 120
+
+    - name: Install Fleet agent package
+      yum:
+        name: "/tmp/fleetd.rpm"
+        state: present
+
+    - name: Clean up downloaded package
+      file:
+        path: "/tmp/fleetd.rpm"
+        state: absent
+  when: os_family == 'redhat'
+
+- name: Create Fleet agent configuration directory
+  file:
+    path: "{{ fleet_agent_config_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Generate Fleet agent configuration
+  template:
+    src: orbit.yml.j2
+    dest: "{{ fleet_agent_config_dir }}/orbit.yml"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart fleet agent
+
+- name: Create Fleet agent systemd service
+  template:
+    src: orbit.service.j2
+    dest: /etc/systemd/system/orbit.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify:
+    - reload systemd
+    - restart fleet agent
+
+- name: Start and enable Fleet agent service
+  systemd:
+    name: orbit
+    state: started
+    enabled: yes
+    daemon_reload: yes
+
+- name: Configure firewall for Fleet agent (if firewalld is active)
+  firewalld:
+    port: "{{ item }}"
+    permanent: yes
+    state: enabled
+    immediate: yes
+  loop:
+    - "8080/tcp"  # Fleet server communication
+  when: ansible_facts['services']['firewalld.service'] is defined and
+        ansible_facts['services']['firewalld.service']['state'] == 'running'
+  ignore_errors: yes
+
+- name: Verify Fleet agent is running
+  systemd:
+    name: orbit
+    state: started
+  register: fleet_agent_status
+
+- name: Display Fleet agent status
+  debug:
+    msg: |
+      Fleet agent installation completed:
+      Service Status: {{ fleet_agent_status.status.ActiveState }}
+      Config Directory: {{ fleet_agent_config_dir }}
+      Log Level: {{ fleet_agent_log_level }}
+
+- name: Wait for agent enrollment
+  pause:
+    seconds: 30
+    prompt: "Waiting for Fleet agent to enroll with server..."
+
+- name: Check agent enrollment status
+  command: systemctl status orbit
+  register: agent_status
+  changed_when: false
+
+- name: Display enrollment status
+  debug:
+    var: agent_status.stdout_lines

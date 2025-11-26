@@ -1,0 +1,110 @@
+---
+# Fleet Agent Deployment Playbook
+# Deploys Fleet agents to hypervisor hosts and VM nodes
+# Configures agents for system monitoring and data collection
+
+- name: Deploy Fleet agents to all target hosts
+  hosts: all
+  become: yes
+  gather_facts: yes
+
+  pre_tasks:
+    - name: Verify connection to Fleet server
+      uri:
+        url: "{{ fleet_server_url }}/healthz"
+        method: GET
+        timeout: 10
+      delegate_to: localhost
+      run_once: true
+
+    - name: Display target host information
+      debug:
+        msg: |
+          Deploying Fleet agent to: {{ inventory_hostname }}
+          Host Type: {{ host_type | default('unknown') }}
+          Platform: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          Architecture: {{ ansible_architecture }}
+
+  roles:
+    - fleet-agent
+
+  post_tasks:
+    - name: Verify agent enrollment
+      uri:
+        url: "{{ fleet_server_url }}/api/v1/fleet/hosts"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ fleet_api_token }}"
+        timeout: 30
+      delegate_to: localhost
+      run_once: true
+      register: fleet_hosts
+      when: fleet_api_token is defined
+
+    - name: Display Fleet enrollment status
+      debug:
+        msg: "Fleet agent deployed successfully. Check Fleet dashboard for host enrollment."
+
+- name: Configure hypervisor-specific monitoring
+  hosts: hypervisors
+  become: yes
+  gather_facts: no
+
+  tasks:
+    - name: Deploy hypervisor monitoring queries
+      template:
+        src: hypervisor-queries.yml.j2
+        dest: /opt/orbit/hypervisor-queries.yml
+        owner: root
+        group: root
+        mode: '0644'
+      notify: restart fleet agent
+
+    - name: Configure hypervisor metrics collection
+      template:
+        src: hypervisor-config.json.j2
+        dest: /opt/orbit/hypervisor-config.json
+        owner: root
+        group: root
+        mode: '0644'
+      notify: restart fleet agent
+
+  handlers:
+    - name: restart fleet agent
+      systemd:
+        name: orbit
+        state: restarted
+        daemon_reload: yes
+
+- name: Configure Kubernetes node monitoring
+  hosts: vm_nodes
+  become: yes
+  gather_facts: no
+
+  tasks:
+    - name: Deploy Kubernetes monitoring queries
+      template:
+        src: k8s-node-queries.yml.j2
+        dest: /opt/orbit/k8s-queries.yml
+        owner: root
+        group: root
+        mode: '0644'
+      notify: restart fleet agent
+      when: host_type == 'kubernetes_node'
+
+    - name: Configure container monitoring
+      template:
+        src: container-config.json.j2
+        dest: /opt/orbit/container-config.json
+        owner: root
+        group: root
+        mode: '0644'
+      notify: restart fleet agent
+      when: host_type == 'kubernetes_node'
+
+  handlers:
+    - name: restart fleet agent
+      systemd:
+        name: orbit
+        state: restarted
+        daemon_reload: yes
