@@ -150,213 +150,49 @@ curl -X POST https://license.penguintech.io/api/v2/keepalive \
 #### Python Client Example
 
 ```python
-import requests
-from datetime import datetime, timedelta
+from shared.licensing import license_client, requires_feature
 
-class PenguinTechLicenseClient:
-    def __init__(self, license_key, product, base_url="https://license.penguintech.io"):
-        self.license_key = license_key
-        self.product = product
-        self.base_url = base_url
-        self.server_id = None
-        self.session = requests.Session()
-        self.session.headers.update({
-            "Authorization": f"Bearer {license_key}",
-            "Content-Type": "application/json"
-        })
+# Initialize client
+client = PenguinTechLicenseClient(
+    license_key=os.getenv('LICENSE_KEY'),
+    product=os.getenv('PRODUCT_NAME')
+)
 
-    def validate(self):
-        """Validate license and get server ID for keepalives"""
-        response = self.session.post(
-            f"{self.base_url}/api/v2/validate",
-            json={"product": self.product}
-        )
+# Validate license at startup
+validation = client.validate()
+if not validation.get("valid"):
+    sys.exit(1)
 
-        if response.status_code == 200:
-            data = response.json()
-            if data.get("valid"):
-                self.server_id = data["metadata"].get("server_id")
-                return data
-
-        return {"valid": False, "message": f"Validation failed: {response.text}"}
-
-    def check_feature(self, feature):
-        """Check if specific feature is enabled"""
-        response = self.session.post(
-            f"{self.base_url}/api/v2/features",
-            json={"product": self.product, "feature": feature}
-        )
-
-        if response.status_code == 200:
-            data = response.json()
-            return data.get("features", [{}])[0].get("entitled", False)
-
-        return False
-
-    def keepalive(self, usage_data=None):
-        """Send keepalive with optional usage statistics"""
-        if not self.server_id:
-            validation = self.validate()
-            if not validation.get("valid"):
-                return validation
-
-        payload = {
-            "product": self.product,
-            "server_id": self.server_id
-        }
-
-        if usage_data:
-            payload.update(usage_data)
-
-        response = self.session.post(
-            f"{self.base_url}/api/v2/keepalive",
-            json=payload
-        )
-
-        return response.json()
-
-# Usage example
-def requires_feature(feature_name):
-    """Decorator to gate functionality behind license features"""
-    def decorator(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            if not AVAILABLE_FEATURES.get(feature_name, False):
-                raise FeatureNotAvailableError(f"Feature '{feature_name}' requires upgrade")
-            return func(*args, **kwargs)
-        return wrapper
-    return decorator
-
-@requires_feature("advanced_feature")
-def advanced_functionality():
-    """This function only works with professional+ licenses"""
-    pass
+# Feature gating decorator
+@requires_feature("advanced_analytics")
+def generate_advanced_report():
+    """Requires professional+ license"""
+    return analytics.generate_report()
 ```
 
 #### Go Client Example
 
 ```go
-package license
+package main
 
-import (
-    "bytes"
-    "encoding/json"
-    "fmt"
-    "net/http"
-    "time"
-)
+import "your-project/internal/license"
 
-type Client struct {
-    LicenseKey string
-    Product    string
-    BaseURL    string
-    ServerID   string
-    HTTPClient *http.Client
-}
+func main() {
+    client := license.NewClient(os.Getenv("LICENSE_KEY"), "your-product")
 
-type ValidationResponse struct {
-    Valid     bool   `json:"valid"`
-    Customer  string `json:"customer"`
-    Tier      string `json:"tier"`
-    Features  []Feature `json:"features"`
-    Metadata  struct {
-        ServerID string `json:"server_id"`
-    } `json:"metadata"`
-}
-
-type Feature struct {
-    Name     string `json:"name"`
-    Entitled bool   `json:"entitled"`
-}
-
-func NewClient(licenseKey, product string) *Client {
-    return &Client{
-        LicenseKey: licenseKey,
-        Product:    product,
-        BaseURL:    "https://license.penguintech.io",
-        HTTPClient: &http.Client{Timeout: 30 * time.Second},
-    }
-}
-
-func (c *Client) Validate() (*ValidationResponse, error) {
-    payload := map[string]string{"product": c.Product}
-
-    resp, err := c.makeRequest("POST", "/api/v2/validate", payload)
-    if err != nil {
-        return nil, err
+    validation, err := client.Validate()
+    if err != nil || !validation.Valid {
+        log.Fatal("License validation failed")
     }
 
-    var validation ValidationResponse
-    if err := json.Unmarshal(resp, &validation); err != nil {
-        return nil, err
+    // Check feature entitlement
+    if hasFeature, _ := client.CheckFeature("advanced_feature"); hasFeature {
+        log.Println("Advanced features enabled")
     }
-
-    if validation.Valid {
-        c.ServerID = validation.Metadata.ServerID
-    }
-
-    return &validation, nil
-}
-
-func (c *Client) CheckFeature(feature string) (bool, error) {
-    payload := map[string]string{
-        "product": c.Product,
-        "feature": feature,
-    }
-
-    resp, err := c.makeRequest("POST", "/api/v2/features", payload)
-    if err != nil {
-        return false, err
-    }
-
-    var response struct {
-        Features []Feature `json:"features"`
-    }
-
-    if err := json.Unmarshal(resp, &response); err != nil {
-        return false, err
-    }
-
-    if len(response.Features) > 0 {
-        return response.Features[0].Entitled, nil
-    }
-
-    return false, nil
-}
-
-func (c *Client) makeRequest(method, endpoint string, payload interface{}) ([]byte, error) {
-    jsonData, err := json.Marshal(payload)
-    if err != nil {
-        return nil, err
-    }
-
-    req, err := http.NewRequest(method, c.BaseURL+endpoint, bytes.NewBuffer(jsonData))
-    if err != nil {
-        return nil, err
-    }
-
-    req.Header.Set("Authorization", "Bearer "+c.LicenseKey)
-    req.Header.Set("Content-Type", "application/json")
-
-    resp, err := c.HTTPClient.Do(req)
-    if err != nil {
-        return nil, err
-    }
-    defer resp.Body.Close()
-
-    var buf bytes.Buffer
-    _, err = buf.ReadFrom(resp.Body)
-    if err != nil {
-        return nil, err
-    }
-
-    if resp.StatusCode != http.StatusOK {
-        return nil, fmt.Errorf("API request failed: %d", resp.StatusCode)
-    }
-
-    return buf.Bytes(), nil
 }
 ```
+
+Full client implementations available in `shared/licensing/` directory.
 
 ### Environment Variables for License Integration
 
@@ -368,7 +204,34 @@ PRODUCT_NAME=your-product-identifier
 
 # Optional: Custom License Server (for testing/development)
 LICENSE_SERVER_URL=https://license-dev.penguintech.io
+
+# Release mode (enables license enforcement)
+RELEASE_MODE=false  # Development (default)
+RELEASE_MODE=true   # Production (explicitly set)
 ```
+
+**IMPORTANT: License enforcement is ONLY enabled when project is marked as release-ready**
+- Development phase: All features available, no license checks
+- Release phase: License validation required, feature gating active
+
+## WaddleAI Integration (Optional)
+
+For projects requiring AI capabilities, integrate with WaddleAI located at `~/code/WaddleAI`.
+
+**When to Use WaddleAI:**
+- Natural language processing (NLP)
+- Machine learning model inference
+- AI-powered features and automation
+- Intelligent data analysis
+- Chatbots and conversational interfaces
+
+**Integration Pattern:**
+- WaddleAI runs as separate microservice container
+- Communicate via REST API or gRPC
+- Environment variable configuration for API endpoints
+- License-gate AI features as enterprise functionality
+
+**WaddleAI Documentation**: See WaddleAI project at `~/code/WaddleAI` for integration details
 
 ## Project Structure
 
@@ -584,6 +447,44 @@ make license-check-features  # Check available features
 
 ## Critical Development Rules
 
+### Development Philosophy: Safe, Stable, and Feature-Complete
+
+**NEVER take shortcuts or the "easy route" - ALWAYS prioritize safety, stability, and feature completeness**
+
+#### Core Principles
+- **No Quick Fixes**: Resist quick workarounds or partial solutions
+- **Complete Features**: Fully implemented with proper error handling and validation
+- **Safety First**: Security, data integrity, and fault tolerance are non-negotiable
+- **Stable Foundations**: Build on solid, tested components
+- **Future-Proof Design**: Consider long-term maintainability and scalability
+- **No Technical Debt**: Address issues properly the first time
+
+#### Red Flags (Never Do These)
+- Skipping input validation "just this once"
+- Hardcoding credentials or configuration
+- Ignoring error returns or exceptions
+- Commenting out failing tests to make CI pass
+- Deploying without proper testing
+- Using deprecated or unmaintained dependencies
+- Implementing partial features with "TODO" placeholders
+- Bypassing security checks for convenience
+- Assuming data is valid without verification
+- Leaving debug code or backdoors in production
+
+#### Quality Checklist Before Completion
+- All error cases handled properly
+- Unit tests cover all code paths
+- Integration tests verify component interactions
+- Security requirements fully implemented
+- Performance meets acceptable standards
+- Documentation complete and accurate
+- Code review standards met
+- No hardcoded secrets or credentials
+- Logging and monitoring in place
+- Build passes in containerized environment
+- No security vulnerabilities in dependencies
+- Edge cases and boundary conditions tested
+
 ### Git Workflow
 - **NEVER commit automatically** unless explicitly requested by the user
 - **NEVER push to remote repositories** under any circumstances
@@ -673,6 +574,19 @@ jobs:
 # Minimize build time through parallel container builds and caching
 ```
 
+### Linting & Code Quality Requirements
+- **ALL code must pass linting** before commit - no exceptions
+- **Python**: flake8, black, isort, mypy (type checking), bandit (security)
+- **JavaScript/TypeScript**: ESLint, Prettier
+- **Go**: golangci-lint (includes staticcheck, gosec, etc.)
+- **Ansible**: ansible-lint
+- **Docker**: hadolint
+- **YAML**: yamllint
+- **Markdown**: markdownlint
+- **Shell**: shellcheck
+- **CodeQL**: All code must pass CodeQL security analysis
+- **PEP Compliance**: Python code must follow PEP 8, PEP 257 (docstrings), PEP 484 (type hints)
+
 ### Code Quality
 - Follow language-specific style guides
 - Comprehensive test coverage (80%+ target)
@@ -716,6 +630,21 @@ jobs:
 - API documentation must be comprehensive
 - Architecture decisions should be documented
 - Security procedures must be documented
+- **Build status badges**: Always include in README.md
+- **ASCII art**: Include catchy, project-appropriate ASCII art in README
+- **Company homepage**: Point to www.penguintech.io
+- **License**: All projects use Limited AGPL3 with preamble for fair use
+
+### File Size Limits
+- **Maximum file size**: 25,000 characters for ALL code and markdown files
+- **Split large files**: Decompose into modules, libraries, or separate documents
+- **CLAUDE.md exception**: Maximum 39,000 characters (only exception to 25K rule)
+- **High-level approach**: CLAUDE.md contains high-level context and references detailed docs
+- **Documentation strategy**: Create detailed documentation in `docs/` folder and link to them from CLAUDE.md
+- **Keep focused**: Critical context, architectural decisions, and workflow instructions only
+- **User approval required**: ALWAYS ask user permission before splitting CLAUDE.md files
+- **Use Task Agents**: Utilize task agents (subagents) to be more expedient and efficient when making changes to large files
+- **Avoid sed/cat**: Use sed and cat commands only when necessary; prefer dedicated Read/Edit/Write tools
 
 ### README.md Standards
 - **ALWAYS include build status badges** at the top of every README.md:
@@ -1031,9 +960,17 @@ make license-validate         # Validate current license
 
 ---
 
-**Template Version**: 1.0.0
-**Last Updated**: 2025-09-23
+**Template Version**: 1.2.0
+**Last Updated**: 2025-11-23
 **Maintained by**: Penguin Tech Inc
 **License Server**: https://license.penguintech.io
+
+**Key Updates in v1.2.0:**
+- Added Development Philosophy section with quality checklist
+- Comprehensive Linting & Code Quality Requirements for all languages
+- File Size Limits and documentation strategy
+- WaddleAI Integration patterns
+- Release-mode license enforcement
+- Updated documentation standards with badges, ASCII art requirements
 
 *This template provides a production-ready foundation for enterprise software development with comprehensive tooling, security, operational capabilities, and integrated licensing management.*
