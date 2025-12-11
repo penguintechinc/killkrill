@@ -903,6 +903,109 @@ var (
 )
 ```
 
+## CI/CD & Workflows
+
+### Killkrill CI/CD Architecture
+
+Killkrill implements comprehensive .WORKFLOW compliance with automated testing, security scanning, and multi-architecture builds for 7 containerized services.
+
+### Core Workflows
+
+| Workflow | Trigger | Purpose |
+|----------|---------|---------|
+| `ci.yml` | Push/PR, daily schedule | Unit tests, security scanning (gosec/bandit) |
+| `docker-build.yml` | Push to branches, tags | Multi-arch container builds (amd64/arm64) |
+| `version-release.yml` | `.version` file change | Auto pre-release creation |
+| `push.yml` | Push to main | Publish images to registry |
+| `release.yml` | GitHub release published | Publish release-tagged images |
+| `deploy.yml` | Push/tags, workflow_dispatch | Deploy to staging/production |
+
+### Version and Timestamp Generation
+
+All workflows include:
+- **Version detection**: Reads `.version` file for semantic versioning
+- **Epoch64 timestamp**: Millisecond-precision `date +%s%N | cut -b1-13`
+- **Metadata labels**: Container labels with version and build info
+- **Path filtering**: Skips jobs when unrelated files change
+
+### Security Scanning
+
+**Go Services** (api, k8s-operator, k8s-agent):
+- `gosec` for security vulnerabilities
+- `staticcheck` for code quality
+- `go vet` for static analysis
+
+**Python Services** (workers, receivers, manager):
+- `bandit` for security vulnerabilities (skips B101, B601)
+- `flake8`, `black`, `isort` for code quality
+- `mypy` for type checking
+
+**All Services**:
+- Trivy for container image scanning
+- CodeQL for code analysis
+- SARIF output to GitHub Security tab
+
+### Service Matrix
+
+Killkrill's 7 services with build configurations:
+
+1. **api** (Go) - REST API gateway
+2. **log-worker** (Python) - Log processing
+3. **metrics-worker** (Python) - Metrics processing
+4. **log-receiver** (Python) - Log ingestion
+5. **metrics-receiver** (Python) - Metrics ingestion
+6. **manager** (Python) - Administration/management
+7. (Plus k8s-operator and k8s-agent in separate Kubernetes contexts)
+
+### Kubernetes Deployment
+
+Killkrill is Kubernetes-ready with:
+- Helm charts for deployment
+- Health checks (liveness/readiness probes)
+- Resource limits and requests
+- ConfigMaps and Secrets
+- Horizontal Pod Autoscaler (HPA)
+- Network Policies
+- Pod Disruption Budgets
+
+### Multi-Architecture Builds
+
+All containers built for:
+- `linux/amd64` (x86-64)
+- `linux/arm64` (ARM64/Apple Silicon)
+
+Using Debian-slim base images for compatibility and minimal footprint.
+
+### Image Tagging Strategy
+
+**Regular commits**: Branch-based naming with epoch64 timestamp
+```
+main-<EPOCH64>-YYYYMMDD    # main branch
+develop-<EPOCH64>-YYYYMMDD # develop branch
+```
+
+**Version releases** (.version file updated):
+```
+v1.2.3-beta   # main branch pre-release
+v1.2.3-alpha  # develop branch pre-release
+```
+
+**GitHub releases**:
+```
+v1.2.3       # Final release
+v1.2         # Major.minor tag
+v1           # Major tag
+latest       # Always-latest tag
+```
+
+### Documentation
+
+Comprehensive workflow documentation:
+- **docs/WORKFLOWS.md** - Complete CI/CD pipeline documentation with all triggers, jobs, and configurations
+- **docs/STANDARDS.md** - Development and operational standards with CI/CD requirements
+
+See these files for detailed workflow behavior, troubleshooting, and best practices.
+
 ## Troubleshooting & Support
 
 ### Common Issues

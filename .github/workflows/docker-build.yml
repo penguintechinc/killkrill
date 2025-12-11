@@ -4,6 +4,12 @@ on:
   push:
     branches: [ main, develop ]
     tags: [ 'v*' ]
+    paths:
+      - '.version'
+      - 'apps/**'
+      - 'Dockerfile'
+      - 'docker-compose.yml'
+      - '.github/workflows/docker-build.yml'
   pull_request:
     branches: [ main ]
 
@@ -12,6 +18,10 @@ env:
   IMAGE_NAME_API: ${{ github.repository }}/api
   IMAGE_NAME_WEB: ${{ github.repository }}/web
   IMAGE_NAME_PYTHON: ${{ github.repository }}/python-app
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   # Build matrix for different services
@@ -36,6 +46,25 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Generate epoch64 timestamp
+      id: timestamp
+      run: |
+        EPOCH64=$(date +%s%N | cut -b1-13)
+        echo "epoch64=${EPOCH64}" >> $GITHUB_OUTPUT
+        echo "Epoch64 timestamp: ${EPOCH64}"
+
+    - name: Detect version
+      id: version
+      run: |
+        if [ -f .version ]; then
+          VERSION=$(cat .version | tr -d '[:space:]')
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+        else
+          echo "version=0.0.0" >> $GITHUB_OUTPUT
+        fi
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
@@ -61,6 +90,11 @@ jobs:
           type=semver,pattern={{major}}
           type=raw,value=latest,enable={{is_default_branch}}
           type=sha,prefix={{branch}}-,suffix=-{{date 'YYYYMMDD'}},format=short
+        labels: |
+          org.opencontainers.image.version=${{ steps.version.outputs.version }}
+          org.opencontainers.image.build.timestamp=${{ steps.timestamp.outputs.epoch64 }}
+          org.opencontainers.image.revision=${{ github.sha }}
+          org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
 
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
