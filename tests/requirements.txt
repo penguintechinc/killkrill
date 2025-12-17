@@ -8,7 +8,7 @@ pytest-mock==3.12.0
 
 # HTTP clients
 httpx==0.25.2
-requests==2.31.0
+requests==2.32.4
 
 # API testing
 responses==0.24.1
