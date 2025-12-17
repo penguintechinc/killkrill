@@ -54,45 +54,28 @@ services:
       - bootstrap.memory_lock=true
       - xpack.security.enabled=false
       - xpack.security.enrollment.enabled=false
-
-      # Memory settings (50% of available RAM, max 32GB for compressed OOPs)
       - "ES_JAVA_OPTS=-Xms16g -Xmx16g -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap"
-
-      # Performance tuning
       - "cluster.routing.allocation.disk.threshold.enabled=true"
       - "cluster.routing.allocation.disk.watermark.low=85%"
       - "cluster.routing.allocation.disk.watermark.high=90%"
       - "cluster.routing.allocation.disk.watermark.flood_stage=95%"
-
-      # Index settings for performance
       - "indices.memory.index_buffer_size=30%"
       - "indices.memory.min_index_buffer_size=96mb"
       - "indices.fielddata.cache.size=20%"
       - "indices.requests.cache.size=2%"
       - "indices.queries.cache.size=10%"
-
-      # Thread pool optimization
       - "thread_pool.write.queue_size=1000"
       - "thread_pool.search.queue_size=1000"
       - "thread_pool.get.queue_size=1000"
-
-      # Network and HTTP settings
       - "network.host=0.0.0.0"
       - "http.max_content_length=500mb"
       - "http.compression=true"
       - "http.compression_level=3"
-
-      # Query caching
       - "indices.queries.cache.count=10000"
       - "indices.requests.cache.expire=5m"
-
-      # Shard settings
       - "cluster.max_shards_per_node=10000"
       - "action.auto_create_index=true"
-
-      # Logging optimization
       - "logger.org.elasticsearch.deprecation=ERROR"
-
     ulimits:
       memlock:
         soft: -1
@@ -137,15 +120,10 @@ services:
       - "${LOGSTASH_SYSLOG_PORT:-5514}:5514/udp"
       - "${LOGSTASH_API_PORT:-9600}:9600"
     environment:
-      # Memory optimization for high throughput
       - "LS_JAVA_OPTS=-Xmx4g -Xms4g -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
-
-      # Logstash settings
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
       - REDIS_PASSWORD=${REDIS_PASSWORD:-killkrill123}
       - LOGSTASH_INTERNAL_PASSWORD=${LOGSTASH_PASSWORD:-logstash123}
-
-      # Performance tuning
       - "pipeline.workers=8"
       - "pipeline.batch.size=1000"
       - "pipeline.batch.delay=50"
@@ -154,12 +132,9 @@ services:
       - "queue.max_bytes=2gb"
       - "dead_letter_queue.enable=true"
       - "dead_letter_queue.max_bytes=1gb"
-
-      # Output optimization
       - "output.elasticsearch.bulk_path=/_bulk"
       - "output.elasticsearch.flush_size=1000"
       - "output.elasticsearch.idle_flush_time=5"
-
     depends_on:
       elasticsearch:
         condition: service_healthy
@@ -227,36 +202,33 @@ services:
     networks:
       - killkrill-network
 
-  # KillKrill Log Receiver (HTTP3/QUIC + UDP Syslog)
-  log-receiver:
+  # KillKrill Flask Backend (REST API + gRPC)
+  flask-backend:
     build:
-      context: .
-      dockerfile: apps/log-receiver/Dockerfile
-    container_name: killkrill-log-receiver
-    privileged: true  # Required for XDP functionality
-    cap_add:
-      - NET_ADMIN
-      - SYS_ADMIN
+      context: ./services/flask-backend
+      dockerfile: Dockerfile
+    container_name: killkrill-flask-backend
     environment:
+      - DB_TYPE=${DB_TYPE:-postgresql}
       - DATABASE_URL=postgresql://${POSTGRES_USER:-killkrill}:${POSTGRES_PASSWORD:-killkrill123}@postgres:5432/${POSTGRES_DB:-killkrill}?sslmode=disable
       - REDIS_URL=redis://:${REDIS_PASSWORD:-killkrill123}@redis:6379/0
       - LICENSE_KEY=${LICENSE_KEY}
       - PRODUCT_NAME=${PRODUCT_NAME:-killkrill}
       - LICENSE_SERVER_URL=${LICENSE_SERVER_URL:-https://license.penguintech.io}
-      - RECEIVER_HTTP_PORT=8081
-      - RECEIVER_SYSLOG_PORT_START=10000
-      - RECEIVER_SYSLOG_PORT_END=11000
+      - FLASK_PORT=5000
+      - GRPC_PORT=50051
       - LOG_LEVEL=${LOG_LEVEL:-info}
+      - RELEASE_MODE=${RELEASE_MODE:-false}
     ports:
-      - "${RECEIVER_HTTP_PORT:-8081}:8081"
-      - "${RECEIVER_SYSLOG_PORT_RANGE:-10000-11000}:10000-11000/udp"
+      - "${FLASK_PORT:-5000}:5000"
+      - "${GRPC_PORT:-50051}:50051"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/healthz"]
+      test: ["CMD", "curl", "-f", "http://localhost:5000/healthz"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -264,120 +236,25 @@ services:
     networks:
       - killkrill-network
 
-  # KillKrill Metrics Receiver (HTTP3/QUIC API)
-  metrics-receiver:
+  # KillKrill WebUI (React/Node.js)
+  webui:
     build:
-      context: .
-      dockerfile: apps/metrics-receiver/Dockerfile
-    container_name: killkrill-metrics-receiver
+      context: ./services/webui
+      dockerfile: Dockerfile
+    container_name: killkrill-webui
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-killkrill}:${POSTGRES_PASSWORD:-killkrill123}@postgres:5432/${POSTGRES_DB:-killkrill}?sslmode=disable
-      - REDIS_URL=redis://:${REDIS_PASSWORD:-killkrill123}@redis:6379/1
+      - NODE_ENV=production
+      - REACT_APP_API_URL=http://flask-backend:5000/api
+      - REACT_APP_ELASTICSEARCH_URL=http://elasticsearch:9200
+      - REACT_APP_KIBANA_URL=http://kibana:5601
       - LICENSE_KEY=${LICENSE_KEY}
       - PRODUCT_NAME=${PRODUCT_NAME:-killkrill}
-      - LICENSE_SERVER_URL=${LICENSE_SERVER_URL:-https://license.penguintech.io}
-      - METRICS_PORT=8082
-      - LOG_LEVEL=${LOG_LEVEL:-info}
     ports:
-      - "${METRICS_PORT:-8082}:8082"
+      - "${WEBUI_PORT:-3000}:3000"
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - flask-backend
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8082/healthz"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    restart: unless-stopped
-    networks:
-      - killkrill-network
-
-  # KillKrill Log Worker (Redis Streams to ELK)
-  log-worker:
-    build:
-      context: .
-      dockerfile: apps/log-worker/Dockerfile
-    container_name: killkrill-log-worker
-    environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-killkrill}:${POSTGRES_PASSWORD:-killkrill123}@postgres:5432/${POSTGRES_DB:-killkrill}?sslmode=disable
-      - REDIS_URL=redis://:${REDIS_PASSWORD:-killkrill123}@redis:6379/2
-      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
-      - PROMETHEUS_GATEWAY=http://prometheus:9090
-      - LICENSE_KEY=${LICENSE_KEY}
-      - PRODUCT_NAME=${PRODUCT_NAME:-killkrill}
-      - LICENSE_SERVER_URL=${LICENSE_SERVER_URL:-https://license.penguintech.io}
-      - LOG_LEVEL=${LOG_LEVEL:-info}
-    depends_on:
-      redis:
-        condition: service_healthy
-      elasticsearch:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "ps aux | grep processor | grep -v grep || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    restart: unless-stopped
-    networks:
-      - killkrill-network
-
-  # KillKrill Metrics Worker (Redis Streams to Prometheus)
-  metrics-worker:
-    build:
-      context: .
-      dockerfile: apps/metrics-worker/Dockerfile
-    container_name: killkrill-metrics-worker
-    environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-killkrill}:${POSTGRES_PASSWORD:-killkrill123}@postgres:5432/${POSTGRES_DB:-killkrill}?sslmode=disable
-      - REDIS_URL=redis://:${REDIS_PASSWORD:-killkrill123}@redis:6379/3
-      - PROMETHEUS_GATEWAY=http://prometheus:9090
-      - LICENSE_KEY=${LICENSE_KEY}
-      - PRODUCT_NAME=${PRODUCT_NAME:-killkrill}
-      - LICENSE_SERVER_URL=${LICENSE_SERVER_URL:-https://license.penguintech.io}
-      - LOG_LEVEL=${LOG_LEVEL:-info}
-      - PROCESSOR_WORKERS=${PROCESSOR_WORKERS:-4}
-      - MAX_BATCH_SIZE=${MAX_BATCH_SIZE:-1000}
-      - PROMETHEUS_PUSH_INTERVAL=${PROMETHEUS_PUSH_INTERVAL:-15}
-    depends_on:
-      redis:
-        condition: service_healthy
-      prometheus:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "ps aux | grep metrics-worker | grep -v grep || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    restart: unless-stopped
-    networks:
-      - killkrill-network
-
-  # KillKrill Manager (py4web WebUI)
-  manager:
-    build:
-      context: .
-      dockerfile: apps/manager/Dockerfile
-    container_name: killkrill-manager
-    environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-killkrill}:${POSTGRES_PASSWORD:-killkrill123}@postgres:5432/${POSTGRES_DB:-killkrill}?sslmode=disable
-      - REDIS_URL=redis://:${REDIS_PASSWORD:-killkrill123}@redis:6379/3
-      - LICENSE_KEY=${LICENSE_KEY}
-      - PRODUCT_NAME=${PRODUCT_NAME:-killkrill}
-      - LICENSE_SERVER_URL=${LICENSE_SERVER_URL:-https://license.penguintech.io}
-      - PY4WEB_APPS_FOLDER=/app/apps
-      - PY4WEB_HOST=0.0.0.0
-      - PY4WEB_PORT=8080
-    ports:
-      - "${MANAGER_PORT:-8080}:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3000/healthz', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})\""]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -469,117 +346,6 @@ services:
       - killkrill-network
     restart: unless-stopped
 
-  # Fleet MySQL Database
-  fleet-mysql:
-    image: mysql:8.0
-    container_name: killkrill-fleet-mysql
-    environment:
-      MYSQL_DATABASE: ${FLEET_MYSQL_DATABASE:-fleet}
-      MYSQL_USER: ${FLEET_MYSQL_USER:-fleet}
-      MYSQL_PASSWORD: ${FLEET_MYSQL_PASSWORD:-fleet123}
-      MYSQL_ROOT_PASSWORD: ${FLEET_MYSQL_ROOT_PASSWORD:-fleetroot123}
-      MYSQL_CHARSET: utf8mb4
-      MYSQL_COLLATION: utf8mb4_unicode_ci
-    ports:
-      - "${FLEET_MYSQL_PORT:-3307}:3306"
-    volumes:
-      - fleet_mysql_data:/var/lib/mysql
-      - ./infrastructure/docker/fleet-mysql/init:/docker-entrypoint-initdb.d
-    command: --default-authentication-plugin=mysql_native_password --sql-mode=STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "fleet", "-pfleet123"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-    networks:
-      - killkrill-network
-
-  # Fleet Redis Cache
-  fleet-redis:
-    image: redis:7-alpine
-    container_name: killkrill-fleet-redis
-    command: redis-server --requirepass ${FLEET_REDIS_PASSWORD:-fleetredis123} --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
-    ports:
-      - "${FLEET_REDIS_PORT:-6380}:6379"
-    volumes:
-      - fleet_redis_data:/data
-      - ./infrastructure/docker/fleet-redis/redis.conf:/etc/redis/redis.conf
-    healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-    networks:
-      - killkrill-network
-
-  # Fleet Server
-  fleet-server:
-    image: fleetdm/fleet:v4.57.0
-    container_name: killkrill-fleet-server
-    command: fleet serve
-    environment:
-      # Database configuration
-      - FLEET_MYSQL_ADDRESS=fleet-mysql:3306
-      - FLEET_MYSQL_DATABASE=${FLEET_MYSQL_DATABASE:-fleet}
-      - FLEET_MYSQL_USERNAME=${FLEET_MYSQL_USER:-fleet}
-      - FLEET_MYSQL_PASSWORD=${FLEET_MYSQL_PASSWORD:-fleet123}
-
-      # Redis configuration
-      - FLEET_REDIS_ADDRESS=fleet-redis:6379
-      - FLEET_REDIS_PASSWORD=${FLEET_REDIS_PASSWORD:-fleetredis123}
-
-      # Server configuration
-      - FLEET_SERVER_ADDRESS=0.0.0.0:8080
-      - FLEET_SERVER_CERT=/etc/fleet/server.cert
-      - FLEET_SERVER_KEY=/etc/fleet/server.key
-      - FLEET_LOGGING_LEVEL=${FLEET_LOG_LEVEL:-info}
-
-      # Authentication
-      - FLEET_AUTH_JWT_KEY=${FLEET_JWT_KEY:-supersecretfleetjwtkey123456}
-      - FLEET_AUTH_BCRYPT_COST=12
-
-      # License (optional)
-      - FLEET_LICENSE_KEY=${FLEET_LICENSE_KEY:-}
-
-      # Prometheus metrics
-      - FLEET_PROMETHEUS_ADDRESS=0.0.0.0:8081
-
-      # Osquery results and status logs forwarding to KillKrill
-      - FLEET_OSQUERY_STATUS_LOG_PLUGIN=kinesis
-      - FLEET_OSQUERY_RESULT_LOG_PLUGIN=kinesis
-      - FLEET_KINESIS_ENDPOINT_URL=http://log-receiver:8081
-      - FLEET_KINESIS_ACCESS_KEY_ID=${FLEET_KINESIS_ACCESS_KEY:-fleet}
-      - FLEET_KINESIS_SECRET_ACCESS_KEY=${FLEET_KINESIS_SECRET_KEY:-fleetlogs123}
-      - FLEET_KINESIS_STS_ASSUME_ROLE_ARN=""
-      - FLEET_KINESIS_STATUS_STREAM=fleet-status-logs
-      - FLEET_KINESIS_RESULT_STREAM=fleet-result-logs
-      - FLEET_KINESIS_REGION=us-east-1
-
-    ports:
-      - "${FLEET_PORT:-8084}:8080"
-      - "${FLEET_METRICS_PORT:-8085}:8081"
-    volumes:
-      - ./infrastructure/fleet/certs:/etc/fleet:ro
-      - ./infrastructure/fleet/config:/etc/fleet/config:ro
-    depends_on:
-      fleet-mysql:
-        condition: service_healthy
-      fleet-redis:
-        condition: service_healthy
-      log-receiver:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/healthz"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 45s
-    restart: unless-stopped
-    networks:
-      - killkrill-network
-
 volumes:
   postgres_data:
     driver: local
@@ -592,10 +358,6 @@ volumes:
   grafana_data:
     driver: local
   alertmanager_data:
-    driver: local
-  fleet_mysql_data:
-    driver: local
-  fleet_redis_data:
     driver: local
 
 networks:

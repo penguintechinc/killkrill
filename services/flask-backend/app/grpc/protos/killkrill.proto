@@ -1,0 +1,263 @@
+syntax = "proto3";
+
+package killkrill.v1;
+
+option go_package = "github.com/penguintechinc/killkrill/pb/killkrill/v1;pb";
+option java_package = "io.penguintech.killkrill.v1";
+option java_outer_classname = "KillKrillProto";
+
+// Dashboard service for retrieving operational metrics and statistics
+service DashboardService {
+  rpc GetStats(StatsRequest) returns (DashboardStats);
+  rpc GetSystemHealth(HealthRequest) returns (SystemHealth);
+  rpc GetMetrics(MetricsRequest) returns (MetricsResponse);
+}
+
+// Sensor service for sensor data management
+service SensorService {
+  rpc GetSensorData(SensorDataRequest) returns (SensorDataResponse);
+  rpc ListSensors(ListSensorsRequest) returns (SensorList);
+  rpc UpdateSensor(UpdateSensorRequest) returns (SensorData);
+}
+
+// User service for user management
+service UserService {
+  rpc GetUser(UserRequest) returns (UserInfo);
+  rpc ListUsers(ListUsersRequest) returns (UserList);
+  rpc UpdateUser(UpdateUserRequest) returns (UserInfo);
+  rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse);
+}
+
+// Authentication service for token validation
+service AuthService {
+  rpc ValidateToken(ValidateTokenRequest) returns (TokenValidation);
+  rpc RefreshToken(RefreshTokenRequest) returns (TokenResponse);
+  rpc GetAuthInfo(AuthInfoRequest) returns (AuthInfo);
+}
+
+// Dashboard statistics request
+message StatsRequest {
+  string user_id = 1;
+  string correlation_id = 2;
+}
+
+// Dashboard statistics response
+message DashboardStats {
+  int64 total_sensors = 1;
+  int64 active_sensors = 2;
+  int64 inactive_sensors = 3;
+  int64 total_users = 4;
+  double cpu_usage_percent = 5;
+  double memory_usage_percent = 6;
+  int64 disk_usage_bytes = 7;
+  string last_updated = 8;
+  string timestamp = 9;
+}
+
+// System health request
+message HealthRequest {
+  string correlation_id = 1;
+}
+
+// System health response
+message SystemHealth {
+  string status = 1;  // healthy, degraded, unhealthy
+  string service_name = 2;
+  string version = 3;
+  int64 uptime_seconds = 4;
+  repeated ComponentHealth components = 5;
+  string timestamp = 6;
+}
+
+// Component health information
+message ComponentHealth {
+  string name = 1;
+  string status = 2;  // healthy, degraded, unhealthy
+  string message = 3;
+}
+
+// Metrics request
+message MetricsRequest {
+  string metric_type = 1;  // cpu, memory, disk, network
+  int64 time_range_seconds = 2;
+  string correlation_id = 3;
+}
+
+// Metrics response
+message MetricsResponse {
+  string metric_type = 1;
+  repeated MetricPoint data_points = 2;
+  string timestamp = 3;
+}
+
+// Single metric data point
+message MetricPoint {
+  string timestamp = 1;
+  double value = 2;
+}
+
+// Sensor data request
+message SensorDataRequest {
+  string sensor_id = 1;
+  string user_id = 2;
+  string correlation_id = 3;
+}
+
+// Sensor data response
+message SensorDataResponse {
+  SensorData sensor = 1;
+  string timestamp = 2;
+}
+
+// Sensor data
+message SensorData {
+  string id = 1;
+  string name = 2;
+  string sensor_type = 3;
+  string status = 4;  // active, inactive, error
+  double current_value = 5;
+  string unit = 6;
+  string location = 7;
+  string last_reading_time = 8;
+  map<string, string> metadata = 9;
+}
+
+// List sensors request
+message ListSensorsRequest {
+  string user_id = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+  string filter_status = 4;
+  string correlation_id = 5;
+}
+
+// Sensor list response
+message SensorList {
+  repeated SensorData sensors = 1;
+  int64 total_count = 2;
+  int32 limit = 3;
+  int32 offset = 4;
+  string timestamp = 5;
+}
+
+// Update sensor request
+message UpdateSensorRequest {
+  string sensor_id = 1;
+  string user_id = 2;
+  string name = 3;
+  string status = 4;
+  map<string, string> metadata = 5;
+  string correlation_id = 6;
+}
+
+// User request
+message UserRequest {
+  string user_id = 1;
+  string correlation_id = 2;
+}
+
+// User information
+message UserInfo {
+  string id = 1;
+  string username = 2;
+  string email = 3;
+  string first_name = 4;
+  string last_name = 5;
+  bool active = 6;
+  repeated string roles = 7;
+  repeated string permissions = 8;
+  string created_at = 9;
+  string updated_at = 10;
+  string last_login_at = 11;
+  map<string, string> metadata = 12;
+}
+
+// List users request
+message ListUsersRequest {
+  int32 limit = 1;
+  int32 offset = 2;
+  bool active_only = 3;
+  string correlation_id = 4;
+}
+
+// User list response
+message UserList {
+  repeated UserInfo users = 1;
+  int64 total_count = 2;
+  int32 limit = 3;
+  int32 offset = 4;
+  string timestamp = 5;
+}
+
+// Update user request
+message UpdateUserRequest {
+  string user_id = 1;
+  string first_name = 2;
+  string last_name = 3;
+  repeated string roles = 4;
+  bool active = 5;
+  map<string, string> metadata = 6;
+  string correlation_id = 7;
+}
+
+// Delete user request
+message DeleteUserRequest {
+  string user_id = 1;
+  string correlation_id = 2;
+}
+
+// Delete user response
+message DeleteUserResponse {
+  bool success = 1;
+  string message = 2;
+  string timestamp = 3;
+}
+
+// Validate token request
+message ValidateTokenRequest {
+  string token = 1;
+  string correlation_id = 2;
+}
+
+// Token validation response
+message TokenValidation {
+  bool valid = 1;
+  string user_id = 2;
+  repeated string roles = 3;
+  repeated string permissions = 4;
+  int64 expires_in_seconds = 5;
+  string message = 6;
+  string timestamp = 7;
+}
+
+// Refresh token request
+message RefreshTokenRequest {
+  string refresh_token = 1;
+  string correlation_id = 2;
+}
+
+// Token response
+message TokenResponse {
+  string access_token = 1;
+  string token_type = 2;
+  int64 expires_in = 3;
+  string timestamp = 4;
+}
+
+// Auth info request
+message AuthInfoRequest {
+  string user_id = 1;
+  string correlation_id = 2;
+}
+
+// Authentication information
+message AuthInfo {
+  string user_id = 1;
+  string username = 2;
+  repeated string roles = 3;
+  repeated string permissions = 4;
+  string authenticated_at = 5;
+  string token_expires_at = 6;
+  map<string, string> claims = 7;
+  string timestamp = 8;
+}

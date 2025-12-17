@@ -1,22 +1,34 @@
 #!/usr/bin/env python3
 """
-KillKrill Log Receiver - Minimal Working Version
-Simple HTTP server for testing log ingestion
+KillKrill Log Receiver - JWT Auth with ReceiverClient
+Unified HTTP/gRPC server with JWT authentication and automatic protocol fallback
 """
 
 import os
 import sys
 import json
+import asyncio
 import logging
 from datetime import datetime
 from py4web import action, request, response, DAL
 from prometheus_client import Counter, generate_latest
 import redis
+import structlog
 
-# Basic configuration
+# Import shared ReceiverClient
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../shared'))
+from receiver_client import ReceiverClient, AuthenticationError, ConnectionError
+
+logger = structlog.get_logger(__name__)
+
+# Configuration
 DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://killkrill:killkrill123@postgres:5432/killkrill')
 REDIS_URL = os.environ.get('REDIS_URL', 'redis://redis:6379')
 RECEIVER_PORT = int(os.environ.get('RECEIVER_PORT', '8081'))
+API_URL = os.environ.get('API_URL', 'http://flask-backend:5000')
+GRPC_URL = os.environ.get('GRPC_URL', 'flask-backend:50051')
+CLIENT_ID = os.environ.get('RECEIVER_CLIENT_ID', 'log-receiver')
+CLIENT_SECRET = os.environ.get('RECEIVER_CLIENT_SECRET', '')
 
 # Convert URL scheme for PyDAL compatibility
 pydal_database_url = DATABASE_URL.replace('postgresql://', 'postgres://')
@@ -44,32 +56,83 @@ except Exception as e:
     print(f"✗ Initialization error: {e}")
     sys.exit(1)
 
+# Initialize ReceiverClient with JWT auth and gRPC/REST fallback
+receiver_client = None
+if CLIENT_ID and CLIENT_SECRET:
+    try:
+        receiver_client = ReceiverClient(
+            api_url=API_URL,
+            grpc_url=GRPC_URL,
+            client_id=CLIENT_ID,
+            client_secret=CLIENT_SECRET
+        )
+        print(f"✓ ReceiverClient initialized")
+        print(f"✓ API URL: {API_URL}")
+        print(f"✓ gRPC URL: {GRPC_URL}")
+    except Exception as e:
+        print(f"⚠ ReceiverClient initialization error: {e}")
+
+# Authenticate receiver client on startup
+async def startup_authentication():
+    global receiver_client
+    if receiver_client:
+        try:
+            await receiver_client.authenticate()
+            logger.info("receiver_client_authenticated")
+        except Exception as e:
+            logger.error("receiver_client_authentication_failed", error=str(e))
+
+# Run async startup
+try:
+    asyncio.run(startup_authentication())
+except Exception as e:
+    logger.warning("async_startup_failed", error=str(e))
+
 # Metrics
 logs_received = Counter('killkrill_logs_received_total', 'Total logs received', ['level'])
 health_checks = Counter('killkrill_log_receiver_health_checks_total', 'Health checks', ['status'])
 
 @action('healthz', method=['GET'])
-def health_check():
+async def health_check():
     """Health check endpoint"""
     try:
+        components = {}
+
         # Test Redis
-        redis_client.ping()
+        try:
+            redis_client.ping()
+            components['redis'] = 'ok'
+        except Exception as e:
+            components['redis'] = f'error: {str(e)}'
 
         # Test database
-        db.logs.insert(level='info', message='health check', source='system')
-        db.commit()
+        try:
+            db.executesql("SELECT 1")
+            components['database'] = 'ok'
+        except Exception as e:
+            components['database'] = f'error: {str(e)}'
 
-        health_checks.labels(status='ok').inc()
+        # Check receiver client
+        if receiver_client:
+            try:
+                is_healthy = await receiver_client.health_check()
+                components['receiver_client'] = 'ok' if is_healthy else 'degraded'
+            except Exception as e:
+                components['receiver_client'] = f'error: {str(e)}'
+
+        # Overall status
+        status = 'healthy' if all(v == 'ok' for v in components.values()) else 'degraded'
+        if any('error' in str(v) for v in components.values()):
+            status = 'unhealthy'
+
+        health_checks.labels(status='ok' if status == 'healthy' else 'error').inc()
 
         response.headers['Content-Type'] = 'application/json'
         return {
-            'status': 'healthy',
+            'status': status,
             'timestamp': datetime.utcnow().isoformat(),
             'service': 'killkrill-log-receiver',
-            'components': {
-                'database': 'ok',
-                'redis': 'ok'
-            }
+            'components': components
         }
     except Exception as e:
         health_checks.labels(status='error').inc()
@@ -88,8 +151,8 @@ def metrics():
     return generate_latest()
 
 @action('api/v1/logs', method=['POST'])
-def ingest_logs():
-    """Simple log ingestion endpoint"""
+async def ingest_logs():
+    """Log ingestion endpoint with ReceiverClient submission"""
     try:
         log_data = request.json
 
@@ -128,6 +191,21 @@ def ingest_logs():
         }
         redis_client.xadd('logs', stream_data)
 
+        # Submit to backend via ReceiverClient (gRPC with REST fallback)
+        if receiver_client:
+            try:
+                log_payload = {
+                    'timestamp': timestamp.isoformat(),
+                    'level': level,
+                    'message': message,
+                    'source': source
+                }
+                await receiver_client.submit_logs([log_payload])
+                logger.info("log_submitted", log_id=log_id)
+            except (AuthenticationError, ConnectionError) as e:
+                # Log submission error but continue (non-fatal)
+                logger.warning("receiver_submission_error", error=str(e))
+
         # Update metrics
         logs_received.labels(level=level).inc()
 
@@ -139,6 +217,7 @@ def ingest_logs():
         }
 
     except Exception as e:
+        logger.error("log_ingestion_error", error=str(e))
         response.status = 500
         response.headers['Content-Type'] = 'application/json'
         return {

@@ -1,0 +1,42 @@
+# Test dependencies for killkrill
+pytest==7.4.3
+pytest-asyncio==0.23.2
+pytest-cov==4.1.0
+pytest-timeout==2.2.0
+pytest-xdist==3.5.0
+pytest-mock==3.12.0
+
+# HTTP clients
+httpx==0.25.2
+requests==2.31.0
+
+# API testing
+responses==0.24.1
+
+# Browser automation
+playwright==1.40.0
+
+# Data generation
+faker==21.0.0
+
+# Mocking and fixtures
+factory-boy==3.3.0
+
+# Performance testing
+locust==2.17.0
+
+# Code quality
+coverage==7.3.2
+
+# Database testing
+sqlalchemy==2.0.23
+psycopg2-binary==2.9.9
+
+# Async utilities
+aiofiles==23.2.1
+
+# Data validation
+pydantic==2.5.2
+
+# JSON/YAML parsing
+pyyaml==6.0.1
