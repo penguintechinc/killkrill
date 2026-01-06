@@ -1,37 +1,40 @@
-# Project Template - Claude Code Context
+# Killkrill - Claude Code Context
 
 ## Project Overview
 
-This is a comprehensive project template incorporating best practices and patterns from Penguin Tech Inc projects. It provides a standardized foundation for multi-language projects with enterprise-grade infrastructure and integrated licensing.
+Killkrill is an enterprise-grade data processing and observability system built on modern distributed architecture patterns. It provides high-performance log and metrics ingestion, processing, and querying with Kubernetes-native deployment.
 
-**Template Features:**
-- Multi-language support (Go 1.23.x, Python 3.12/3.13, Node.js 18+)
-- Enterprise security and licensing integration
-- Comprehensive CI/CD pipeline
-- Production-ready containerization
-- Monitoring and observability
-- Version management system
+**Project Features:**
+- High-performance Go services (API, K8s Operator, K8s Agent)
+- Python workers and receivers for data processing (log/metrics)
+- Web-based management and monitoring (Python + React)
+- Kubernetes-native deployment with Helm charts
+- Multi-container architecture with independent scaling
+- Comprehensive CI/CD pipeline with multi-arch builds
 - PenguinTech License Server integration
 
 ## Technology Stack
 
 ### Languages & Frameworks
 
-**Language Selection Criteria (Case-by-Case Basis):**
-- **Python 3.13**: Default choice for most applications
-  - Web applications and APIs
-  - Business logic and data processing
-  - Integration services and connectors
-- **Go 1.23.x**: ONLY for high-traffic/performance-critical applications
-  - Applications handling >10K requests/second
-  - Network-intensive services
-  - Low-latency requirements (<10ms)
-  - CPU-bound operations requiring maximum throughput
+**Killkrill Technology Choices:**
+- **Go 1.23.x**: High-performance services requiring >10K req/sec
+  - API service: REST endpoints, request routing, query handling
+  - K8s Operator: Custom resource reconciliation
+  - K8s Agent: Per-pod sidecar for coordination
+- **Python 3.12+**: Data processing and web services
+  - Worker services: Event/log/metrics processing
+  - Receiver services: Data ingestion (Syslog, HTTP, Prometheus)
+  - Manager service: Web UI and administrative API
+- **Node.js + React**: Frontend for manager UI
+  - Dashboard and monitoring views
+  - Configuration management
+  - User authentication and RBAC
 
 **Python Stack:**
-- **Python**: 3.13 for all applications (3.12+ minimum)
+- **Python**: 3.12+ for all applications
 - **Web Framework**: Flask + Flask-Security-Too (mandatory)
-- **Database ORM**: PyDAL (mandatory for all Python applications)
+- **Database ORM**: Hybrid approach - SQLAlchemy for initialization, PyDAL for day-to-day operations (mandatory for all Python applications)
 - **Performance**: Dataclasses with slots, type hints, async/await required
 
 **Frontend Stack:**
@@ -68,17 +71,18 @@ This is a comprehensive project template incorporating best practices and patter
 - **MariaDB Galera Support**: Handle Galera-specific requirements (WSREP, auto-increment, transactions)
 
 **Supported DB_TYPE Values (PyDAL prefixes)**:
-- `postgres` / `postgresql` - PostgreSQL (default)
+- `postgres` - PostgreSQL (default)
 - `mysql` - MySQL/MariaDB
 - `sqlite` - SQLite
-- `mssql` - Microsoft SQL Server
-- `oracle` - Oracle Database
-- `db2` - IBM DB2
-- `firebird` - Firebird
-- `informix` - IBM Informix
-- `ingres` - Ingres
-- `cubrid` - CUBRID
-- `sapdb` - SAP DB/MaxDB
+
+**MariaDB Galera Cluster Requirements**:
+- Connection pooling with sticky sessions for consistent reads
+- WSREP synchronization control via `wsrep_sync_wait` for read-your-writes consistency
+- Auto-increment offset configuration for multi-node writes (WSREP_ON=ON)
+- Transaction isolation level: REPEATABLE-READ (Galera default)
+- Avoid explicit LOCK commands in transactions
+- Connection retry logic for temporary node unavailability
+- Environment variables: `GALERA_MODE=true`, `GALERA_NODES=node1,node2,node3`
 
 ### Security & Authentication
 - **Flask-Security-Too**: Mandatory for all Flask applications
@@ -146,55 +150,80 @@ For projects requiring AI capabilities, integrate with WaddleAI located at `~/co
 ## Project Structure
 
 ```
-project-name/
-├── .github/             # CI/CD pipelines and templates
-│   └── workflows/       # GitHub Actions for each container
-├── services/            # Microservices (separate containers by default)
-│   ├── flask-backend/   # Flask + PyDAL backend (auth, users, standard APIs)
-│   ├── go-backend/      # Go high-performance backend (XDP/AF_XDP, NUMA)
-│   ├── webui/           # Node.js + React frontend shell
-│   └── connector/       # Integration services (placeholder)
-├── shared/              # Shared components
-├── infrastructure/      # Infrastructure as code
-├── scripts/             # Utility scripts
-├── tests/               # Test suites (unit, integration, e2e, performance)
-├── docs/                # Documentation
-├── config/              # Configuration files
-├── docker-compose.yml   # Production environment
+killkrill/
+├── .github/              # CI/CD pipelines and templates
+│   └── workflows/        # GitHub Actions for each service
+├── apps/                 # Microservices (separate containers)
+│   ├── api/              # Go REST API service (10K+ req/sec)
+│   ├── log-worker/       # Python worker for log processing
+│   ├── metrics-worker/   # Python worker for metrics processing
+│   ├── log-receiver/     # Python service for log ingestion
+│   ├── metrics-receiver/ # Python service for metrics ingestion
+│   ├── manager/          # Python Flask + React manager service
+│   ├── k8s-operator/     # Go Kubernetes operator
+│   └── k8s-agent/        # Go per-pod sidecar agent
+├── k8s/                  # Kubernetes deployment templates
+│   ├── helm/             # Helm v3 charts per service
+│   ├── manifests/        # Raw K8s manifests
+│   └── kustomize/        # Kustomize overlays
+├── config/               # Configuration files
+├── scripts/              # Utility scripts
+├── tests/                # Test suites (unit, integration, e2e)
+├── docs/                 # Documentation
+├── docker-compose.yml    # Production environment
 ├── docker-compose.dev.yml # Local development
-├── Makefile             # Build automation
-├── .version             # Version tracking
-└── CLAUDE.md            # This file
+├── Makefile              # Build automation
+├── .version              # Version tracking
+└── CLAUDE.md             # This file
 ```
 
-### Three-Container Architecture
+### Multi-Service Architecture
 
-This template provides three base containers representing the core footprints:
+Killkrill consists of multiple specialized microservices, each optimized for its role:
 
-| Container | Purpose | When to Use |
-|-----------|---------|-------------|
-| **flask-backend** | Standard APIs, auth, CRUD | <10K req/sec, business logic |
-| **go-backend** | High-performance networking | >10K req/sec, <10ms latency |
-| **webui** | Node.js + React frontend | All frontend applications |
+| Service | Language | Purpose | SLA |
+|---------|----------|---------|-----|
+| **api** | Go | REST API gateway, request routing | 10K+ req/sec, P99 <100ms |
+| **log-worker** | Python | Process log entries asynchronously | 50K+ events/sec |
+| **metrics-worker** | Python | Aggregate and process metrics | 50K+ events/sec |
+| **log-receiver** | Python | High-throughput log ingestion | 100K+ msg/sec |
+| **metrics-receiver** | Python | Prometheus/HTTP metrics ingestion | 100K+ msg/sec |
+| **manager** | Python/React | Web UI and admin API | <500ms response time |
+| **k8s-operator** | Go | Kubernetes custom resource operator | Sub-second reconciliation |
+| **k8s-agent** | Go | Per-pod sidecar for coordination | <50MB memory |
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              NGINX (optional)                               │
-└─────────────────────────────────────────────────────────────────────────────┘
-          │                        │                          │
-┌─────────┴─────────┐   ┌─────────┴─────────┐   ┌────────────┴────────────┐
-│  WebUI Container  │   │  Flask Backend    │   │    Go Backend           │
-│  (Node.js/React)  │   │  (Flask/PyDAL)    │   │    (XDP/AF_XDP)         │
-│                   │   │                   │   │                         │
-│ - React SPA       │   │ - /api/v1/auth/*  │   │ - High-perf networking  │
-│ - Proxies to APIs │   │ - /api/v1/users/* │   │ - XDP packet processing │
-│ - Static assets   │   │ - /api/v1/hello   │   │ - AF_XDP zero-copy      │
-│ - Port 3000       │   │ - Port 5000       │   │ - NUMA-aware memory     │
-└───────────────────┘   └───────────────────┘   │ - Port 8080             │
-                                 │              └─────────────────────────┘
-                        ┌────────┴────────┐
-                        │   PostgreSQL    │
-                        └─────────────────┘
+┌──────────────────────────────────────────────────────────────────────────┐
+│                        Kubernetes Cluster                                │
+├──────────────────────────────────────────────────────────────────────────┤
+│                                                                           │
+│  ┌─────────────┐    ┌─────────────┐    ┌──────────────────────┐         │
+│  │   API Pod   │    │ Log Receiver│    │ Metrics Receiver Pod │         │
+│  │  (Port 8080)│    │(Syslog/HTTP)│    │ (Prometheus/HTTP)    │         │
+│  └──────┬──────┘    └──────┬──────┘    └──────────┬───────────┘         │
+│         │                  │                       │                    │
+│         └──────────┬───────┴───────────────────────┘                    │
+│                    ↓                                                     │
+│         ┌──────────────────────┐                                         │
+│         │  Message Queue       │                                         │
+│         │  (Redis/Kafka)       │                                         │
+│         └──────────┬───────────┘                                         │
+│                    │                                                     │
+│      ┌─────────────┼─────────────┐                                       │
+│      ↓             ↓             ↓                                       │
+│  ┌─────────┐ ┌─────────┐ ┌──────────────┐                              │
+│  │Log Wkr  │ │Metrics  │ │Manager UI    │                              │
+│  │   Pod   │ │Wkr Pod  │ │(Flask/React) │                              │
+│  └────┬────┘ └────┬────┘ └──────┬───────┘                              │
+│       │           │             │                                       │
+│       └───────────┼─────────────┘                                       │
+│                   ↓                                                     │
+│          ┌────────────────┐                                             │
+│          │  PostgreSQL    │                                             │
+│          │  (K8s native)  │                                             │
+│          └────────────────┘                                             │
+│                                                                           │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Default Roles (WebUI)
@@ -522,17 +551,43 @@ def health():
     return {'status': 'healthy'}, 200
 ```
 
-### Database Integration (PyDAL with Multi-Database Support)
+### Hybrid Database Approach: SQLAlchemy Initialization + PyDAL Day-to-Day
+
+The killkrill project uses a hybrid database strategy:
+- **Initialization Phase**: SQLAlchemy for schema design, migrations, and complex setup operations
+- **Runtime Operations**: PyDAL for daily CRUD operations and business logic
+
+**Rationale**:
+- SQLAlchemy provides robust schema versioning and migration capabilities
+- PyDAL offers simpler syntax and better multi-database abstraction for routine operations
+- Clear separation of concerns between setup (SQLAlchemy) and operations (PyDAL)
+
+**Setup Example (SQLAlchemy)**:
+```python
+from sqlalchemy import create_engine, Column, Integer, String, Boolean
+from sqlalchemy.ext.declarative import declarative_base
+from alembic import op
+import sqlalchemy as sa
+
+Base = declarative_base()
+
+class User(Base):
+    __tablename__ = 'users'
+    id = Column(Integer, primary_key=True)
+    email = Column(String(255), unique=True, nullable=False)
+    password = Column(String(255), nullable=False)
+    active = Column(Boolean, default=True)
+```
+
+### Database Integration (PyDAL with Multi-Database Support - Day-to-Day Operations)
 ```python
 from pydal import DAL, Field
 from dataclasses import dataclass
 import os
 
-# Valid PyDAL DB_TYPE values for input validation
+# Valid DB_TYPE values for input validation (postgres, mysql, sqlite only)
 VALID_DB_TYPES = {
-    'postgres', 'postgresql', 'mysql', 'sqlite', 'mssql',
-    'oracle', 'db2', 'firebird', 'informix', 'ingres',
-    'cubrid', 'sapdb'
+    'postgres', 'mysql', 'sqlite'
 }
 
 @dataclass(slots=True, frozen=True)
@@ -638,24 +693,63 @@ def metrics():
     return generate_latest(), {'Content-Type': 'text/plain'}
 ```
 
+### Multi-Service Log/Metrics Processing Patterns
+
+Killkrill's distributed architecture processes high-volume log and metrics data across specialized services. This section documents critical integration patterns for multi-service data pipelines.
+
+**Log Processing Pipeline Architecture**:
+```
+[Log Receiver] → [Redis Queue] → [Log Worker] → [PostgreSQL]
+  (syslog/HTTP)    (async)      (parsing)      (storage)
+  100K+ msg/sec    buffering    filtering      persistence
+```
+
+**Log Ingestion Pattern**:
+- Receiver service: Flask endpoint accepts POST requests with log batches
+- Queue storage: Redis list for async processing (`log_queue`)
+- Worker service: Async consumer pulls from queue, processes, persists to PostgreSQL
+- Database: PyDAL table with timestamp, level, message, source fields
+
+**Metrics Pipeline** (aggregation pattern):
+```
+[Metrics Receiver] → [Redis Queue] → [Metrics Worker] → [Time-Series DB]
+(Prometheus/HTTP)   (batching)      (aggregation)      (PostgreSQL)
+ 100K+ events/sec   windowed        rolling avg        persistence
+```
+
+**Metrics Aggregation Pattern**:
+- Worker service: Consumes metrics from Redis queue
+- In-memory buffering: Aggregates stats (sum, min, max, avg) per metric
+- Periodic flush: Writes aggregated results to PostgreSQL time-series table
+- Batching: Flushes when buffer reaches threshold (e.g., 100 metrics)
+
+**API Query Pattern**:
+- API service queries aggregated metrics and logs from PostgreSQL
+- Endpoints: `/api/v1/metrics?name=...` and `/api/v1/logs?level=...&source=...`
+- Pagination: LIMIT/OFFSET for large result sets
+- Indexing: Create indexes on frequently queried columns (metric_name, level, source)
+
+**Key Patterns**: Async processing via Redis queues, in-memory batching before persistence, windowed aggregation for statistics, backpressure handling, exponential backoff retries, centralized PostgreSQL queries, UTC timestamps for correlation, JSON structured logging
+
 ## Website Integration Requirements
 
-**Each project MUST have two dedicated websites**:
-- Marketing/Sales website (Node.js based)
-- Documentation website (Markdown based)
+**Killkrill Deployment MUST include two integrated websites**:
+1. **Marketing/Sales Website** (Node.js + React, separately hosted)
+2. **Documentation Website** (Auto-generated from Markdown docs/)
 
-**Website Design Preferences**:
-- Multi-page design preferred
-- Modern aesthetic with clean appearance
-- Subtle, sophisticated color schemes
-- Gradient usage encouraged
-- Responsive design
-- Performance focused
+**Website Design**: Modern, responsive (mobile/tablet/desktop), subtle gradients, <2s load times, clear navigation, PenguinTech branding
 
-**Repository Integration**:
+**Documentation Features**: API docs with examples, deployment guides (Docker/K8s/Helm), environment variables, architecture diagrams, log/metrics pipelines, FAQ, license integration, support info
+
+**Marketing Features**: Product overview, architecture/data flow, performance benchmarks, customer case studies, pricing, trial options
+
+**Repository Setup**:
 - Add `github.com/penguintechinc/website` as sparse checkout submodule
-- Only include project-specific folders
-- Folder naming: `{app_name}/` and `{app_name}-docs/`
+- Create Killkrill-specific folders: `killkrill/` and `killkrill-docs/`
+- Marketing site in `killkrill/` (Node.js + React)
+- Documentation in `killkrill-docs/` (Markdown source, auto-generated HTML)
+
+**Essential Content**: Product features, architecture overview, API docs, K8s/Helm deployment, env vars, log/metrics setup, monitoring config, performance tuning, troubleshooting, license/enterprise options
 
 ## Troubleshooting & Support
 
@@ -739,27 +833,37 @@ For complete workflow behavior, troubleshooting, and project-specific details, s
 
 ## Template Customization
 
-### Adding New Languages
-1. Create language-specific directory structure
-2. Add Dockerfile and build scripts
-3. Update CI/CD pipeline configuration
-4. Add language-specific linting and testing
-5. Update documentation and examples
+### Adding New Data Processors/Workers
 
-### Adding New Services
-1. Use service template in `services/` directory
-2. Configure service discovery and networking
-3. Add monitoring and logging integration
-4. Integrate license checking for service features
-5. Create service-specific tests
-6. Update deployment configurations
+When extending Killkrill with new data processing pipelines:
 
-### Enterprise Integration
-- Configure license server integration
-- Set up multi-tenant data isolation
-- Implement usage tracking and reporting
-- Add compliance audit logging
-- Configure enterprise monitoring
+1. Create service directory following existing patterns: `apps/newtype-worker/`
+2. Implement Receiver if high-throughput ingestion needed (Flask endpoint)
+3. Implement Worker with async Redis queue consumption
+4. Define PyDAL tables for processed data persistence
+5. Use Python 3.12+ with dataclasses for memory efficiency
+6. Add unit tests with mocked Redis/database
+7. Update architecture diagrams and API documentation
+8. Create Helm chart for Kubernetes deployment
+
+### Adding New API Endpoints
+
+Extend the Go API service: Add handler in `apps/api/handlers/`, use `/api/v1/` versioning, validate inputs, query PostgreSQL, add tests, update documentation.
+
+### Adding New Language Services
+
+For non-standard languages: Create `apps/newservice/` with Dockerfile, add language linting, CI/CD workflow, PostgreSQL integration, Prometheus metrics, Trivy scanning, and documentation.
+
+### Enterprise Integration Customization
+
+For enterprise deployments:
+
+1. **License Server**: Check on startup, gate features, set `RELEASE_MODE=true`
+2. **Multi-Tenancy**: Schema per tenant, include tenant ID in all data, scope queries
+3. **Usage Tracking**: Log API calls, track ingestion volumes per tenant, report to license server
+4. **Audit Logging**: Record user actions with timestamp, action, resource, result
+5. **Enterprise Monitoring**: Prometheus + Grafana, alerting for SLA violations, usage reports
+6. **High Availability**: K8s replicas for workers, StatefulSets for stateful services, load balancing
 
 ---
 
