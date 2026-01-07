@@ -18,8 +18,13 @@ import pydantic
 import redis
 import requests
 import structlog
-from prometheus_client import (CollectorRegistry, Counter, Gauge, Histogram,
-                               push_to_gateway)
+from prometheus_client import (
+    CollectorRegistry,
+    Counter,
+    Gauge,
+    Histogram,
+    push_to_gateway,
+)
 
 # Add project root to path
 sys.path.append(os.path.join(os.path.dirname(__file__), "../../"))

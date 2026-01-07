@@ -41,9 +41,7 @@ class PaginationParams(BaseModel):
     """Pagination parameters for list endpoints."""
 
     page: int = Field(default=1, ge=1, description="Page number (1-indexed)")
-    limit: int = Field(
-        default=20, ge=1, le=100, description="Items per page (max 100)"
-    )
+    limit: int = Field(default=20, ge=1, le=100, description="Items per page (max 100)")
 
 
 class APIResponse(BaseModel, Generic[TypeVar("T")]):
@@ -214,9 +212,7 @@ class SensorCheckCreate(BaseModel):
     interval: int = Field(
         ge=10, le=3600, description="Check interval in seconds (10-3600)"
     )
-    timeout: int = Field(
-        ge=1, le=60, description="Check timeout in seconds (1-60)"
-    )
+    timeout: int = Field(ge=1, le=60, description="Check timeout in seconds (1-60)")
     enabled: bool = Field(default=True, description="Enable or disable check")
     port: Optional[int] = Field(
         default=None, ge=1, le=65535, description="Port number (optional, for TCP)"

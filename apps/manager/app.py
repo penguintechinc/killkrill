@@ -10,8 +10,7 @@ import redis.asyncio as redis
 from pydal import DAL, Field
 from quart import Quart
 from quart_cors import cors
-from routes import (dashboard_bp, embeds_bp, health_bp, infrastructure_bp,
-                    services_bp)
+from routes import dashboard_bp, embeds_bp, health_bp, infrastructure_bp, services_bp
 
 from config import config
 

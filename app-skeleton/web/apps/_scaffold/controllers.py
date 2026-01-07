@@ -28,8 +28,17 @@ Warning: Fixtures MUST be declared with @action.uses({fixtures}) else your app w
 from py4web import URL, abort, action, redirect, request
 from yatl.helpers import A
 
-from .common import (T, auth, authenticated, cache, db, flash, logger, session,
-                     unauthenticated)
+from .common import (
+    T,
+    auth,
+    authenticated,
+    cache,
+    db,
+    flash,
+    logger,
+    session,
+    unauthenticated,
+)
 
 
 @action("index")

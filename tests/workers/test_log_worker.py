@@ -518,10 +518,13 @@ class TestPrometheusMetrics:
     @patch("apps.log-worker.app.config")
     def test_metrics_exposed(self, mock_config, mock_es, mock_redis):
         """Test that Prometheus metrics are properly exposed"""
-        from apps.log_worker.app import (active_workers,
-                                         logs_processed_counter,
-                                         metrics_forwarded_counter,
-                                         processing_duration, queue_lag)
+        from apps.log_worker.app import (
+            active_workers,
+            logs_processed_counter,
+            metrics_forwarded_counter,
+            processing_duration,
+            queue_lag,
+        )
 
         # Verify metrics objects exist
         assert logs_processed_counter is not None
@@ -536,8 +539,7 @@ class TestPrometheusMetrics:
         self, mock_config, mock_es, sample_log_batch
     ):
         """Test that processing metrics are incremented"""
-        from apps.log_worker.app import (ElasticsearchProcessor,
-                                         logs_processed_counter)
+        from apps.log_worker.app import ElasticsearchProcessor, logs_processed_counter
 
         mock_config.elasticsearch_index_prefix = "test"
 

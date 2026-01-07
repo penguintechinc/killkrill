@@ -6,8 +6,7 @@ import sys
 from typing import List
 
 import pytest
-from playwright.async_api import (Browser, BrowserContext, Page,
-                                  async_playwright)
+from playwright.async_api import Browser, BrowserContext, Page, async_playwright
 
 BASE_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 HEADLESS = os.getenv("HEADLESS", "true").lower() == "true"

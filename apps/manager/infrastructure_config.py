@@ -369,8 +369,16 @@ class KibanaConfigAPI:
 class GrafanaConfigAPI:
     """Grafana configuration management via API"""
 
-    def __init__(self, base_url: str, username: str = "admin", password: str = "admin"):
+    def __init__(
+        self,
+        base_url: str,
+        username: str = None,
+        password: str = None,
+    ):
         self.base_url = base_url.rstrip("/")
+        # Get credentials from environment or use provided values
+        username = username or os.getenv("GRAFANA_USER", "admin")
+        password = password or os.getenv("GRAFANA_PASSWORD", "admin")
         self.auth = (username, password)
         self.timeout = 30
 

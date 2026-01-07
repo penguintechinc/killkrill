@@ -11,30 +11,34 @@ from .database import db
 
 # Association table for many-to-many relationship
 roles_users = db.Table(
-    'roles_users',
-    db.Column('user_id', db.Integer(), db.ForeignKey('user.id')),
-    db.Column('role_id', db.Integer(), db.ForeignKey('role.id'))
+    "roles_users",
+    db.Column("user_id", db.Integer(), db.ForeignKey("user.id")),
+    db.Column("role_id", db.Integer(), db.ForeignKey("role.id")),
 )
 
 
 class Role(db.Model, RoleMixin):
     """Role model for RBAC"""
-    __tablename__ = 'role'
+
+    __tablename__ = "role"
 
     id = db.Column(db.Integer(), primary_key=True)
     name = db.Column(db.String(80), unique=True, nullable=False)
     description = db.Column(db.String(255))
     permissions = db.Column(db.JSON(), default=list)
     created_at = db.Column(db.DateTime(), default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime(), default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = db.Column(
+        db.DateTime(), default=datetime.utcnow, onupdate=datetime.utcnow
+    )
 
     def __repr__(self):
-        return f'<Role {self.name}>'
+        return f"<Role {self.name}>"
 
 
 class User(db.Model, UserMixin):
     """User model for authentication"""
-    __tablename__ = 'user'
+
+    __tablename__ = "user"
 
     id = db.Column(db.Integer(), primary_key=True)
     username = db.Column(db.String(255), unique=True, nullable=False, index=True)
@@ -46,15 +50,18 @@ class User(db.Model, UserMixin):
     fs_uniquifier = db.Column(db.String(255), unique=True, nullable=False)
     confirmed_at = db.Column(db.DateTime())
     created_at = db.Column(db.DateTime(), default=datetime.utcnow, index=True)
-    updated_at = db.Column(db.DateTime(), default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = db.Column(
+        db.DateTime(), default=datetime.utcnow, onupdate=datetime.utcnow
+    )
     last_login_at = db.Column(db.DateTime())
     last_login_ip = db.Column(db.String(45))
 
-    roles = db.relationship('Role', secondary=roles_users,
-                            backref=db.backref('users', lazy='dynamic'))
+    roles = db.relationship(
+        "Role", secondary=roles_users, backref=db.backref("users", lazy="dynamic")
+    )
 
     def __repr__(self):
-        return f'<User {self.username}>'
+        return f"<User {self.username}>"
 
     def has_role(self, role_name: str) -> bool:
         """Check if user has a specific role"""
@@ -80,4 +87,4 @@ class User(db.Model, UserMixin):
         return [role.name for role in self.roles]
 
 
-__all__ = ['User', 'Role', 'roles_users']
+__all__ = ["User", "Role", "roles_users"]

@@ -10,10 +10,10 @@ from .api_key import APIKey
 from .audit_log import AuditLog
 
 __all__ = [
-    'db',
-    'User',
-    'Role',
-    'roles_users',
-    'APIKey',
-    'AuditLog',
+    "db",
+    "User",
+    "Role",
+    "roles_users",
+    "APIKey",
+    "AuditLog",
 ]

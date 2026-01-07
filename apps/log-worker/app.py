@@ -26,8 +26,13 @@ from typing import Any, Dict, List, Optional
 import redis
 import structlog
 from elasticsearch import Elasticsearch, helpers
-from prometheus_client import (CollectorRegistry, Counter, Gauge, Histogram,
-                               push_to_gateway)
+from prometheus_client import (
+    CollectorRegistry,
+    Counter,
+    Gauge,
+    Histogram,
+    push_to_gateway,
+)
 
 # Add project root to path
 sys.path.append(os.path.join(os.path.dirname(__file__), "../../"))

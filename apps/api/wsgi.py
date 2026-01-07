@@ -20,8 +20,7 @@ from middleware.auth import AuthMiddleware
 from models.database import close_database, get_db, init_database
 from quart import Quart, g, jsonify, request
 from quart_cors import cors
-from services.license_service import (check_feature, get_license_info,
-                                      init_license)
+from services.license_service import check_feature, get_license_info, init_license
 from services.redis_service import close_redis, get_redis, init_redis
 
 # Import with absolute imports

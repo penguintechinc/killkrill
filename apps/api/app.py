@@ -228,9 +228,17 @@ def register_blueprints(app: Quart) -> None:
     """Register API blueprints"""
 
     # Import blueprints (will be created in subsequent files)
-    from .blueprints import (ai_analysis_bp, auth_bp, dashboard_bp, fleet_bp,
-                             infrastructure_bp, licensing_bp, sensors_bp,
-                             users_bp, websocket_bp)
+    from .blueprints import (
+        ai_analysis_bp,
+        auth_bp,
+        dashboard_bp,
+        fleet_bp,
+        infrastructure_bp,
+        licensing_bp,
+        sensors_bp,
+        users_bp,
+        websocket_bp,
+    )
 
     # Register with URL prefixes
     app.register_blueprint(auth_bp, url_prefix="/api/v1/auth")

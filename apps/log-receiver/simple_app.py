@@ -18,8 +18,7 @@ from py4web import DAL, action, request, response
 
 # Import shared ReceiverClient
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../shared"))
-from receiver_client import (AuthenticationError, ConnectionError,
-                             ReceiverClient)
+from receiver_client import AuthenticationError, ConnectionError, ReceiverClient
 
 logger = structlog.get_logger(__name__)
 

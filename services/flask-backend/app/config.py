@@ -188,12 +188,8 @@ class JWTConfig:
             )
 
         algorithm = os.getenv("JWT_ALGORITHM", "HS256")
-        access_token_expires = int(
-            os.getenv("JWT_ACCESS_TOKEN_EXPIRES_MINUTES", "30")
-        )
-        refresh_token_expires = int(
-            os.getenv("JWT_REFRESH_TOKEN_EXPIRES_DAYS", "7")
-        )
+        access_token_expires = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRES_MINUTES", "30"))
+        refresh_token_expires = int(os.getenv("JWT_REFRESH_TOKEN_EXPIRES_DAYS", "7"))
 
         return cls(
             secret_key=secret_key,
@@ -240,9 +236,7 @@ class FlaskSecurityConfig:
         """
         password_salt = os.getenv("SECURITY_PASSWORD_SALT", "")
         if not password_salt:
-            raise ValueError(
-                "SECURITY_PASSWORD_SALT environment variable must be set"
-            )
+            raise ValueError("SECURITY_PASSWORD_SALT environment variable must be set")
 
         bcrypt_rounds = int(os.getenv("SECURITY_BCRYPT_LOG_ROUNDS", "12"))
 
@@ -277,9 +271,7 @@ class LicenseConfig:
             RELEASE_MODE: Enable license enforcement (default: false)
         """
         license_key = os.getenv("LICENSE_KEY", "")
-        server_url = os.getenv(
-            "LICENSE_SERVER_URL", "https://license.penguintech.io"
-        )
+        server_url = os.getenv("LICENSE_SERVER_URL", "https://license.penguintech.io")
         product_name = os.getenv("PRODUCT_NAME", "killkrill")
         release_mode = os.getenv("RELEASE_MODE", "false").lower() == "true"
 
@@ -310,23 +302,13 @@ class MonitoringConfig:
         Returns:
             MonitoringConfig instance with values from environment or defaults.
         """
-        prometheus_url = os.getenv(
-            "PROMETHEUS_URL", "http://localhost:9090"
-        )
-        elasticsearch_url = os.getenv(
-            "ELASTICSEARCH_URL", "http://localhost:9200"
-        )
+        prometheus_url = os.getenv("PROMETHEUS_URL", "http://localhost:9090")
+        elasticsearch_url = os.getenv("ELASTICSEARCH_URL", "http://localhost:9200")
         grafana_url = os.getenv("GRAFANA_URL", "http://localhost:3000")
-        enable_metrics = (
-            os.getenv("ENABLE_METRICS", "true").lower() == "true"
-        )
-        enable_tracing = (
-            os.getenv("ENABLE_TRACING", "false").lower() == "true"
-        )
+        enable_metrics = os.getenv("ENABLE_METRICS", "true").lower() == "true"
+        enable_tracing = os.getenv("ENABLE_TRACING", "false").lower() == "true"
         metrics_port = int(os.getenv("METRICS_PORT", "8001"))
-        tracing_sample_rate = float(
-            os.getenv("TRACING_SAMPLE_RATE", "0.1")
-        )
+        tracing_sample_rate = float(os.getenv("TRACING_SAMPLE_RATE", "0.1"))
 
         return cls(
             prometheus_url=prometheus_url,
@@ -379,9 +361,7 @@ class CORSConfig:
     allow_methods: list[str] = field(
         default_factory=lambda: ["GET", "POST", "PUT", "DELETE", "PATCH"]
     )
-    allow_headers: list[str] = field(
-        default_factory=lambda: ["*"]
-    )
+    allow_headers: list[str] = field(default_factory=lambda: ["*"])
     expose_headers: list[str] = field(
         default_factory=lambda: [
             "Content-Range",
@@ -434,13 +414,9 @@ class BaseConfig:
     database: DatabaseConfig = field(default_factory=DatabaseConfig.from_env)
     redis: RedisConfig = field(default_factory=RedisConfig.from_env)
     jwt: JWTConfig = field(default_factory=JWTConfig.from_env)
-    security: FlaskSecurityConfig = field(
-        default_factory=FlaskSecurityConfig.from_env
-    )
+    security: FlaskSecurityConfig = field(default_factory=FlaskSecurityConfig.from_env)
     license: LicenseConfig = field(default_factory=LicenseConfig.from_env)
-    monitoring: MonitoringConfig = field(
-        default_factory=MonitoringConfig.from_env
-    )
+    monitoring: MonitoringConfig = field(default_factory=MonitoringConfig.from_env)
     grpc: GRPCConfig = field(default_factory=GRPCConfig.from_env)
     cors: CORSConfig = field(default_factory=CORSConfig.from_env)
 

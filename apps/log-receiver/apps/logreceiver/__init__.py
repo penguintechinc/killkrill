@@ -183,8 +183,9 @@ def ingest_fleet_logs():
                         timestamp = datetime.fromisoformat(
                             log_data["timestamp"].replace("Z", "+00:00")
                         )
-                    except:
-                        pass
+                    except (ValueError, AttributeError) as e:
+                        logger.warning(f"Failed to parse timestamp: {e}")
+                        timestamp = datetime.utcnow()
 
                 # Determine log type and extract relevant information
                 stream_name = request_data.get("StreamName", "unknown")

@@ -21,15 +21,30 @@ from flask import Flask, request, jsonify, g
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from flask_security import Security, SQLAlchemyUserDatastore, hash_password
-from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
-from prometheus_client import Counter, Histogram, Gauge, CollectorRegistry, generate_latest
+from flask_jwt_extended import (
+    JWTManager,
+    create_access_token,
+    jwt_required,
+    get_jwt_identity,
+)
+from prometheus_client import (
+    Counter,
+    Histogram,
+    Gauge,
+    CollectorRegistry,
+    generate_latest,
+)
 import structlog
 from decouple import config
 
 # Import shared modules
 from shared.config.settings import KillKrillConfig, get_config
 from shared.monitoring.metrics import MetricsCollector, export_metrics
-from shared.auth.middleware import MultiAuthMiddleware, verify_jwt_token, AuthenticationError
+from shared.auth.middleware import (
+    MultiAuthMiddleware,
+    verify_jwt_token,
+    AuthenticationError,
+)
 
 
 # Configure structured logging
@@ -43,7 +58,7 @@ structlog.configure(
         structlog.processors.StackInfoRenderer(),
         structlog.processors.format_exc_info,
         structlog.processors.UnicodeDecoder(),
-        structlog.processors.JSONRenderer()
+        structlog.processors.JSONRenderer(),
     ],
     context_class=dict,
     logger_factory=structlog.stdlib.LoggerFactory(),
@@ -56,6 +71,7 @@ logger = structlog.get_logger()
 @dataclass
 class AppConfig:
     """Configuration for Flask application"""
+
     env: str
     debug: bool
     testing: bool
@@ -78,7 +94,7 @@ class RequestIdMiddleware:
 
     def before_request(self) -> None:
         """Generate correlation ID for request"""
-        correlation_id = request.headers.get('X-Correlation-ID')
+        correlation_id = request.headers.get("X-Correlation-ID")
         if not correlation_id:
             correlation_id = str(uuid.uuid4())
 
@@ -90,21 +106,21 @@ class RequestIdMiddleware:
         duration = (datetime.utcnow() - g.start_time).total_seconds()
 
         log_data = {
-            'correlation_id': g.correlation_id,
-            'method': request.method,
-            'path': request.path,
-            'status_code': response.status_code,
-            'duration_seconds': duration,
-            'client_ip': request.remote_addr,
-            'user_agent': request.headers.get('User-Agent', 'unknown'),
+            "correlation_id": g.correlation_id,
+            "method": request.method,
+            "path": request.path,
+            "status_code": response.status_code,
+            "duration_seconds": duration,
+            "client_ip": request.remote_addr,
+            "user_agent": request.headers.get("User-Agent", "unknown"),
         }
 
         if response.status_code >= 400:
-            logger.warning('request_completed', **log_data)
+            logger.warning("request_completed", **log_data)
         else:
-            logger.info('request_completed', **log_data)
+            logger.info("request_completed", **log_data)
 
-        response.headers['X-Correlation-ID'] = g.correlation_id
+        response.headers["X-Correlation-ID"] = g.correlation_id
         return response
 
 
@@ -120,10 +136,10 @@ class AuthenticationMiddleware:
         """Authenticate request and populate g.auth_context"""
         # Skip authentication for public endpoints
         public_endpoints = [
-            '/healthz',
-            '/metrics',
-            '/api/v1/auth/login',
-            '/api/v1/auth/register',
+            "/healthz",
+            "/metrics",
+            "/api/v1/auth/login",
+            "/api/v1/auth/register",
         ]
 
         if request.path in public_endpoints:
@@ -137,7 +153,7 @@ class AuthenticationMiddleware:
         # Authenticate request
         auth_result = self.auth_middleware.authenticate_request(headers, query_params)
 
-        if auth_result and auth_result.get('authenticated'):
+        if auth_result and auth_result.get("authenticated"):
             g.auth_context = auth_result
         else:
             g.auth_context = None
@@ -161,7 +177,7 @@ class MetricsMiddleware:
 
             self.metrics_collector.record_request(method, endpoint, status, duration)
         except Exception as e:
-            logger.error('metrics_collection_error', error=str(e))
+            logger.error("metrics_collection_error", error=str(e))
 
         return response
 
@@ -169,44 +185,47 @@ class MetricsMiddleware:
 def create_config(env: str = None) -> AppConfig:
     """Create Flask configuration based on environment"""
     if env is None:
-        env = os.getenv('FLASK_ENV', 'development')
+        env = os.getenv("FLASK_ENV", "development")
 
     base_config = {
-        'jwt_secret': config('JWT_SECRET', default='killkrill-secret-dev-only'),
-        'jwt_expiry_hours': 24,
-        'sqlalchemy_track_modifications': False,
-        'max_content_length': 16 * 1024 * 1024,  # 16MB
-        'json_sort_keys': False,
+        "jwt_secret": config("JWT_SECRET", default="killkrill-secret-dev-only"),
+        "jwt_expiry_hours": 24,
+        "sqlalchemy_track_modifications": False,
+        "max_content_length": 16 * 1024 * 1024,  # 16MB
+        "json_sort_keys": False,
     }
 
-    db_uri = config('DATABASE_URL', default='postgresql://killkrill:killkrill123@localhost:5432/killkrill')
+    db_uri = config(
+        "DATABASE_URL",
+        default="postgresql://killkrill:killkrill123@localhost:5432/killkrill",
+    )
 
-    if env == 'production':
+    if env == "production":
         return AppConfig(
-            env='production',
+            env="production",
             debug=False,
             testing=False,
             sqlalchemy_database_uri=db_uri,
             sqlalchemy_echo=False,
-            **base_config
+            **base_config,
         )
-    elif env == 'testing':
+    elif env == "testing":
         return AppConfig(
-            env='testing',
+            env="testing",
             debug=True,
             testing=True,
-            sqlalchemy_database_uri='sqlite:///:memory:',
+            sqlalchemy_database_uri="sqlite:///:memory:",
             sqlalchemy_echo=True,
-            **base_config
+            **base_config,
         )
     else:  # development
         return AppConfig(
-            env='development',
+            env="development",
             debug=True,
             testing=False,
             sqlalchemy_database_uri=db_uri,
             sqlalchemy_echo=True,
-            **base_config
+            **base_config,
         )
 
 
@@ -228,9 +247,9 @@ def setup_security(app: Flask, db: SQLAlchemy) -> Security:
 
 def setup_jwt(app: Flask, config: AppConfig) -> JWTManager:
     """Setup Flask-JWT-Extended"""
-    app.config['JWT_SECRET_KEY'] = config.jwt_secret
-    app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=config.jwt_expiry_hours)
-    app.config['JWT_ALGORITHM'] = 'HS256'
+    app.config["JWT_SECRET_KEY"] = config.jwt_secret
+    app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=config.jwt_expiry_hours)
+    app.config["JWT_ALGORITHM"] = "HS256"
 
     jwt = JWTManager(app)
 
@@ -245,13 +264,14 @@ def setup_jwt(app: Flask, config: AppConfig) -> JWTManager:
 
 def setup_metrics(app: Flask) -> MetricsCollector:
     """Setup Prometheus metrics collection"""
-    metrics_collector = MetricsCollector('flask-backend')
+    metrics_collector = MetricsCollector("flask-backend")
     return metrics_collector
 
 
 def register_blueprints(app: Flask) -> None:
     """Register API blueprints"""
     from app.api.v1 import register_blueprints as register_api_v1
+
     register_api_v1(app)
 
 
@@ -261,113 +281,168 @@ def register_error_handlers(app: Flask) -> None:
     @app.errorhandler(400)
     def handle_bad_request(error):
         """Handle 400 Bad Request"""
-        logger.warning('bad_request_error', error=str(error), correlation_id=g.get('correlation_id'))
-        return jsonify({
-            'error': 'Bad Request',
-            'message': str(error),
-            'correlation_id': g.get('correlation_id'),
-            'status_code': 400
-        }), 400
+        logger.warning(
+            "bad_request_error",
+            error=str(error),
+            correlation_id=g.get("correlation_id"),
+        )
+        return (
+            jsonify(
+                {
+                    "error": "Bad Request",
+                    "message": str(error),
+                    "correlation_id": g.get("correlation_id"),
+                    "status_code": 400,
+                }
+            ),
+            400,
+        )
 
     @app.errorhandler(401)
     def handle_unauthorized(error):
         """Handle 401 Unauthorized"""
-        logger.warning('unauthorized_error', error=str(error), correlation_id=g.get('correlation_id'))
-        return jsonify({
-            'error': 'Unauthorized',
-            'message': 'Authentication required',
-            'correlation_id': g.get('correlation_id'),
-            'status_code': 401
-        }), 401
+        logger.warning(
+            "unauthorized_error",
+            error=str(error),
+            correlation_id=g.get("correlation_id"),
+        )
+        return (
+            jsonify(
+                {
+                    "error": "Unauthorized",
+                    "message": "Authentication required",
+                    "correlation_id": g.get("correlation_id"),
+                    "status_code": 401,
+                }
+            ),
+            401,
+        )
 
     @app.errorhandler(403)
     def handle_forbidden(error):
         """Handle 403 Forbidden"""
-        logger.warning('forbidden_error', error=str(error), correlation_id=g.get('correlation_id'))
-        return jsonify({
-            'error': 'Forbidden',
-            'message': 'Insufficient permissions',
-            'correlation_id': g.get('correlation_id'),
-            'status_code': 403
-        }), 403
+        logger.warning(
+            "forbidden_error", error=str(error), correlation_id=g.get("correlation_id")
+        )
+        return (
+            jsonify(
+                {
+                    "error": "Forbidden",
+                    "message": "Insufficient permissions",
+                    "correlation_id": g.get("correlation_id"),
+                    "status_code": 403,
+                }
+            ),
+            403,
+        )
 
     @app.errorhandler(404)
     def handle_not_found(error):
         """Handle 404 Not Found"""
-        logger.warning('not_found_error', path=request.path, correlation_id=g.get('correlation_id'))
-        return jsonify({
-            'error': 'Not Found',
-            'message': f'Resource not found: {request.path}',
-            'correlation_id': g.get('correlation_id'),
-            'status_code': 404
-        }), 404
+        logger.warning(
+            "not_found_error", path=request.path, correlation_id=g.get("correlation_id")
+        )
+        return (
+            jsonify(
+                {
+                    "error": "Not Found",
+                    "message": f"Resource not found: {request.path}",
+                    "correlation_id": g.get("correlation_id"),
+                    "status_code": 404,
+                }
+            ),
+            404,
+        )
 
     @app.errorhandler(500)
     def handle_internal_error(error):
         """Handle 500 Internal Server Error"""
-        logger.error('internal_server_error', error=str(error), correlation_id=g.get('correlation_id'))
-        return jsonify({
-            'error': 'Internal Server Error',
-            'message': 'An unexpected error occurred',
-            'correlation_id': g.get('correlation_id'),
-            'status_code': 500
-        }), 500
+        logger.error(
+            "internal_server_error",
+            error=str(error),
+            correlation_id=g.get("correlation_id"),
+        )
+        return (
+            jsonify(
+                {
+                    "error": "Internal Server Error",
+                    "message": "An unexpected error occurred",
+                    "correlation_id": g.get("correlation_id"),
+                    "status_code": 500,
+                }
+            ),
+            500,
+        )
 
     @app.errorhandler(Exception)
     def handle_exception(error):
         """Handle all unhandled exceptions"""
-        logger.error('unhandled_exception', error=str(error), error_type=type(error).__name__,
-                     correlation_id=g.get('correlation_id'))
-        return jsonify({
-            'error': 'Internal Server Error',
-            'message': 'An unexpected error occurred',
-            'correlation_id': g.get('correlation_id'),
-            'status_code': 500
-        }), 500
+        logger.error(
+            "unhandled_exception",
+            error=str(error),
+            error_type=type(error).__name__,
+            correlation_id=g.get("correlation_id"),
+        )
+        return (
+            jsonify(
+                {
+                    "error": "Internal Server Error",
+                    "message": "An unexpected error occurred",
+                    "correlation_id": g.get("correlation_id"),
+                    "status_code": 500,
+                }
+            ),
+            500,
+        )
 
 
 def register_health_endpoint(app: Flask, config: KillKrillConfig) -> None:
     """Register /healthz health check endpoint"""
 
-    @app.route('/healthz', methods=['GET'])
+    @app.route("/healthz", methods=["GET"])
     def healthz():
         """Health check endpoint"""
-        return jsonify({
-            'status': 'healthy',
-            'service': 'killkrill-flask-backend',
-            'version': config.version,
-            'timestamp': datetime.utcnow().isoformat(),
-            'environment': os.getenv('FLASK_ENV', 'development')
-        }), 200
+        return (
+            jsonify(
+                {
+                    "status": "healthy",
+                    "service": "killkrill-flask-backend",
+                    "version": config.version,
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "environment": os.getenv("FLASK_ENV", "development"),
+                }
+            ),
+            200,
+        )
 
 
 def register_metrics_endpoint(app: Flask, metrics_collector: MetricsCollector) -> None:
     """Register /metrics Prometheus metrics endpoint"""
 
-    @app.route('/metrics', methods=['GET'])
+    @app.route("/metrics", methods=["GET"])
     def metrics():
         """Prometheus metrics endpoint"""
         metrics_data = export_metrics(metrics_collector.registry)
-        return metrics_data, 200, {'Content-Type': 'text/plain; charset=utf-8'}
+        return metrics_data, 200, {"Content-Type": "text/plain; charset=utf-8"}
 
 
 def register_auth_endpoints(app: Flask, config: AppConfig) -> None:
     """Register authentication endpoints"""
 
-    @app.route('/api/v1/auth/login', methods=['POST'])
+    @app.route("/api/v1/auth/login", methods=["POST"])
     def login():
         """Login endpoint - returns JWT token"""
         from flask import request
 
         data = request.get_json()
         if not data:
-            return jsonify({'error': 'No JSON data provided'}), 400
+            return jsonify({"error": "No JSON data provided"}), 400
 
-        username = data.get('username')
-        password = data.get('password')
+        username = data.get("username")
+        password = data.get("password")
 
         if not username or not password:
-            return jsonify({'error': 'Username and password required'}), 400
+            return jsonify({"error": "Username and password required"}), 400
 
         # TODO: Verify credentials against database
         # For now, accept any credentials
@@ -375,42 +450,57 @@ def register_auth_endpoints(app: Flask, config: AppConfig) -> None:
             identity=username,
             expires_delta=timedelta(hours=config.jwt_expiry_hours),
             additional_claims={
-                'username': username,
-                'roles': ['viewer'],
-                'permissions': ['read']
-            }
+                "username": username,
+                "roles": ["viewer"],
+                "permissions": ["read"],
+            },
         )
 
-        logger.info('user_login', username=username, correlation_id=g.get('correlation_id'))
+        logger.info(
+            "user_login", username=username, correlation_id=g.get("correlation_id")
+        )
 
-        return jsonify({
-            'access_token': access_token,
-            'token_type': 'Bearer',
-            'expires_in': config.jwt_expiry_hours * 3600
-        }), 200
+        return (
+            jsonify(
+                {
+                    "access_token": access_token,
+                    "token_type": "Bearer",
+                    "expires_in": config.jwt_expiry_hours * 3600,
+                }
+            ),
+            200,
+        )
 
-    @app.route('/api/v1/auth/verify', methods=['GET'])
+    @app.route("/api/v1/auth/verify", methods=["GET"])
     @jwt_required()
     def verify_token():
         """Verify JWT token"""
         identity = get_jwt_identity()
-        return jsonify({
-            'valid': True,
-            'identity': identity,
-            'correlation_id': g.get('correlation_id')
-        }), 200
+        return (
+            jsonify(
+                {
+                    "valid": True,
+                    "identity": identity,
+                    "correlation_id": g.get("correlation_id"),
+                }
+            ),
+            200,
+        )
 
-    @app.route('/api/v1/auth/logout', methods=['POST'])
+    @app.route("/api/v1/auth/logout", methods=["POST"])
     @jwt_required()
     def logout():
         """Logout endpoint"""
         identity = get_jwt_identity()
-        logger.info('user_logout', identity=identity, correlation_id=g.get('correlation_id'))
-        return jsonify({'message': 'Logged out successfully'}), 200
+        logger.info(
+            "user_logout", identity=identity, correlation_id=g.get("correlation_id")
+        )
+        return jsonify({"message": "Logged out successfully"}), 200
 
 
 def require_role(*roles: str):
     """Decorator to require specific roles"""
+
     def decorator(fn):
         @wraps(fn)
         @jwt_required()
@@ -418,25 +508,36 @@ def require_role(*roles: str):
             from flask_jwt_extended import get_jwt
 
             claims = get_jwt()
-            user_roles = claims.get('roles', [])
+            user_roles = claims.get("roles", [])
 
             if not any(role in user_roles for role in roles):
-                logger.warning('insufficient_permissions', required_roles=roles,
-                               user_roles=user_roles, correlation_id=g.get('correlation_id'))
-                return jsonify({
-                    'error': 'Forbidden',
-                    'message': 'Insufficient permissions',
-                    'correlation_id': g.get('correlation_id')
-                }), 403
+                logger.warning(
+                    "insufficient_permissions",
+                    required_roles=roles,
+                    user_roles=user_roles,
+                    correlation_id=g.get("correlation_id"),
+                )
+                return (
+                    jsonify(
+                        {
+                            "error": "Forbidden",
+                            "message": "Insufficient permissions",
+                            "correlation_id": g.get("correlation_id"),
+                        }
+                    ),
+                    403,
+                )
 
             return fn(*args, **kwargs)
 
         return wrapper
+
     return decorator
 
 
 def require_permission(*permissions: str):
     """Decorator to require specific permissions"""
+
     def decorator(fn):
         @wraps(fn)
         @jwt_required()
@@ -444,20 +545,30 @@ def require_permission(*permissions: str):
             from flask_jwt_extended import get_jwt
 
             claims = get_jwt()
-            user_permissions = claims.get('permissions', [])
+            user_permissions = claims.get("permissions", [])
 
             if not any(perm in user_permissions for perm in permissions):
-                logger.warning('insufficient_permissions', required_permissions=permissions,
-                               user_permissions=user_permissions, correlation_id=g.get('correlation_id'))
-                return jsonify({
-                    'error': 'Forbidden',
-                    'message': 'Insufficient permissions',
-                    'correlation_id': g.get('correlation_id')
-                }), 403
+                logger.warning(
+                    "insufficient_permissions",
+                    required_permissions=permissions,
+                    user_permissions=user_permissions,
+                    correlation_id=g.get("correlation_id"),
+                )
+                return (
+                    jsonify(
+                        {
+                            "error": "Forbidden",
+                            "message": "Insufficient permissions",
+                            "correlation_id": g.get("correlation_id"),
+                        }
+                    ),
+                    403,
+                )
 
             return fn(*args, **kwargs)
 
         return wrapper
+
     return decorator
 
 
@@ -486,15 +597,15 @@ def create_app(env: str = None) -> Flask:
     # Load configuration
     app_config = create_config(env)
     config_dict = {
-        'ENV': app_config.env,
-        'DEBUG': app_config.debug,
-        'TESTING': app_config.testing,
-        'SQLALCHEMY_DATABASE_URI': app_config.sqlalchemy_database_uri,
-        'SQLALCHEMY_TRACK_MODIFICATIONS': app_config.sqlalchemy_track_modifications,
-        'SQLALCHEMY_ECHO': app_config.sqlalchemy_echo,
-        'MAX_CONTENT_LENGTH': app_config.max_content_length,
-        'JSON_SORT_KEYS': app_config.json_sort_keys,
-        'JWT_SECRET_KEY': app_config.jwt_secret,
+        "ENV": app_config.env,
+        "DEBUG": app_config.debug,
+        "TESTING": app_config.testing,
+        "SQLALCHEMY_DATABASE_URI": app_config.sqlalchemy_database_uri,
+        "SQLALCHEMY_TRACK_MODIFICATIONS": app_config.sqlalchemy_track_modifications,
+        "SQLALCHEMY_ECHO": app_config.sqlalchemy_echo,
+        "MAX_CONTENT_LENGTH": app_config.max_content_length,
+        "JSON_SORT_KEYS": app_config.json_sort_keys,
+        "JWT_SECRET_KEY": app_config.jwt_secret,
     }
     app.config.update(config_dict)
 
@@ -511,19 +622,27 @@ def create_app(env: str = None) -> Flask:
         security = setup_security(app, db)
         app.security = security
     except Exception as e:
-        logger.warning('security_setup_warning', error=str(e))
+        logger.warning("security_setup_warning", error=str(e))
 
     # Setup CORS
-    CORS(app, resources={
-        r"/api/*": {
-            "origins": config('CORS_ORIGINS', default='*').split(','),
-            "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-            "allow_headers": ["Content-Type", "Authorization", "X-API-Key", "X-Correlation-ID"],
-            "expose_headers": ["X-Correlation-ID"],
-            "supports_credentials": True,
-            "max_age": 3600
-        }
-    })
+    CORS(
+        app,
+        resources={
+            r"/api/*": {
+                "origins": config("CORS_ORIGINS", default="*").split(","),
+                "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+                "allow_headers": [
+                    "Content-Type",
+                    "Authorization",
+                    "X-API-Key",
+                    "X-Correlation-ID",
+                ],
+                "expose_headers": ["X-Correlation-ID"],
+                "supports_credentials": True,
+                "max_age": 3600,
+            }
+        },
+    )
 
     # Get KillKrill config
     killkrill_config = get_config()
@@ -549,7 +668,7 @@ def create_app(env: str = None) -> Flask:
     try:
         register_blueprints(app)
     except ImportError as e:
-        logger.warning('blueprints_import_warning', error=str(e))
+        logger.warning("blueprints_import_warning", error=str(e))
 
     # Register error handlers
     register_error_handlers(app)
@@ -558,16 +677,20 @@ def create_app(env: str = None) -> Flask:
     with app.app_context():
         try:
             db.create_all()
-            logger.info('database_initialized', environment=app_config.env)
+            logger.info("database_initialized", environment=app_config.env)
         except Exception as e:
-            logger.error('database_initialization_error', error=str(e), environment=app_config.env)
+            logger.error(
+                "database_initialization_error",
+                error=str(e),
+                environment=app_config.env,
+            )
 
-    logger.info('flask_app_created', environment=app_config.env, debug=app_config.debug)
+    logger.info("flask_app_created", environment=app_config.env, debug=app_config.debug)
 
     return app
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Development server - run with proper logging
-    app = create_app(env='development')
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app = create_app(env="development")
+    app.run(host="0.0.0.0", port=5000, debug=True)

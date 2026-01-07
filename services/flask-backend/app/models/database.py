@@ -20,4 +20,4 @@ from app.models.db_init import (
     get_pydal_db,
 )
 
-__all__ = ['db', 'get_engine', 'get_pydal_connection', 'get_pydal_db']
+__all__ = ["db", "get_engine", "get_pydal_connection", "get_pydal_db"]

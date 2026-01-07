@@ -790,9 +790,12 @@ class TestPrometheusMetricsExposure:
     @patch("apps.metrics_worker.app.config")
     def test_metrics_exposed(self, mock_config, mock_redis):
         """Test that Prometheus metrics are properly exposed"""
-        from apps.metrics_worker.app import (metrics_processed_counter,
-                                             processing_errors_counter,
-                                             processing_time, queue_size_gauge)
+        from apps.metrics_worker.app import (
+            metrics_processed_counter,
+            processing_errors_counter,
+            processing_time,
+            queue_size_gauge,
+        )
 
         assert metrics_processed_counter is not None
         assert processing_errors_counter is not None
@@ -803,8 +806,7 @@ class TestPrometheusMetricsExposure:
     @patch("apps.metrics_worker.app.config")
     def test_processing_metrics_incremented(self, mock_config, mock_redis):
         """Test that processing metrics are incremented"""
-        from apps.metrics_worker.app import (MetricsWorker,
-                                             metrics_processed_counter)
+        from apps.metrics_worker.app import MetricsWorker, metrics_processed_counter
 
         mock_config.prometheus_gateway = "http://localhost:9091"
         mock_config.prometheus_push_interval = 60
