@@ -1,6 +1,7 @@
 """
 KillKrill API - AI Analysis Integration Tests
-httpx-based integration tests for AI analysis endpoints with pytest markers
+httpx-based integration tests for AI analysis endpoints with pytest markers.
+Compatible with Quart async patterns via pytest-asyncio.
 """
 
 import pytest

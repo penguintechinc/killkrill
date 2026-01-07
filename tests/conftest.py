@@ -8,6 +8,9 @@ from typing import Generator
 import pytest
 from faker import Faker
 
+# Configure pytest-asyncio for async test support
+pytest_plugins = ('pytest_asyncio',)
+
 # Add parent directories to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 

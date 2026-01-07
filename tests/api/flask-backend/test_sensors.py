@@ -1,6 +1,7 @@
 """
 HTTPX-based integration tests for Flask Backend sensors endpoints.
 Tests call running API via HTTP using httpx client from conftest fixtures.
+Compatible with Quart async patterns via pytest-asyncio.
 """
 
 import pytest

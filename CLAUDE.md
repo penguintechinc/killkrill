@@ -33,9 +33,10 @@ Killkrill is an enterprise-grade data processing and observability system built 
 
 **Python Stack:**
 - **Python**: 3.12+ for all applications
-- **Web Framework**: Flask + Flask-Security-Too (mandatory)
+- **Web Framework**: Quart with Hypercorn server (mandatory async framework)
 - **Database ORM**: Hybrid approach - SQLAlchemy for initialization, PyDAL for day-to-day operations (mandatory for all Python applications)
 - **Performance**: Dataclasses with slots, type hints, async/await required
+- **Server**: Hypercorn ASGI server for production deployments
 
 **Frontend Stack:**
 - **React**: ReactJS for all frontend applications
@@ -85,9 +86,9 @@ Killkrill is an enterprise-grade data processing and observability system built 
 - Environment variables: `GALERA_MODE=true`, `GALERA_NODES=node1,node2,node3`
 
 ### Security & Authentication
-- **Flask-Security-Too**: Mandatory for all Flask applications
-  - Role-based access control (RBAC)
-  - User authentication and session management
+- **Quart-JWT or Custom Auth**: Authentication for Quart applications
+  - Role-based access control (RBAC) via decorators
+  - JWT token-based authentication and session management
   - Password hashing with bcrypt
   - Email confirmation and password reset
   - Two-factor authentication (2FA)
@@ -504,17 +505,18 @@ Comprehensive development standards are documented separately to keep this file 
 
 ## Common Integration Patterns
 
-### Flask + Flask-Security-Too + PyDAL
+### Quart + JWT Auth + PyDAL
 ```python
-from flask import Flask
-from flask_security import Security, SQLAlchemyUserDatastore, auth_required, hash_password
+from quart import Quart, jsonify, request
+from quart_cors import cors
 from pydal import DAL, Field
 from dataclasses import dataclass
 from typing import Optional
+import jwt
 
-app = Flask(__name__)
+app = Quart(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
-app.config['SECURITY_PASSWORD_SALT'] = os.getenv('SECURITY_PASSWORD_SALT')
+app = cors(app)
 
 # PyDAL database connection
 db = DAL(
@@ -525,30 +527,27 @@ db = DAL(
 
 # Define tables with PyDAL
 db.define_table('users',
-    Field('email', 'string', requires=IS_EMAIL(), unique=True),
+    Field('email', 'string', unique=True),
     Field('password', 'string'),
     Field('active', 'boolean', default=True),
-    Field('fs_uniquifier', 'string', unique=True),
     migrate=True)
 
-db.define_table('roles',
-    Field('name', 'string', unique=True),
-    Field('description', 'text'),
-    migrate=True)
+# Async endpoint with JWT validation
+@app.route('/api/v1/protected', methods=['GET'])
+async def protected_resource():
+    auth = request.headers.get('Authorization', '')
+    if not auth.startswith('Bearer '):
+        return jsonify({'error': 'Missing token'}), 401
+    token = auth.split(' ')[1]
+    try:
+        payload = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
+    except jwt.InvalidTokenError:
+        return jsonify({'error': 'Invalid token'}), 401
+    return jsonify({'message': 'This is a protected endpoint'})
 
-# Flask-Security-Too setup
-from flask_security import Security, PyDALUserDatastore
-user_datastore = PyDALUserDatastore(db, db.users, db.roles)
-security = Security(app, user_datastore)
-
-@app.route('/api/v1/protected')
-@auth_required()
-def protected_resource():
-    return {'message': 'This is a protected endpoint'}
-
-@app.route('/healthz')
-def health():
-    return {'status': 'healthy'}, 200
+@app.route('/healthz', methods=['GET'])
+async def health():
+    return jsonify({'status': 'healthy'}), 200
 ```
 
 ### Hybrid Database Approach: SQLAlchemy Initialization + PyDAL Day-to-Day
@@ -631,10 +630,10 @@ def get_db_connection() -> DAL:
 
 ### ReactJS Frontend Integration
 ```javascript
-// API client for Flask backend
+// API client for Quart backend
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -643,7 +642,7 @@ export const apiClient = axios.create({
   },
 });
 
-// Add auth token to requests
+// Add JWT token to requests
 apiClient.interceptors.request.use((config) => {
   const token = localStorage.getItem('authToken');
   if (token) {
@@ -671,14 +670,12 @@ function ProtectedComponent() {
 ### License-Gated Features (Python)
 ```python
 from shared.licensing import license_client, requires_feature
-from flask_security import auth_required
 
-@app.route('/api/v1/advanced/analytics')
-@auth_required()
+@app.route('/api/v1/advanced/analytics', methods=['GET'])
 @requires_feature("advanced_analytics")
-def generate_advanced_report():
+async def generate_advanced_report():
     """Requires authentication AND professional+ license"""
-    return {'report': analytics.generate_report()}
+    return jsonify({'report': await analytics.generate_report()})
 ```
 
 ### Monitoring Integration
@@ -688,9 +685,12 @@ from prometheus_client import Counter, Histogram, generate_latest
 REQUEST_COUNT = Counter('http_requests_total', 'Total HTTP requests', ['method', 'endpoint'])
 REQUEST_DURATION = Histogram('http_request_duration_seconds', 'HTTP request duration')
 
-@app.route('/metrics')
-def metrics():
-    return generate_latest(), {'Content-Type': 'text/plain'}
+@app.route('/metrics', methods=['GET'])
+async def metrics():
+    return await app.response_class(
+        generate_latest(),
+        mimetype='text/plain; charset=utf-8'
+    )
 ```
 
 ### Multi-Service Log/Metrics Processing Patterns

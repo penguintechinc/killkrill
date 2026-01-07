@@ -3,11 +3,13 @@
 import os
 import pytest
 import httpx
-from typing import Generator
+from typing import Generator, AsyncGenerator
 from unittest.mock import MagicMock
 
 # API base URL
 API_BASE_URL = os.getenv('API_BASE_URL', 'http://localhost:5000')
+
+# Note: pytest_plugins configured in root tests/conftest.py
 
 
 @pytest.fixture(scope="session")
@@ -20,6 +22,13 @@ def api_base_url() -> str:
 def client() -> Generator[httpx.Client, None, None]:
     """Httpx client for sync API calls."""
     with httpx.Client(base_url=API_BASE_URL, timeout=30.0) as c:
+        yield c
+
+
+@pytest.fixture
+async def async_client() -> AsyncGenerator[httpx.AsyncClient, None]:
+    """Httpx async client for async API calls (Quart compatible)."""
+    async with httpx.AsyncClient(base_url=API_BASE_URL, timeout=30.0) as c:
         yield c
 
 
@@ -81,6 +90,12 @@ def auth_headers(auth_token) -> dict:
 def json_headers() -> dict:
     """JSON headers without auth."""
     return {'Content-Type': 'application/json'}
+
+
+@pytest.fixture
+def api_client(client) -> httpx.Client:
+    """Alias for client fixture (common naming convention)."""
+    return client
 
 
 @pytest.fixture

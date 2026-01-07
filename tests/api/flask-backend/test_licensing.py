@@ -1,6 +1,7 @@
 """
 KillKrill API - Licensing Integration Tests
-httpx-based integration tests for licensing endpoints with pytest markers
+httpx-based integration tests for licensing endpoints with pytest markers.
+Compatible with Quart async patterns via pytest-asyncio.
 """
 
 import pytest

@@ -67,33 +67,53 @@ bandit -r . --skip B101,B601
 
 **Performance Requirements**:
 - Workers: Process 50K+ events/sec
-- Receivers: Ingest 100K+ msg/sec
+- Receivers: Ingest 100K+ msg/sec with Quart + Hypercorn
 - Memory: <500MB per service
-- Response time: <100ms for sync operations
-- Async/await for I/O operations
+- Response time: <100ms for async operations
+- Async/await for I/O operations (Quart mandatory for all web services)
+
+**Quart Framework Requirements**:
+- Use Quart for all new Python web services
+- Hypercorn ASGI server for production deployments
+- Blueprint organization for modular routes
+- Async route handlers: `async def route_handler()`
+- PyDAL for database operations with async context
+- Structured logging with structlog
+- JWT or custom auth decorators for protected endpoints
 
 ### Testing Standards
 
 **Unit Tests**:
 - Isolated from external dependencies
 - No network access required
-- Mock all I/O operations
+- Mock all I/O operations and async calls
 - Fast execution (<1ms per test)
 - Test both success and failure paths
 - Coverage target: 80% minimum
+- Use pytest with async fixtures for Quart apps
 
 **Integration Tests**:
-- Test component interactions
-- Use Docker containers for services
+- Test component interactions with Docker containers
 - Real database/cache usage OK
+- Test Quart blueprints and async handlers
 - Should complete in <30 seconds total
-- Test error conditions
+- Test error conditions and auth decorators
 
 **End-to-End Tests**:
-- Full system workflows
-- Production-like environment
-- Real data scenarios
+- Full system workflows with production config
+- Production-like environment (docker-compose.yml)
+- Real data scenarios through message queues
 - Performance baseline validation
+
+**Pytest Command Reference**:
+```bash
+make test                    # Run all tests (unit + integration + e2e)
+make test-unit              # Unit tests only (fast)
+make test-integration       # Integration tests with Docker
+make test-e2e               # End-to-end workflow tests
+pytest tests/unit -v        # Verbose unit test output
+pytest tests/integration --durations=10  # Show 10 slowest tests
+```
 
 ---
 

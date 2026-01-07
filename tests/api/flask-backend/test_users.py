@@ -7,6 +7,8 @@ Tests use httpx client to test endpoints via HTTP:
 - POST /api/v1/users/
 - PUT /api/v1/users/{id}
 - DELETE /api/v1/users/{id}
+
+Compatible with Quart async patterns via pytest-asyncio.
 """
 
 import os

@@ -58,7 +58,13 @@ KillKrill is a comprehensive centralized platform for ingesting logs and metrics
 git clone https://github.com/penguintechinc/killkrill.git
 cd killkrill
 make setup                    # Install dependencies and setup environment
-make dev                      # Start development environment
+make dev                      # Start development environment with Quart services
+
+# Testing
+make test                     # Run all tests (unit, integration, e2e)
+make test-unit               # Run unit tests only
+make test-integration        # Run integration tests with Docker
+make test-e2e                # Run end-to-end workflow tests
 ```
 
 ### Access Services
@@ -76,10 +82,10 @@ Metrics: Applications → killkrill-metrics → Redis Streams → killkrill-proc
 ```
 
 ### Core Components
-- **killkrill-receiver**: Log ingestion with HTTP3/QUIC + UDP Syslog, XDP validation
-- **killkrill-metrics**: Centralized metrics collection API (HTTP3/QUIC)
+- **killkrill-receiver**: Log ingestion with async Quart API + UDP Syslog support
+- **killkrill-metrics**: Centralized metrics collection API (Quart + Hypercorn)
 - **killkrill-processor**: Redis Streams consumer, outputs to Elasticsearch and Prometheus APIs
-- **killkrill-manager**: py4web WebUI for management and configuration
+- **killkrill-manager**: Quart WebUI for management and configuration
 - **Infrastructure**: ELK Stack + Prometheus + Redis Streams + PostgreSQL + ElastAlert
 
 ### Processing Guarantee

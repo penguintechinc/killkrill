@@ -2,7 +2,7 @@
 httpx-based integration tests for KillKrill authentication endpoints.
 
 Tests all auth endpoints with success and error cases using httpx client.
-No Flask app imports - all tests via HTTP.
+No Flask app imports - all tests via HTTP. Compatible with Quart async patterns.
 """
 
 import pytest

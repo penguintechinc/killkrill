@@ -9,6 +9,7 @@ Tests cover:
 - GET /api/v1/dashboard/activity
 
 All tests use httpx client via conftest fixtures (no Flask imports).
+Compatible with Quart async patterns via pytest-asyncio.
 """
 
 import pytest

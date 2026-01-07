@@ -1,94 +1,67 @@
+"""
+KillKrill Manager - Quart Application
+Enterprise observability management interface
+"""
 import os
 from datetime import datetime
-from flask import Flask, request, jsonify
+from quart import Quart
+from quart_cors import cors
 from pydal import DAL, Field
-from prometheus_client import Counter, generate_latest
-import redis
+import redis.asyncio as redis
 
-# Basic configuration
-DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://killkrill:killkrill123@postgres:5432/killkrill')
-REDIS_URL = os.environ.get('REDIS_URL', 'redis://redis:6379')
+from config import config
+from routes import health_bp, dashboard_bp, infrastructure_bp, services_bp, embeds_bp
 
-# Convert URL scheme for PyDAL compatibility
-pydal_database_url = DATABASE_URL.replace('postgresql://', 'postgres://')
 
-# Initialize Flask app
-app = Flask(__name__)
+def create_app():
+    """Application factory"""
+    app = Quart(__name__)
+    app = cors(app, allow_origin="*")
 
-# Initialize components
-redis_client = redis.from_url(REDIS_URL, decode_responses=True)
-db = DAL(pydal_database_url, migrate=True, fake_migrate=False)
+    # Load configuration
+    app.config['DATABASE_URL'] = config.DATABASE_URL
+    app.config['REDIS_URL'] = config.REDIS_URL
+    app.config['LICENSE_KEY'] = config.LICENSE_KEY
+    app.config['LOG_LEVEL'] = config.LOG_LEVEL
 
-# Create basic tables if they don't exist
-try:
-    db.define_table('health_checks',
-        Field('timestamp', 'datetime', default=datetime.utcnow),
-        Field('status', 'string', default='ok'),
-        Field('component', 'string'),
-        migrate=True
+    # Initialize PyDAL database connection
+    db = DAL(
+        config.pydal_database_url,
+        migrate=True,
+        fake_migrate=False
     )
-    db.commit()
-except Exception as table_error:
-    print(f"Note: Table creation skipped - {table_error}")
 
-print(f"✓ KillKrill Manager initialized")
-
-# Metrics
-health_checks = Counter('killkrill_manager_health_checks_total', 'Health checks', ['status'])
-
-@app.route('/', methods=['GET'])
-@app.route('/index.html', methods=['GET'])
-def index():
-    """Basic index page"""
-    return """
-    <html>
-    <head><title>KillKrill Manager</title></head>
-    <body>
-        <h1>KillKrill Manager</h1>
-        <p>Enterprise Observability Management Interface</p>
-        <ul>
-            <li><a href="/healthz">Health Check</a></li>
-            <li><a href="/metrics">Metrics</a></li>
-        </ul>
-    </body>
-    </html>
-    """
-
-@app.route('/healthz', methods=['GET'])
-def healthz():
-    """Health check endpoint"""
+    # Create basic tables if they don't exist
     try:
-        # Test Redis
-        redis_client.ping()
-
-        # Test database
-        db.health_checks.insert(status='ok', component='manager')
+        db.define_table('health_checks',
+            Field('timestamp', 'datetime', default=datetime.utcnow),
+            Field('status', 'string', default='ok'),
+            Field('component', 'string'),
+            migrate=True
+        )
         db.commit()
+    except Exception as table_error:
+        print(f"Note: Table creation skipped - {table_error}")
 
-        health_checks.labels(status='ok').inc()
+    # Initialize Redis client (async)
+    redis_client = redis.from_url(config.REDIS_URL, decode_responses=True)
 
-        return jsonify({
-            'status': 'healthy',
-            'timestamp': datetime.utcnow().isoformat(),
-            'service': 'killkrill-manager',
-            'components': {
-                'database': 'ok',
-                'redis': 'ok'
-            }
-        })
-    except Exception as e:
-        health_checks.labels(status='error').inc()
-        return jsonify({
-            'status': 'unhealthy',
-            'error': str(e),
-            'timestamp': datetime.utcnow().isoformat()
-        }), 503
+    # Store in app config
+    app.config['db'] = db
+    app.config['redis_client'] = redis_client
 
-@app.route('/metrics', methods=['GET'])
-def metrics():
-    """Prometheus metrics endpoint"""
-    from flask import Response
-    return Response(generate_latest(), mimetype='text/plain; version=0.0.4; charset=utf-8')
+    print("✓ KillKrill Manager (Quart) initialized")
+
+    # Register blueprints
+    app.register_blueprint(health_bp)
+    app.register_blueprint(dashboard_bp)
+    app.register_blueprint(infrastructure_bp)
+    app.register_blueprint(services_bp)
+    app.register_blueprint(embeds_bp)
+
+    return app
+
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080, debug=False)
+    app = create_app()
+    app.run(host=config.HOST, port=config.PORT, debug=False)
