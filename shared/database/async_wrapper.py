@@ -7,11 +7,13 @@ PyDAL is synchronous, so we wrap operations in thread pool execution.
 
 import asyncio
 import logging
-from typing import Any, Optional, Callable
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
+from typing import Any, Callable, Optional
+
 from pydal import DAL
-from shared.database.pydal_operations import get_dal, close_dal
+
+from shared.database.pydal_operations import close_dal, get_dal
 
 logger = logging.getLogger(__name__)
 
@@ -30,8 +32,7 @@ def get_executor() -> ThreadPoolExecutor:
     global _executor
     if _executor is None:
         _executor = ThreadPoolExecutor(
-            max_workers=_executor_max_workers,
-            thread_name_prefix='db_async_'
+            max_workers=_executor_max_workers, thread_name_prefix="db_async_"
         )
     return _executor
 
@@ -78,16 +79,10 @@ class AsyncDatabase:
             Function result
         """
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            self.executor,
-            lambda: func(*args, **kwargs)
-        )
+        return await loop.run_in_executor(self.executor, lambda: func(*args, **kwargs))
 
     async def async_select(
-        self,
-        table_name: str,
-        query: Optional[Any] = None,
-        **select_kwargs
+        self, table_name: str, query: Optional[Any] = None, **select_kwargs
     ) -> list:
         """
         Async select operation.
@@ -107,6 +102,7 @@ class AsyncDatabase:
                 orderby=~db.auth_user.created_at
             )
         """
+
         def _select():
             db = get_dal()
             table = db[table_name]
@@ -135,6 +131,7 @@ class AsyncDatabase:
                 password='hashed_password'
             )
         """
+
         def _insert():
             db = get_dal()
             table = db[table_name]
@@ -144,12 +141,7 @@ class AsyncDatabase:
 
         return await self._run_sync(_insert)
 
-    async def async_update(
-        self,
-        table_name: str,
-        query: Any,
-        **fields
-    ) -> int:
+    async def async_update(self, table_name: str, query: Any, **fields) -> int:
         """
         Async update operation.
 
@@ -168,6 +160,7 @@ class AsyncDatabase:
                 active=False
             )
         """
+
         def _update():
             db = get_dal()
             updated = db(query).update(**fields)
@@ -193,6 +186,7 @@ class AsyncDatabase:
                 db.auth_user.email == 'test@example.com'
             )
         """
+
         def _delete():
             db = get_dal()
             deleted = db(query).delete()
@@ -215,6 +209,7 @@ class AsyncDatabase:
         Example:
             count = await async_db.async_count('auth_user', db.auth_user.active == True)
         """
+
         def _count():
             db = get_dal()
             table = db[table_name]
@@ -225,11 +220,7 @@ class AsyncDatabase:
 
         return await self._run_sync(_count)
 
-    async def async_validate_and_insert(
-        self,
-        table_name: str,
-        **fields
-    ) -> dict:
+    async def async_validate_and_insert(self, table_name: str, **fields) -> dict:
         """
         Async validate and insert with error handling.
 
@@ -249,24 +240,22 @@ class AsyncDatabase:
             if 'errors' in result:
                 print(result['errors'])
         """
+
         def _validate_and_insert():
             db = get_dal()
             table = db[table_name]
             result = table.validate_and_insert(**fields)
             if result.errors:
                 db.rollback()
-                return {'errors': result.errors}
+                return {"errors": result.errors}
             else:
                 db.commit()
-                return {'id': result.id}
+                return {"id": result.id}
 
         return await self._run_sync(_validate_and_insert)
 
     async def async_validate_and_update(
-        self,
-        table_name: str,
-        query: Any,
-        **fields
+        self, table_name: str, query: Any, **fields
     ) -> dict:
         """
         Async validate and update with error handling.
@@ -279,6 +268,7 @@ class AsyncDatabase:
         Returns:
             Dict with 'updated' count if successful, 'errors' if validation fails
         """
+
         def _validate_and_update():
             db = get_dal()
             table = db[table_name]
@@ -286,24 +276,20 @@ class AsyncDatabase:
             # Get first matching record
             record = db(query).select().first()
             if not record:
-                return {'errors': {'record': 'Not found'}}
+                return {"errors": {"record": "Not found"}}
 
             # Validate update
             result = table.validate_and_update(record.id, **fields)
             if result.errors:
                 db.rollback()
-                return {'errors': result.errors}
+                return {"errors": result.errors}
             else:
                 db.commit()
-                return {'updated': 1}
+                return {"updated": 1}
 
         return await self._run_sync(_validate_and_update)
 
-    async def async_executesql(
-        self,
-        sql: str,
-        params: Optional[dict] = None
-    ) -> list:
+    async def async_executesql(self, sql: str, params: Optional[dict] = None) -> list:
         """
         Execute raw SQL asynchronously.
 
@@ -320,6 +306,7 @@ class AsyncDatabase:
                 {"email": "test@example.com"}
             )
         """
+
         def _executesql():
             db = get_dal()
             return db.executesql(sql, placeholders=params or {})

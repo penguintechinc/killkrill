@@ -22,7 +22,6 @@ import pytest
 import redis
 import redis.asyncio as aioredis
 
-
 # Test markers
 pytestmark = [
     pytest.mark.integration,
@@ -31,11 +30,11 @@ pytestmark = [
 
 
 # Check if Redis is available
-REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
-REDIS_AVAILABLE = os.getenv('TEST_REDIS_ENABLED', 'false').lower() == 'true'
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+REDIS_AVAILABLE = os.getenv("TEST_REDIS_ENABLED", "false").lower() == "true"
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def redis_available() -> bool:
     """Check if Redis server is available."""
     if not REDIS_AVAILABLE:
@@ -63,7 +62,7 @@ def redis_client(redis_available: bool) -> Generator[redis.Redis, None, None]:
 
 @pytest.fixture
 async def async_redis_client(
-    redis_available: bool
+    redis_available: bool,
 ) -> AsyncGenerator[aioredis.Redis, None]:
     """Async Redis client fixture."""
     client = aioredis.from_url(
@@ -125,11 +124,11 @@ class TestSyncStreamsBasics:
         # Publish message
         msg_id = redis_client.xadd(
             test_stream_name,
-            {'field1': 'value1', 'field2': 'value2'},
+            {"field1": "value1", "field2": "value2"},
         )
 
         assert msg_id is not None
-        assert '-' in msg_id  # Format: timestamp-sequence
+        assert "-" in msg_id  # Format: timestamp-sequence
 
         # Verify stream length
         length = redis_client.xlen(test_stream_name)
@@ -149,7 +148,7 @@ class TestSyncStreamsBasics:
         for i in range(batch_size):
             pipe.xadd(
                 test_stream_name,
-                {'index': str(i), 'timestamp': str(time.time())},
+                {"index": str(i), "timestamp": str(time.time())},
             )
         results = pipe.execute()
 
@@ -172,13 +171,13 @@ class TestSyncStreamsBasics:
         for i in range(5):
             msg_id = redis_client.xadd(
                 test_stream_name,
-                {'message': f'test_{i}'},
+                {"message": f"test_{i}"},
             )
             msg_ids.append(msg_id)
 
         # Read from beginning
         messages = redis_client.xread(
-            {test_stream_name: '0'},
+            {test_stream_name: "0"},
             count=3,
         )
 
@@ -189,7 +188,7 @@ class TestSyncStreamsBasics:
         # Verify message structure
         msg_id, fields = messages[0][1][0]
         assert msg_id in msg_ids
-        assert 'message' in fields
+        assert "message" in fields
 
     def test_stream_blocking_read(
         self,
@@ -200,7 +199,7 @@ class TestSyncStreamsBasics:
         """Test blocking stream read with timeout."""
         # Read with timeout (should return empty)
         messages = redis_client.xread(
-            {test_stream_name: '$'},  # Read new messages only
+            {test_stream_name: "$"},  # Read new messages only
             block=100,  # 100ms timeout
         )
 
@@ -219,7 +218,7 @@ class TestSyncStreamsBasics:
         for i in range(20):
             redis_client.xadd(
                 test_stream_name,
-                {'index': str(i)},
+                {"index": str(i)},
                 maxlen=max_length,
                 approximate=False,
             )
@@ -237,14 +236,14 @@ class TestSyncStreamsBasics:
         """Test XINFO STREAM command."""
         # Publish some messages
         for i in range(5):
-            redis_client.xadd(test_stream_name, {'msg': str(i)})
+            redis_client.xadd(test_stream_name, {"msg": str(i)})
 
         # Get stream info
         info = redis_client.xinfo_stream(test_stream_name)
 
-        assert info['length'] == 5
-        assert 'first-entry' in info
-        assert 'last-entry' in info
+        assert info["length"] == 5
+        assert "first-entry" in info
+        assert "last-entry" in info
 
 
 class TestSyncConsumerGroups:
@@ -259,13 +258,13 @@ class TestSyncConsumerGroups:
     ):
         """Test creating consumer group."""
         # Create stream with initial message
-        redis_client.xadd(test_stream_name, {'init': 'true'})
+        redis_client.xadd(test_stream_name, {"init": "true"})
 
         # Create consumer group
         result = redis_client.xgroup_create(
             test_stream_name,
             test_consumer_group,
-            id='0',
+            id="0",
             mkstream=True,
         )
 
@@ -274,7 +273,7 @@ class TestSyncConsumerGroups:
         # Verify group exists
         groups = redis_client.xinfo_groups(test_stream_name)
         assert len(groups) == 1
-        assert groups[0]['name'] == test_consumer_group
+        assert groups[0]["name"] == test_consumer_group
 
     def test_consumer_group_read(
         self,
@@ -286,19 +285,19 @@ class TestSyncConsumerGroups:
     ):
         """Test reading from consumer group."""
         # Setup: create stream and group
-        redis_client.xadd(test_stream_name, {'msg': 'test1'})
-        redis_client.xadd(test_stream_name, {'msg': 'test2'})
+        redis_client.xadd(test_stream_name, {"msg": "test1"})
+        redis_client.xadd(test_stream_name, {"msg": "test2"})
         redis_client.xgroup_create(
             test_stream_name,
             test_consumer_group,
-            id='0',
+            id="0",
         )
 
         # Read messages as consumer
         messages = redis_client.xreadgroup(
             test_consumer_group,
             test_consumer_name,
-            {test_stream_name: '>'},
+            {test_stream_name: ">"},
             count=2,
         )
 
@@ -311,7 +310,7 @@ class TestSyncConsumerGroups:
             test_consumer_group,
         )
         assert len(consumers) == 1
-        assert consumers[0]['name'] == test_consumer_name
+        assert consumers[0]["name"] == test_consumer_name
 
     def test_message_acknowledgment(
         self,
@@ -323,14 +322,14 @@ class TestSyncConsumerGroups:
     ):
         """Test message acknowledgment (XACK)."""
         # Setup
-        msg_id = redis_client.xadd(test_stream_name, {'msg': 'test'})
-        redis_client.xgroup_create(test_stream_name, test_consumer_group, id='0')
+        msg_id = redis_client.xadd(test_stream_name, {"msg": "test"})
+        redis_client.xgroup_create(test_stream_name, test_consumer_group, id="0")
 
         # Read message
         messages = redis_client.xreadgroup(
             test_consumer_group,
             test_consumer_name,
-            {test_stream_name: '>'},
+            {test_stream_name: ">"},
         )
 
         assert len(messages[0][1]) == 1
@@ -355,21 +354,21 @@ class TestSyncConsumerGroups:
     ):
         """Test pending message handling (XPENDING)."""
         # Setup: publish and read without ack
-        msg_id = redis_client.xadd(test_stream_name, {'msg': 'test'})
-        redis_client.xgroup_create(test_stream_name, test_consumer_group, id='0')
+        msg_id = redis_client.xadd(test_stream_name, {"msg": "test"})
+        redis_client.xgroup_create(test_stream_name, test_consumer_group, id="0")
 
         redis_client.xreadgroup(
             test_consumer_group,
             test_consumer_name,
-            {test_stream_name: '>'},
+            {test_stream_name: ">"},
         )
 
         # Check pending messages
         pending = redis_client.xpending(test_stream_name, test_consumer_group)
 
-        assert pending['pending'] == 1
-        assert pending['min'] == msg_id
-        assert pending['max'] == msg_id
+        assert pending["pending"] == 1
+        assert pending["min"] == msg_id
+        assert pending["max"] == msg_id
 
     def test_claim_pending_messages(
         self,
@@ -383,13 +382,13 @@ class TestSyncConsumerGroups:
         consumer2 = f"consumer2_{uuid.uuid4().hex[:8]}"
 
         # Setup: consumer1 reads but doesn't ack
-        msg_id = redis_client.xadd(test_stream_name, {'msg': 'test'})
-        redis_client.xgroup_create(test_stream_name, test_consumer_group, id='0')
+        msg_id = redis_client.xadd(test_stream_name, {"msg": "test"})
+        redis_client.xgroup_create(test_stream_name, test_consumer_group, id="0")
 
         redis_client.xreadgroup(
             test_consumer_group,
             consumer1,
-            {test_stream_name: '>'},
+            {test_stream_name: ">"},
         )
 
         # Wait a bit to simulate stale message
@@ -422,7 +421,7 @@ class TestAsyncStreamsBasics:
         try:
             msg_id = await async_redis_client.xadd(
                 test_stream_name,
-                {'field': 'value'},
+                {"field": "value"},
             )
 
             assert msg_id is not None
@@ -443,12 +442,12 @@ class TestAsyncStreamsBasics:
             # Publish test message
             await async_redis_client.xadd(
                 test_stream_name,
-                {'test': 'data'},
+                {"test": "data"},
             )
 
             # Read message
             messages = await async_redis_client.xread(
-                {test_stream_name: '0'},
+                {test_stream_name: "0"},
             )
 
             assert len(messages) == 1
@@ -467,18 +466,18 @@ class TestAsyncStreamsBasics:
         """Test async consumer group operations."""
         try:
             # Setup
-            await async_redis_client.xadd(test_stream_name, {'msg': 'test'})
+            await async_redis_client.xadd(test_stream_name, {"msg": "test"})
             await async_redis_client.xgroup_create(
                 test_stream_name,
                 test_consumer_group,
-                id='0',
+                id="0",
             )
 
             # Read as consumer
             messages = await async_redis_client.xreadgroup(
                 test_consumer_group,
                 test_consumer_name,
-                {test_stream_name: '>'},
+                {test_stream_name: ">"},
             )
 
             assert len(messages) == 1
@@ -506,7 +505,7 @@ class TestErrorHandling:
     ):
         """Test reading from non-existent stream."""
         messages = redis_client.xread(
-            {'nonexistent_stream': '0'},
+            {"nonexistent_stream": "0"},
             count=1,
         )
 
@@ -521,15 +520,15 @@ class TestErrorHandling:
         cleanup_stream,
     ):
         """Test creating duplicate consumer group."""
-        redis_client.xadd(test_stream_name, {'init': 'true'})
-        redis_client.xgroup_create(test_stream_name, test_consumer_group, id='0')
+        redis_client.xadd(test_stream_name, {"init": "true"})
+        redis_client.xgroup_create(test_stream_name, test_consumer_group, id="0")
 
         # Try to create again - should raise error
         with pytest.raises(redis.ResponseError):
             redis_client.xgroup_create(
                 test_stream_name,
                 test_consumer_group,
-                id='0',
+                id="0",
             )
 
     @pytest.mark.asyncio
@@ -537,7 +536,7 @@ class TestErrorHandling:
         """Test handling async connection errors."""
         # Invalid URL
         client = aioredis.from_url(
-            'redis://invalid-host:6379',
+            "redis://invalid-host:6379",
             socket_timeout=1,
             socket_connect_timeout=1,
         )
@@ -564,7 +563,7 @@ class TestHighThroughput:
             for i in range(batch_size):
                 pipe.xadd(
                     test_stream_name,
-                    {'index': str(batch + i), 'data': f'payload_{i}'},
+                    {"index": str(batch + i), "data": f"payload_{i}"},
                 )
             pipe.execute()
 
@@ -585,13 +584,13 @@ class TestHighThroughput:
             for i in range(message_count):
                 await async_redis_client.xadd(
                     test_stream_name,
-                    {'index': str(i)},
+                    {"index": str(i)},
                 )
 
             await async_redis_client.xgroup_create(
                 test_stream_name,
                 test_consumer_group,
-                id='0',
+                id="0",
             )
 
             # Concurrent consumers
@@ -599,16 +598,14 @@ class TestHighThroughput:
                 messages = await async_redis_client.xreadgroup(
                     test_consumer_group,
                     consumer_name,
-                    {test_stream_name: '>'},
+                    {test_stream_name: ">"},
                     count=10,
                 )
                 return len(messages[0][1]) if messages else 0
 
             # Run 5 consumers concurrently
             consumer_names = [f"consumer_{i}" for i in range(5)]
-            results = await asyncio.gather(*[
-                consume(name) for name in consumer_names
-            ])
+            results = await asyncio.gather(*[consume(name) for name in consumer_names])
 
             # All messages should be distributed among consumers
             total_consumed = sum(results)
@@ -629,13 +626,13 @@ class TestStreamMetadata:
         """Test XINFO STREAM with full details."""
         # Publish messages
         for i in range(10):
-            redis_client.xadd(test_stream_name, {'index': str(i)})
+            redis_client.xadd(test_stream_name, {"index": str(i)})
 
         info = redis_client.xinfo_stream(test_stream_name, full=True)
 
-        assert 'length' in info
-        assert 'entries' in info
-        assert info['length'] == 10
+        assert "length" in info
+        assert "entries" in info
+        assert info["length"] == 10
 
     def test_xinfo_groups(
         self,
@@ -644,15 +641,15 @@ class TestStreamMetadata:
         cleanup_stream,
     ):
         """Test XINFO GROUPS command."""
-        redis_client.xadd(test_stream_name, {'init': 'true'})
+        redis_client.xadd(test_stream_name, {"init": "true"})
 
         # Create multiple groups
-        groups = ['group1', 'group2', 'group3']
+        groups = ["group1", "group2", "group3"]
         for group in groups:
-            redis_client.xgroup_create(test_stream_name, group, id='0')
+            redis_client.xgroup_create(test_stream_name, group, id="0")
 
         info = redis_client.xinfo_groups(test_stream_name)
 
         assert len(info) == 3
-        group_names = [g['name'] for g in info]
+        group_names = [g["name"] for g in info]
         assert all(g in group_names for g in groups)

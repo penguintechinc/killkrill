@@ -8,8 +8,10 @@ Handles thread-safe connections, context managers, and CRUD operations.
 import logging
 import threading
 from contextlib import contextmanager
-from typing import Optional, Generator
+from typing import Generator, Optional
+
 from pydal import DAL, Field
+
 from shared.database.config import DatabaseConfig
 
 logger = logging.getLogger(__name__)
@@ -29,12 +31,14 @@ def get_dal() -> DAL:
         db = get_dal()
         users = db(db.users.email == 'test@example.com').select()
     """
-    if not hasattr(_thread_local, 'db'):
+    if not hasattr(_thread_local, "db"):
         config = DatabaseConfig.from_env()
         uri = config.to_pydal_uri()
         kwargs = config.get_pydal_kwargs()
 
-        logger.debug(f"Creating new PyDAL connection for thread {threading.get_ident()}")
+        logger.debug(
+            f"Creating new PyDAL connection for thread {threading.get_ident()}"
+        )
         _thread_local.db = DAL(uri, **kwargs)
 
         # Define tables
@@ -49,10 +53,10 @@ def close_dal() -> None:
 
     Should be called when thread is done with database operations.
     """
-    if hasattr(_thread_local, 'db'):
+    if hasattr(_thread_local, "db"):
         logger.debug(f"Closing PyDAL connection for thread {threading.get_ident()}")
         _thread_local.db.close()
-        delattr(_thread_local, 'db')
+        delattr(_thread_local, "db")
 
 
 @contextmanager
@@ -89,6 +93,7 @@ def _define_tables(db: DAL) -> None:
         db: PyDAL instance
     """
     from shared.database.models import define_all_tables
+
     define_all_tables(db)
 
 
@@ -144,10 +149,14 @@ def reset_migrations() -> None:
     Useful for development when schema changes require fresh migrations.
     """
     import os
+
     config = DatabaseConfig.from_env()
-    migration_folder = config.get_pydal_kwargs().get('folder', '/tmp/killkrill-migrations/')
+    migration_folder = config.get_pydal_kwargs().get(
+        "folder", "/tmp/killkrill-migrations/"
+    )
 
     if os.path.exists(migration_folder):
         import shutil
+
         shutil.rmtree(migration_folder)
         logger.info(f"Migration folder reset: {migration_folder}")

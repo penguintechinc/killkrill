@@ -14,8 +14,10 @@ This module is responsible for:
 
 import logging
 from typing import Optional
-from sqlalchemy import create_engine, text, inspect, NullPool, QueuePool
+
+from sqlalchemy import NullPool, QueuePool, create_engine, inspect, text
 from sqlalchemy.exc import OperationalError, ProgrammingError
+
 from shared.database.config import DatabaseConfig
 
 logger = logging.getLogger(__name__)
@@ -28,18 +30,18 @@ def create_database_if_not_exists(config: DatabaseConfig) -> None:
     For PostgreSQL and MySQL, connects to default database and creates
     target database if needed. SQLite databases are created automatically.
     """
-    if config.db_type == 'sqlite':
+    if config.db_type == "sqlite":
         # SQLite creates database automatically
         logger.info(f"SQLite database will be created at: {config.name}")
         return
 
     # Connect to default database to create target database
-    if config.db_type == 'postgres':
-        default_db = 'postgres'
-        driver = 'postgresql'
-    elif config.db_type == 'mysql':
-        default_db = 'mysql'
-        driver = 'mysql+pymysql'
+    if config.db_type == "postgres":
+        default_db = "postgres"
+        driver = "postgresql"
+    elif config.db_type == "mysql":
+        default_db = "mysql"
+        driver = "mysql+pymysql"
     else:
         raise ValueError(f"Unsupported db_type: {config.db_type}")
 
@@ -55,13 +57,10 @@ def create_database_if_not_exists(config: DatabaseConfig) -> None:
     try:
         with engine.connect() as conn:
             # Check if database exists
-            if config.db_type == 'postgres':
+            if config.db_type == "postgres":
                 result = conn.execute(
-                    text(
-                        "SELECT 1 FROM pg_database "
-                        "WHERE datname = :dbname"
-                    ),
-                    {'dbname': config.name}
+                    text("SELECT 1 FROM pg_database " "WHERE datname = :dbname"),
+                    {"dbname": config.name},
                 )
             else:  # MySQL
                 result = conn.execute(
@@ -70,15 +69,13 @@ def create_database_if_not_exists(config: DatabaseConfig) -> None:
                         "INFORMATION_SCHEMA.SCHEMATA "
                         "WHERE SCHEMA_NAME = :dbname"
                     ),
-                    {'dbname': config.name}
+                    {"dbname": config.name},
                 )
 
             if result.fetchone() is None:
                 # Database doesn't exist, create it
                 conn.execution_options(isolation_level="AUTOCOMMIT")
-                conn.execute(
-                    text(f"CREATE DATABASE {config.name}")
-                )
+                conn.execute(text(f"CREATE DATABASE {config.name}"))
                 logger.info(f"Created database: {config.name}")
             else:
                 logger.info(f"Database already exists: {config.name}")
@@ -99,7 +96,9 @@ def init_database() -> None:
     """
     config = DatabaseConfig.from_env()
 
-    logger.info(f"Initializing database: {config.db_type}://{config.host or 'local'}:{config.port or 'N/A'}/{config.name}")
+    logger.info(
+        f"Initializing database: {config.db_type}://{config.host or 'local'}:{config.port or 'N/A'}/{config.name}"
+    )
 
     # Create database if it doesn't exist
     create_database_if_not_exists(config)
@@ -134,9 +133,9 @@ def verify_connection(config: Optional[DatabaseConfig] = None) -> bool:
     try:
         with engine.connect() as conn:
             # Execute test query appropriate for database type
-            if config.db_type == 'sqlite':
+            if config.db_type == "sqlite":
                 result = conn.execute(text("SELECT 1"))
-            elif config.db_type == 'postgres':
+            elif config.db_type == "postgres":
                 result = conn.execute(text("SELECT 1 AS test"))
             else:  # MySQL
                 result = conn.execute(text("SELECT 1 AS test"))
@@ -146,9 +145,7 @@ def verify_connection(config: Optional[DatabaseConfig] = None) -> bool:
                 logger.info("Database connection verified successfully")
                 return True
             else:
-                raise RuntimeError(
-                    f"Unexpected test query result: {test_value}"
-                )
+                raise RuntimeError(f"Unexpected test query result: {test_value}")
 
     except OperationalError as e:
         logger.error(f"Database connection failed: {e}")

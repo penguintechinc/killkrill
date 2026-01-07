@@ -1,9 +1,10 @@
 """
 Embedded UI routes (/prometheus-ui, /grafana-ui, /fleet-ui, etc.)
 """
+
 from quart import Blueprint, render_template_string
 
-bp = Blueprint('embeds', __name__)
+bp = Blueprint("embeds", __name__)
 
 
 def generate_iframe_page(title, url, icon):
@@ -59,15 +60,17 @@ def generate_iframe_page(title, url, icon):
     """
 
 
-@bp.route('/prometheus-ui', methods=['GET'])
+@bp.route("/prometheus-ui", methods=["GET"])
 async def prometheus_ui():
     """Embedded Prometheus interface"""
     return await render_template_string(
-        generate_iframe_page("Prometheus Metrics Dashboard", "http://localhost:9090", "📊")
+        generate_iframe_page(
+            "Prometheus Metrics Dashboard", "http://localhost:9090", "📊"
+        )
     )
 
 
-@bp.route('/grafana-ui', methods=['GET'])
+@bp.route("/grafana-ui", methods=["GET"])
 async def grafana_ui():
     """Embedded Grafana interface"""
     return await render_template_string(
@@ -75,7 +78,7 @@ async def grafana_ui():
     )
 
 
-@bp.route('/fleet-ui', methods=['GET'])
+@bp.route("/fleet-ui", methods=["GET"])
 async def fleet_ui():
     """Embedded Fleet interface"""
     return await render_template_string(
@@ -83,7 +86,7 @@ async def fleet_ui():
     )
 
 
-@bp.route('/kibana-ui', methods=['GET'])
+@bp.route("/kibana-ui", methods=["GET"])
 async def kibana_ui():
     """Embedded Kibana interface"""
     return await render_template_string(
@@ -91,7 +94,7 @@ async def kibana_ui():
     )
 
 
-@bp.route('/alertmanager-ui', methods=['GET'])
+@bp.route("/alertmanager-ui", methods=["GET"])
 async def alertmanager_ui():
     """Embedded AlertManager interface"""
     return await render_template_string(
@@ -99,7 +102,7 @@ async def alertmanager_ui():
     )
 
 
-@bp.route('/elasticsearch-ui', methods=['GET'])
+@bp.route("/elasticsearch-ui", methods=["GET"])
 async def elasticsearch_ui():
     """Embedded Elasticsearch interface"""
     return await render_template_string(
@@ -107,7 +110,7 @@ async def elasticsearch_ui():
     )
 
 
-@bp.route('/logstash-ui', methods=['GET'])
+@bp.route("/logstash-ui", methods=["GET"])
 async def logstash_ui():
     """Embedded Logstash interface"""
     return await render_template_string(

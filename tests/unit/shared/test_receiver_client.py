@@ -4,15 +4,13 @@ import asyncio
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
-import pytest
 import httpx
+import pytest
 
 from shared.receiver_client.client import ReceiverClient, TokenInfo
-from shared.receiver_client.exceptions import (
-    AuthenticationError,
-    ConnectionError,
-    SubmissionError,
-)
+from shared.receiver_client.exceptions import (AuthenticationError,
+                                               ConnectionError,
+                                               SubmissionError)
 from shared.receiver_client.grpc_client import GRPCSubmitter
 from shared.receiver_client.rest_client import RESTSubmitter
 
@@ -207,7 +205,9 @@ class TestAuthentication:
         """Test authentication with missing response field."""
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {"access_token": "token"}  # Missing refresh_token
+        mock_response.json.return_value = {
+            "access_token": "token"
+        }  # Missing refresh_token
 
         with patch("shared.receiver_client.client.httpx.AsyncClient") as mock_client:
             mock_async_client = AsyncMock()
@@ -294,7 +294,9 @@ class TestTokenRefresh:
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_refresh_token_failure_reauthenticates(self, receiver_client, token_info):
+    async def test_refresh_token_failure_reauthenticates(
+        self, receiver_client, token_info
+    ):
         """Test refresh failure triggers re-authentication."""
         receiver_client.token_info = token_info
 
@@ -379,7 +381,10 @@ class TestProtocolSelection:
         """Test gRPC connection with exception."""
         receiver_client.token_info = token_info
 
-        with patch("shared.receiver_client.client.GRPCSubmitter", side_effect=Exception("gRPC error")):
+        with patch(
+            "shared.receiver_client.client.GRPCSubmitter",
+            side_effect=Exception("gRPC error"),
+        ):
             result = await receiver_client._try_grpc()
 
         assert result is False
@@ -410,22 +415,33 @@ class TestProtocolSelection:
         """Test client initialization with gRPC success."""
         receiver_client.token_info = token_info
 
-        with patch.object(receiver_client, "_try_grpc", new_callable=AsyncMock, return_value=True):
+        with patch.object(
+            receiver_client, "_try_grpc", new_callable=AsyncMock, return_value=True
+        ):
             await receiver_client._initialize_clients()
 
         assert receiver_client.use_grpc is True
 
     @pytest.mark.unit
     @pytest.mark.asyncio
-    async def test_initialize_clients_fallback_to_rest(self, receiver_client, token_info):
+    async def test_initialize_clients_fallback_to_rest(
+        self, receiver_client, token_info
+    ):
         """Test client initialization falls back to REST."""
         receiver_client.token_info = token_info
 
         async def mock_fallback():
             receiver_client.use_grpc = False
 
-        with patch.object(receiver_client, "_try_grpc", new_callable=AsyncMock, return_value=False):
-            with patch.object(receiver_client, "_fallback_to_rest", side_effect=mock_fallback, new_callable=AsyncMock):
+        with patch.object(
+            receiver_client, "_try_grpc", new_callable=AsyncMock, return_value=False
+        ):
+            with patch.object(
+                receiver_client,
+                "_fallback_to_rest",
+                side_effect=mock_fallback,
+                new_callable=AsyncMock,
+            ):
                 await receiver_client._initialize_clients()
 
         assert receiver_client.use_grpc is False
@@ -456,10 +472,16 @@ class TestRetryWithBackoff:
         receiver_client.token_info = token_info
         receiver_client._authenticated = True
 
-        mock_func = AsyncMock(side_effect=[SubmissionError("fail1"), SubmissionError("fail2"), True])
+        mock_func = AsyncMock(
+            side_effect=[SubmissionError("fail1"), SubmissionError("fail2"), True]
+        )
 
-        with patch.object(receiver_client, "_ensure_authenticated", new_callable=AsyncMock):
-            with patch("shared.receiver_client.client.asyncio.sleep", new_callable=AsyncMock):
+        with patch.object(
+            receiver_client, "_ensure_authenticated", new_callable=AsyncMock
+        ):
+            with patch(
+                "shared.receiver_client.client.asyncio.sleep", new_callable=AsyncMock
+            ):
                 result = await receiver_client._retry_with_backoff("test_op", mock_func)
 
         assert result is True
@@ -474,8 +496,12 @@ class TestRetryWithBackoff:
 
         mock_func = AsyncMock(side_effect=SubmissionError("fail"))
 
-        with patch.object(receiver_client, "_ensure_authenticated", new_callable=AsyncMock):
-            with patch("shared.receiver_client.client.asyncio.sleep", new_callable=AsyncMock):
+        with patch.object(
+            receiver_client, "_ensure_authenticated", new_callable=AsyncMock
+        ):
+            with patch(
+                "shared.receiver_client.client.asyncio.sleep", new_callable=AsyncMock
+            ):
                 with pytest.raises(SubmissionError):
                     await receiver_client._retry_with_backoff("test_op", mock_func)
 
@@ -496,8 +522,12 @@ class TestRetryWithBackoff:
         async def mock_sleep(delay):
             sleep_calls.append(delay)
 
-        with patch.object(receiver_client, "_ensure_authenticated", new_callable=AsyncMock):
-            with patch("shared.receiver_client.client.asyncio.sleep", side_effect=mock_sleep):
+        with patch.object(
+            receiver_client, "_ensure_authenticated", new_callable=AsyncMock
+        ):
+            with patch(
+                "shared.receiver_client.client.asyncio.sleep", side_effect=mock_sleep
+            ):
                 with pytest.raises(SubmissionError):
                     await receiver_client._retry_with_backoff("test_op", mock_func)
 
@@ -517,10 +547,19 @@ class TestRetryWithBackoff:
 
         mock_func = AsyncMock(side_effect=[SubmissionError("grpc fail"), True])
 
-        with patch.object(receiver_client, "_ensure_authenticated", new_callable=AsyncMock):
-            with patch.object(receiver_client, "_fallback_to_rest", new_callable=AsyncMock):
-                with patch("shared.receiver_client.client.asyncio.sleep", new_callable=AsyncMock):
-                    result = await receiver_client._retry_with_backoff("test_op", mock_func)
+        with patch.object(
+            receiver_client, "_ensure_authenticated", new_callable=AsyncMock
+        ):
+            with patch.object(
+                receiver_client, "_fallback_to_rest", new_callable=AsyncMock
+            ):
+                with patch(
+                    "shared.receiver_client.client.asyncio.sleep",
+                    new_callable=AsyncMock,
+                ):
+                    result = await receiver_client._retry_with_backoff(
+                        "test_op", mock_func
+                    )
 
         assert result is True
         assert mock_func.call_count == 2
@@ -544,7 +583,9 @@ class TestLogSubmission:
 
         logs = [{"message": "test log"}]
 
-        with patch.object(receiver_client, "_ensure_authenticated", new_callable=AsyncMock):
+        with patch.object(
+            receiver_client, "_ensure_authenticated", new_callable=AsyncMock
+        ):
             result = await receiver_client.submit_logs(logs)
 
         assert result is True
@@ -564,7 +605,9 @@ class TestLogSubmission:
 
         logs = [{"message": "test log"}]
 
-        with patch.object(receiver_client, "_ensure_authenticated", new_callable=AsyncMock):
+        with patch.object(
+            receiver_client, "_ensure_authenticated", new_callable=AsyncMock
+        ):
             result = await receiver_client.submit_logs(logs)
 
         assert result is True
@@ -581,8 +624,12 @@ class TestLogSubmission:
 
         logs = [{"message": "test log"}]
 
-        with patch.object(receiver_client, "_ensure_authenticated", new_callable=AsyncMock):
-            with patch("shared.receiver_client.client.asyncio.sleep", new_callable=AsyncMock):
+        with patch.object(
+            receiver_client, "_ensure_authenticated", new_callable=AsyncMock
+        ):
+            with patch(
+                "shared.receiver_client.client.asyncio.sleep", new_callable=AsyncMock
+            ):
                 # ConnectionError from client module is raised by _submit, which then gets
                 # caught and re-raised as SubmissionError by _retry_with_backoff
                 with pytest.raises((SubmissionError, ConnectionError)):
@@ -607,7 +654,9 @@ class TestMetricsSubmission:
 
         metrics = [{"name": "test_metric", "value": 42}]
 
-        with patch.object(receiver_client, "_ensure_authenticated", new_callable=AsyncMock):
+        with patch.object(
+            receiver_client, "_ensure_authenticated", new_callable=AsyncMock
+        ):
             result = await receiver_client.submit_metrics(metrics)
 
         assert result is True
@@ -627,7 +676,9 @@ class TestMetricsSubmission:
 
         metrics = [{"name": "test_metric", "value": 42}]
 
-        with patch.object(receiver_client, "_ensure_authenticated", new_callable=AsyncMock):
+        with patch.object(
+            receiver_client, "_ensure_authenticated", new_callable=AsyncMock
+        ):
             result = await receiver_client.submit_metrics(metrics)
 
         assert result is True
@@ -644,8 +695,12 @@ class TestMetricsSubmission:
 
         metrics = [{"name": "test_metric", "value": 42}]
 
-        with patch.object(receiver_client, "_ensure_authenticated", new_callable=AsyncMock):
-            with patch("shared.receiver_client.client.asyncio.sleep", new_callable=AsyncMock):
+        with patch.object(
+            receiver_client, "_ensure_authenticated", new_callable=AsyncMock
+        ):
+            with patch(
+                "shared.receiver_client.client.asyncio.sleep", new_callable=AsyncMock
+            ):
                 # ConnectionError from client module is raised by _submit, which then gets
                 # caught and re-raised as SubmissionError by _retry_with_backoff
                 with pytest.raises((SubmissionError, ConnectionError)):
@@ -668,7 +723,9 @@ class TestHealthCheck:
         mock_grpc.health_check = MagicMock(return_value=True)
         receiver_client.grpc_client = mock_grpc
 
-        with patch.object(receiver_client, "_ensure_authenticated", new_callable=AsyncMock):
+        with patch.object(
+            receiver_client, "_ensure_authenticated", new_callable=AsyncMock
+        ):
             result = await receiver_client.health_check()
 
         assert result is True
@@ -685,7 +742,9 @@ class TestHealthCheck:
         mock_rest.health_check = AsyncMock(return_value=True)
         receiver_client.rest_client = mock_rest
 
-        with patch.object(receiver_client, "_ensure_authenticated", new_callable=AsyncMock):
+        with patch.object(
+            receiver_client, "_ensure_authenticated", new_callable=AsyncMock
+        ):
             result = await receiver_client.health_check()
 
         assert result is True
@@ -702,7 +761,9 @@ class TestHealthCheck:
         mock_grpc.health_check = MagicMock(return_value=False)
         receiver_client.grpc_client = mock_grpc
 
-        with patch.object(receiver_client, "_ensure_authenticated", new_callable=AsyncMock):
+        with patch.object(
+            receiver_client, "_ensure_authenticated", new_callable=AsyncMock
+        ):
             result = await receiver_client.health_check()
 
         assert result is False
@@ -719,7 +780,9 @@ class TestHealthCheck:
         mock_rest.health_check = AsyncMock(return_value=False)
         receiver_client.rest_client = mock_rest
 
-        with patch.object(receiver_client, "_ensure_authenticated", new_callable=AsyncMock):
+        with patch.object(
+            receiver_client, "_ensure_authenticated", new_callable=AsyncMock
+        ):
             result = await receiver_client.health_check()
 
         assert result is False
@@ -733,7 +796,9 @@ class TestHealthCheck:
         receiver_client.use_grpc = False
         receiver_client.rest_client = None
 
-        with patch.object(receiver_client, "_ensure_authenticated", new_callable=AsyncMock):
+        with patch.object(
+            receiver_client, "_ensure_authenticated", new_callable=AsyncMock
+        ):
             result = await receiver_client.health_check()
 
         assert result is False
@@ -743,9 +808,10 @@ class TestHealthCheck:
     async def test_health_check_authentication_error(self, receiver_client):
         """Test health check handles authentication errors gracefully."""
         with patch.object(
-            receiver_client, "_ensure_authenticated",
+            receiver_client,
+            "_ensure_authenticated",
             side_effect=AuthenticationError("Auth failed"),
-            new_callable=AsyncMock
+            new_callable=AsyncMock,
         ):
             result = await receiver_client.health_check()
 
@@ -762,7 +828,9 @@ class TestEnsureAuthenticated:
         """Test ensures authentication when not authenticated."""
         receiver_client._authenticated = False
 
-        with patch.object(receiver_client, "authenticate", new_callable=AsyncMock) as mock_auth:
+        with patch.object(
+            receiver_client, "authenticate", new_callable=AsyncMock
+        ) as mock_auth:
             await receiver_client._ensure_authenticated()
 
         mock_auth.assert_called_once()
@@ -779,7 +847,9 @@ class TestEnsureAuthenticated:
         receiver_client.token_info = expired_token
         receiver_client._authenticated = True
 
-        with patch.object(receiver_client, "refresh_token", new_callable=AsyncMock) as mock_refresh:
+        with patch.object(
+            receiver_client, "refresh_token", new_callable=AsyncMock
+        ) as mock_refresh:
             await receiver_client._ensure_authenticated()
 
         mock_refresh.assert_called_once()
@@ -791,8 +861,12 @@ class TestEnsureAuthenticated:
         receiver_client.token_info = token_info
         receiver_client._authenticated = True
 
-        with patch.object(receiver_client, "authenticate", new_callable=AsyncMock) as mock_auth:
-            with patch.object(receiver_client, "refresh_token", new_callable=AsyncMock) as mock_refresh:
+        with patch.object(
+            receiver_client, "authenticate", new_callable=AsyncMock
+        ) as mock_auth:
+            with patch.object(
+                receiver_client, "refresh_token", new_callable=AsyncMock
+            ) as mock_refresh:
                 await receiver_client._ensure_authenticated()
 
         mock_auth.assert_not_called()
@@ -820,7 +894,9 @@ class TestContextManager:
         receiver_client.rest_client = AsyncMock()
 
         with patch.object(receiver_client, "authenticate", new_callable=AsyncMock):
-            with patch.object(receiver_client, "close", new_callable=AsyncMock) as mock_close:
+            with patch.object(
+                receiver_client, "close", new_callable=AsyncMock
+            ) as mock_close:
                 async with receiver_client:
                     pass
 
@@ -831,7 +907,9 @@ class TestContextManager:
     async def test_context_manager_exception(self, receiver_client):
         """Test async context manager closes on exception."""
         with patch.object(receiver_client, "authenticate", new_callable=AsyncMock):
-            with patch.object(receiver_client, "close", new_callable=AsyncMock) as mock_close:
+            with patch.object(
+                receiver_client, "close", new_callable=AsyncMock
+            ) as mock_close:
                 try:
                     async with receiver_client:
                         raise ValueError("Test error")
@@ -957,7 +1035,10 @@ class TestIntegration:
             ):
                 # gRPC fails, fallback to REST
                 with patch.object(
-                    receiver_client, "_try_grpc", new_callable=AsyncMock, return_value=False
+                    receiver_client,
+                    "_try_grpc",
+                    new_callable=AsyncMock,
+                    return_value=False,
                 ):
                     with patch.object(
                         receiver_client, "_fallback_to_rest", new_callable=AsyncMock

@@ -2,7 +2,7 @@
 
 import os
 import sys
-from typing import Generator, Dict, Any
+from typing import Any, Dict, Generator
 from uuid import uuid4
 
 import httpx
@@ -10,15 +10,15 @@ import pytest
 from faker import Faker
 
 # Add parent directories to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 
 fake = Faker()
 
 # API base URL from environment or default
-API_BASE_URL = os.getenv('API_BASE_URL', 'http://localhost:5000')
+API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:5000")
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def api_base_url() -> str:
     """Base URL for API requests."""
     return API_BASE_URL
@@ -30,7 +30,7 @@ def api_client() -> Generator[httpx.Client, None, None]:
     with httpx.Client(base_url=API_BASE_URL, timeout=30.0) as client:
         # Check if API is available
         try:
-            response = client.get('/healthz')
+            response = client.get("/healthz")
             if response.status_code not in [200, 404]:
                 pytest.skip(f"API not available at {API_BASE_URL}")
         except (httpx.ConnectError, httpx.TimeoutException):
@@ -44,7 +44,7 @@ async def async_api_client() -> Generator[httpx.AsyncClient, None, None]:
     async with httpx.AsyncClient(base_url=API_BASE_URL, timeout=30.0) as client:
         # Check if API is available
         try:
-            response = await client.get('/healthz')
+            response = await client.get("/healthz")
             if response.status_code not in [200, 404]:
                 pytest.skip(f"API not available at {API_BASE_URL}")
         except (httpx.ConnectError, httpx.TimeoutException):
@@ -56,8 +56,8 @@ async def async_api_client() -> Generator[httpx.AsyncClient, None, None]:
 def admin_credentials() -> Dict[str, str]:
     """Admin credentials for setup operations."""
     return {
-        'email': os.getenv('TEST_ADMIN_EMAIL', 'admin@killkrill.local'),
-        'password': os.getenv('TEST_ADMIN_PASSWORD', 'admin123'),
+        "email": os.getenv("TEST_ADMIN_EMAIL", "admin@killkrill.local"),
+        "password": os.getenv("TEST_ADMIN_PASSWORD", "admin123"),
     }
 
 
@@ -65,10 +65,10 @@ def admin_credentials() -> Dict[str, str]:
 def admin_token(api_client, admin_credentials) -> str:
     """Get admin JWT token."""
     try:
-        response = api_client.post('/api/v1/auth/login', json=admin_credentials)
+        response = api_client.post("/api/v1/auth/login", json=admin_credentials)
         if response.status_code == 200:
             data = response.json()
-            return data.get('access_token', '')
+            return data.get("access_token", "")
     except Exception:
         pass
     pytest.skip("Admin authentication not available")
@@ -78,8 +78,8 @@ def admin_token(api_client, admin_credentials) -> str:
 def admin_headers(admin_token: str) -> Dict[str, str]:
     """Admin authenticated headers."""
     return {
-        'Authorization': f'Bearer {admin_token}',
-        'Content-Type': 'application/json',
+        "Authorization": f"Bearer {admin_token}",
+        "Content-Type": "application/json",
     }
 
 
@@ -88,9 +88,9 @@ def test_user_data() -> Dict[str, str]:
     """Generate unique test user data for each test."""
     unique_id = uuid4().hex[:8]
     return {
-        'email': f'testuser{unique_id}@killkrill.test',
-        'password': 'TestPass123!',
-        'name': f'Test User {unique_id}',
+        "email": f"testuser{unique_id}@killkrill.test",
+        "password": "TestPass123!",
+        "name": f"Test User {unique_id}",
     }
 
 
@@ -102,10 +102,10 @@ def test_user(api_client, test_user_data) -> Generator[Dict[str, Any], None, Non
 
     # Create user
     try:
-        response = api_client.post('/api/v1/auth/register', json=test_user_data)
+        response = api_client.post("/api/v1/auth/register", json=test_user_data)
         if response.status_code in [200, 201]:
             user_data = response.json()
-            user_id = user_data.get('id') or user_data.get('user', {}).get('id')
+            user_id = user_data.get("id") or user_data.get("user", {}).get("id")
     except Exception:
         pass
 
@@ -116,15 +116,15 @@ def test_user(api_client, test_user_data) -> Generator[Dict[str, Any], None, Non
         try:
             # Get admin token for deletion
             admin_creds = {
-                'email': os.getenv('TEST_ADMIN_EMAIL', 'admin@killkrill.local'),
-                'password': os.getenv('TEST_ADMIN_PASSWORD', 'admin123'),
+                "email": os.getenv("TEST_ADMIN_EMAIL", "admin@killkrill.local"),
+                "password": os.getenv("TEST_ADMIN_PASSWORD", "admin123"),
             }
-            admin_response = api_client.post('/api/v1/auth/login', json=admin_creds)
+            admin_response = api_client.post("/api/v1/auth/login", json=admin_creds)
             if admin_response.status_code == 200:
-                admin_token = admin_response.json().get('access_token')
+                admin_token = admin_response.json().get("access_token")
                 api_client.delete(
-                    f'/api/v1/users/{user_id}',
-                    headers={'Authorization': f'Bearer {admin_token}'}
+                    f"/api/v1/users/{user_id}",
+                    headers={"Authorization": f"Bearer {admin_token}"},
                 )
         except Exception:
             pass  # Cleanup is best-effort
@@ -135,10 +135,10 @@ def viewer_user_data() -> Dict[str, str]:
     """Generate viewer role user data."""
     unique_id = uuid4().hex[:8]
     return {
-        'email': f'viewer{unique_id}@killkrill.test',
-        'password': 'ViewerPass123!',
-        'name': f'Viewer User {unique_id}',
-        'role': 'viewer',
+        "email": f"viewer{unique_id}@killkrill.test",
+        "password": "ViewerPass123!",
+        "name": f"Viewer User {unique_id}",
+        "role": "viewer",
     }
 
 
@@ -147,10 +147,10 @@ def maintainer_user_data() -> Dict[str, str]:
     """Generate maintainer role user data."""
     unique_id = uuid4().hex[:8]
     return {
-        'email': f'maintainer{unique_id}@killkrill.test',
-        'password': 'MaintainerPass123!',
-        'name': f'Maintainer User {unique_id}',
-        'role': 'maintainer',
+        "email": f"maintainer{unique_id}@killkrill.test",
+        "password": "MaintainerPass123!",
+        "name": f"Maintainer User {unique_id}",
+        "role": "maintainer",
     }
 
 
@@ -158,24 +158,24 @@ def maintainer_user_data() -> Dict[str, str]:
 def mock_email_verification() -> Dict[str, str]:
     """Mock email verification token."""
     return {
-        'token': f'verify_{uuid4().hex}',
-        'expires_in': 3600,
+        "token": f"verify_{uuid4().hex}",
+        "expires_in": 3600,
     }
 
 
 @pytest.fixture
 def mock_password_reset_token() -> str:
     """Mock password reset token."""
-    return f'reset_{uuid4().hex}'
+    return f"reset_{uuid4().hex}"
 
 
 @pytest.fixture
 def json_headers() -> Dict[str, str]:
     """JSON content-type headers."""
-    return {'Content-Type': 'application/json'}
+    return {"Content-Type": "application/json"}
 
 
 @pytest.fixture
 def random_api_key_name() -> str:
     """Generate random API key name."""
-    return f'test-key-{uuid4().hex[:8]}'
+    return f"test-key-{uuid4().hex[:8]}"

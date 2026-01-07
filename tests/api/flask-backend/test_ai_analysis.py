@@ -4,8 +4,8 @@ httpx-based integration tests for AI analysis endpoints with pytest markers.
 Compatible with Quart async patterns via pytest-asyncio.
 """
 
-import pytest
 import httpx
+import pytest
 
 
 @pytest.mark.integration
@@ -15,23 +15,27 @@ class TestAnalyzeEndpoint:
     def test_analyze_success(self, api_client, auth_headers):
         """Test successful analysis submission"""
         payload = {
-            'data_source': 'prometheus',
-            'analysis_type': 'general',
-            'input_data': {'metrics': ['cpu_usage']}
+            "data_source": "prometheus",
+            "analysis_type": "general",
+            "input_data": {"metrics": ["cpu_usage"]},
         }
-        response = api_client.post('/api/v1/ai/analyze', headers=auth_headers, json=payload)
+        response = api_client.post(
+            "/api/v1/ai/analyze", headers=auth_headers, json=payload
+        )
         assert response.status_code in [201, 403]
 
     def test_analyze_missing_data_source(self, api_client, auth_headers):
         """Test validation of missing data_source field"""
-        payload = {'analysis_type': 'general'}
-        response = api_client.post('/api/v1/ai/analyze', headers=auth_headers, json=payload)
+        payload = {"analysis_type": "general"}
+        response = api_client.post(
+            "/api/v1/ai/analyze", headers=auth_headers, json=payload
+        )
         assert response.status_code in [400, 403]
 
     def test_analyze_unauthorized(self, api_client):
         """Test analysis without authentication"""
-        payload = {'data_source': 'prometheus', 'analysis_type': 'general'}
-        response = api_client.post('/api/v1/ai/analyze', json=payload)
+        payload = {"data_source": "prometheus", "analysis_type": "general"}
+        response = api_client.post("/api/v1/ai/analyze", json=payload)
         assert response.status_code == 401
 
 
@@ -41,17 +45,17 @@ class TestResultsListEndpoint:
 
     def test_get_results_list_success(self, api_client, auth_headers):
         """Test retrieving list of analysis results"""
-        response = api_client.get('/api/v1/ai/results', headers=auth_headers)
+        response = api_client.get("/api/v1/ai/results", headers=auth_headers)
         assert response.status_code in [200, 403]
 
     def test_get_results_with_limit(self, api_client, auth_headers):
         """Test retrieving results with custom limit"""
-        response = api_client.get('/api/v1/ai/results?limit=50', headers=auth_headers)
+        response = api_client.get("/api/v1/ai/results?limit=50", headers=auth_headers)
         assert response.status_code in [200, 403]
 
     def test_get_results_unauthorized(self, api_client):
         """Test results list without authentication"""
-        response = api_client.get('/api/v1/ai/results')
+        response = api_client.get("/api/v1/ai/results")
         assert response.status_code == 401
 
 
@@ -61,17 +65,17 @@ class TestResultDetailEndpoint:
 
     def test_get_result_by_id(self, api_client, auth_headers):
         """Test retrieving analysis result by ID"""
-        response = api_client.get('/api/v1/ai/results/1', headers=auth_headers)
+        response = api_client.get("/api/v1/ai/results/1", headers=auth_headers)
         assert response.status_code in [200, 403, 404]
 
     def test_get_result_not_found(self, api_client, auth_headers):
         """Test retrieving non-existent analysis result"""
-        response = api_client.get('/api/v1/ai/results/999999', headers=auth_headers)
+        response = api_client.get("/api/v1/ai/results/999999", headers=auth_headers)
         assert response.status_code in [403, 404]
 
     def test_get_result_unauthorized(self, api_client):
         """Test result detail without authentication"""
-        response = api_client.get('/api/v1/ai/results/1')
+        response = api_client.get("/api/v1/ai/results/1")
         assert response.status_code == 401
 
 
@@ -81,18 +85,22 @@ class TestAcknowledgeEndpoint:
 
     def test_acknowledge_result(self, api_client, auth_headers):
         """Test acknowledgment of analysis result"""
-        response = api_client.put('/api/v1/ai/results/1/acknowledge', headers=auth_headers, json={})
+        response = api_client.put(
+            "/api/v1/ai/results/1/acknowledge", headers=auth_headers, json={}
+        )
         assert response.status_code in [200, 403, 404]
 
     def test_acknowledge_with_user_info(self, api_client, auth_headers):
         """Test acknowledgment with user information"""
-        payload = {'acknowledged_by': 'admin@example.com'}
-        response = api_client.put('/api/v1/ai/results/1/acknowledge', headers=auth_headers, json=payload)
+        payload = {"acknowledged_by": "admin@example.com"}
+        response = api_client.put(
+            "/api/v1/ai/results/1/acknowledge", headers=auth_headers, json=payload
+        )
         assert response.status_code in [200, 403, 404]
 
     def test_acknowledge_unauthorized(self, api_client):
         """Test acknowledge without authentication"""
-        response = api_client.put('/api/v1/ai/results/1/acknowledge', json={})
+        response = api_client.put("/api/v1/ai/results/1/acknowledge", json={})
         assert response.status_code == 401
 
 
@@ -102,10 +110,10 @@ class TestConfigEndpoint:
 
     def test_get_config_success(self, api_client, auth_headers):
         """Test retrieving AI analysis configuration"""
-        response = api_client.get('/api/v1/ai/config', headers=auth_headers)
+        response = api_client.get("/api/v1/ai/config", headers=auth_headers)
         assert response.status_code in [200, 403]
 
     def test_get_config_unauthorized(self, api_client):
         """Test config without authentication"""
-        response = api_client.get('/api/v1/ai/config')
+        response = api_client.get("/api/v1/ai/config")
         assert response.status_code == 401

@@ -1,13 +1,15 @@
 """Health check endpoint."""
+
 from datetime import datetime
-from quart import Blueprint, jsonify, current_app
+
 import structlog
+from quart import Blueprint, current_app, jsonify
 
 logger = structlog.get_logger(__name__)
-bp = Blueprint('health', __name__)
+bp = Blueprint("health", __name__)
 
 
-@bp.route('/healthz', methods=['GET'])
+@bp.route("/healthz", methods=["GET"])
 async def health_check():
     """Health check endpoint."""
     try:
@@ -16,50 +18,57 @@ async def health_check():
         # Check Redis connection
         try:
             await current_app.redis_client.ping()
-            components['redis'] = 'ok'
+            components["redis"] = "ok"
         except Exception as e:
-            components['redis'] = f'error: {str(e)}'
+            components["redis"] = f"error: {str(e)}"
 
         # Check database connection
         try:
             current_app.db.executesql("SELECT 1")
-            components['database'] = 'ok'
+            components["database"] = "ok"
         except Exception as e:
-            components['database'] = f'error: {str(e)}'
+            components["database"] = f"error: {str(e)}"
 
         # Check receiver client
         if current_app.receiver_client:
             try:
                 is_healthy = await current_app.receiver_client.health_check()
-                components['receiver_client'] = 'ok' if is_healthy else 'degraded'
+                components["receiver_client"] = "ok" if is_healthy else "degraded"
             except Exception as e:
-                components['receiver_client'] = f'error: {str(e)}'
+                components["receiver_client"] = f"error: {str(e)}"
 
         # Overall status
-        status = 'healthy' if all(v == 'ok' for v in components.values()) else 'degraded'
-        if any('error' in str(v) for v in components.values()):
-            status = 'unhealthy'
+        status = (
+            "healthy" if all(v == "ok" for v in components.values()) else "degraded"
+        )
+        if any("error" in str(v) for v in components.values()):
+            status = "unhealthy"
 
         response_data = {
-            'status': status,
-            'service': 'killkrill-metrics-receiver',
-            'timestamp': datetime.utcnow().isoformat(),
-            'components': components
+            "status": status,
+            "service": "killkrill-metrics-receiver",
+            "timestamp": datetime.utcnow().isoformat(),
+            "components": components,
         }
 
-        status_code = 200 if status == 'healthy' else 503
+        status_code = 200 if status == "healthy" else 503
         return jsonify(response_data), status_code
 
     except Exception as e:
         logger.error("health_check_failed", error=str(e))
-        return jsonify({
-            'status': 'unhealthy',
-            'error': str(e),
-            'timestamp': datetime.utcnow().isoformat()
-        }), 503
+        return (
+            jsonify(
+                {
+                    "status": "unhealthy",
+                    "error": str(e),
+                    "timestamp": datetime.utcnow().isoformat(),
+                }
+            ),
+            503,
+        )
 
 
-@bp.route('/', methods=['GET'])
+@bp.route("/", methods=["GET"])
 async def index():
     """Basic status page."""
     metrics_count = current_app.db(current_app.db.received_metrics).count()

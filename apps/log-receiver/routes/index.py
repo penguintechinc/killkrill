@@ -4,10 +4,10 @@ KillKrill Log Receiver - Index/Status Page
 
 from quart import Blueprint, current_app
 
-index_bp = Blueprint('index', __name__)
+index_bp = Blueprint("index", __name__)
 
 
-@index_bp.route('/', methods=['GET'])
+@index_bp.route("/", methods=["GET"])
 async def index():
     """Basic status page"""
     db = current_app.db

@@ -10,29 +10,21 @@ Tests cover:
 - Error handling and edge cases
 """
 
-import pytest
-import time
 import hashlib
 import secrets
-from typing import Dict, Any
-from unittest.mock import Mock, patch, MagicMock
+import time
 from datetime import datetime, timedelta
+from typing import Any, Dict
+from unittest.mock import MagicMock, Mock, patch
 
-from shared.auth.middleware import (
-    AuthenticationError,
-    AuthorizationError,
-    generate_api_key,
-    hash_api_key,
-    verify_api_key,
-    generate_jwt_token,
-    verify_jwt_token,
-    verify_ip_access,
-    MultiAuthMiddleware,
-    require_auth,
-    require_ip_access,
-    verify_auth,
-)
+import pytest
 
+from shared.auth.middleware import (AuthenticationError, AuthorizationError,
+                                    MultiAuthMiddleware, generate_api_key,
+                                    generate_jwt_token, hash_api_key,
+                                    require_auth, require_ip_access,
+                                    verify_api_key, verify_auth,
+                                    verify_ip_access, verify_jwt_token)
 
 # ============================================================================
 # Test Fixtures
@@ -55,10 +47,10 @@ def sample_api_key() -> str:
 def sample_payload() -> Dict[str, Any]:
     """Create a sample JWT payload."""
     return {
-        'user_id': 'test_user_123',
-        'username': 'testuser',
-        'permissions': ['read', 'write'],
-        'source': 'api',
+        "user_id": "test_user_123",
+        "username": "testuser",
+        "permissions": ["read", "write"],
+        "source": "api",
     }
 
 
@@ -103,7 +95,7 @@ def test_generate_api_key_url_safe():
     """Test that generated keys are URL-safe."""
     key = generate_api_key()
     # URL-safe characters: A-Z a-z 0-9 - _ (no special chars)
-    assert all(c.isalnum() or c in '-_' for c in key)
+    assert all(c.isalnum() or c in "-_" for c in key)
 
 
 # ============================================================================
@@ -145,7 +137,7 @@ def test_hash_api_key_hex_format():
     api_key = "test_key"
     hashed = hash_api_key(api_key)
     assert len(hashed) == 64  # SHA-256 hex is 64 chars
-    assert all(c in '0123456789abcdef' for c in hashed)
+    assert all(c in "0123456789abcdef" for c in hashed)
 
 
 @pytest.mark.unit
@@ -205,52 +197,59 @@ def test_generate_jwt_token_basic(sample_payload: Dict[str, Any], jwt_secret: st
     token = generate_jwt_token(sample_payload, jwt_secret)
     assert isinstance(token, str)
     assert len(token) > 0
-    assert token.count('.') == 2  # Valid JWT has 3 parts
+    assert token.count(".") == 2  # Valid JWT has 3 parts
 
 
 @pytest.mark.unit
 def test_generate_jwt_token_includes_expiry(jwt_secret: str):
     """Test that generated token includes expiry claim."""
-    payload = {'user_id': 'test_user'}
+    payload = {"user_id": "test_user"}
     token = generate_jwt_token(payload, jwt_secret, expiry_hours=24)
 
     import jwt
-    decoded = jwt.decode(token, jwt_secret, algorithms=['HS256'])
-    assert 'exp' in decoded
-    assert 'iat' in decoded
-    assert decoded['exp'] > decoded['iat']
+
+    decoded = jwt.decode(token, jwt_secret, algorithms=["HS256"])
+    assert "exp" in decoded
+    assert "iat" in decoded
+    assert decoded["exp"] > decoded["iat"]
 
 
 @pytest.mark.unit
 def test_generate_jwt_token_custom_expiry(jwt_secret: str):
     """Test JWT token generation with custom expiry hours."""
-    payload = {'user_id': 'test_user'}
+    payload = {"user_id": "test_user"}
 
     token_24h = generate_jwt_token(payload, jwt_secret, expiry_hours=24)
     token_1h = generate_jwt_token(payload, jwt_secret, expiry_hours=1)
 
     import jwt
-    decoded_24h = jwt.decode(token_24h, jwt_secret, algorithms=['HS256'])
-    decoded_1h = jwt.decode(token_1h, jwt_secret, algorithms=['HS256'])
+
+    decoded_24h = jwt.decode(token_24h, jwt_secret, algorithms=["HS256"])
+    decoded_1h = jwt.decode(token_1h, jwt_secret, algorithms=["HS256"])
 
     # 24h token should expire later than 1h token
-    assert decoded_24h['exp'] > decoded_1h['exp']
+    assert decoded_24h["exp"] > decoded_1h["exp"]
 
 
 @pytest.mark.unit
-def test_generate_jwt_token_includes_payload_data(sample_payload: Dict[str, Any], jwt_secret: str):
+def test_generate_jwt_token_includes_payload_data(
+    sample_payload: Dict[str, Any], jwt_secret: str
+):
     """Test that payload data is included in token."""
     token = generate_jwt_token(sample_payload, jwt_secret)
 
     import jwt
-    decoded = jwt.decode(token, jwt_secret, algorithms=['HS256'])
-    assert decoded['user_id'] == sample_payload['user_id']
-    assert decoded['username'] == sample_payload['username']
-    assert decoded['permissions'] == sample_payload['permissions']
+
+    decoded = jwt.decode(token, jwt_secret, algorithms=["HS256"])
+    assert decoded["user_id"] == sample_payload["user_id"]
+    assert decoded["username"] == sample_payload["username"]
+    assert decoded["permissions"] == sample_payload["permissions"]
 
 
 @pytest.mark.unit
-def test_generate_jwt_token_different_secrets_produce_different_tokens(sample_payload: Dict[str, Any]):
+def test_generate_jwt_token_different_secrets_produce_different_tokens(
+    sample_payload: Dict[str, Any],
+):
     """Test that different secrets produce different tokens."""
     secret1 = secrets.token_urlsafe(32)
     secret2 = secrets.token_urlsafe(32)
@@ -271,7 +270,7 @@ def test_verify_jwt_token_success(sample_payload: Dict[str, Any], jwt_secret: st
     """Test successful JWT token verification."""
     token = generate_jwt_token(sample_payload, jwt_secret)
     decoded = verify_jwt_token(token, jwt_secret)
-    assert decoded['user_id'] == sample_payload['user_id']
+    assert decoded["user_id"] == sample_payload["user_id"]
 
 
 @pytest.mark.unit
@@ -294,14 +293,14 @@ def test_verify_jwt_token_wrong_secret(sample_payload: Dict[str, Any], jwt_secre
 @pytest.mark.unit
 def test_verify_jwt_token_expired_token(jwt_secret: str):
     """Test verification of expired token."""
-    payload = {'user_id': 'test_user'}
+    payload = {"user_id": "test_user"}
     import jwt
 
     # Create expired token manually
     expired_payload = payload.copy()
-    expired_payload['exp'] = int(time.time()) - 3600  # Expired 1 hour ago
-    expired_payload['iat'] = int(time.time()) - 7200
-    expired_token = jwt.encode(expired_payload, jwt_secret, algorithm='HS256')
+    expired_payload["exp"] = int(time.time()) - 3600  # Expired 1 hour ago
+    expired_payload["iat"] = int(time.time()) - 7200
+    expired_token = jwt.encode(expired_payload, jwt_secret, algorithm="HS256")
 
     with pytest.raises(AuthenticationError):
         verify_jwt_token(expired_token, jwt_secret)
@@ -315,7 +314,9 @@ def test_verify_jwt_token_empty_token(jwt_secret: str):
 
 
 @pytest.mark.unit
-def test_verify_jwt_token_tampered_token(sample_payload: Dict[str, Any], jwt_secret: str):
+def test_verify_jwt_token_tampered_token(
+    sample_payload: Dict[str, Any], jwt_secret: str
+):
     """Test verification of tampered token."""
     token = generate_jwt_token(sample_payload, jwt_secret)
     tampered_token = token[:-5] + "xxxxx"  # Corrupt the signature
@@ -411,27 +412,29 @@ def test_middleware_init(jwt_secret: str):
 @pytest.mark.unit
 def test_middleware_authenticate_api_key(auth_middleware: MultiAuthMiddleware):
     """Test API key authentication via middleware."""
-    headers = {'x-api-key': 'test_api_key'}
+    headers = {"x-api-key": "test_api_key"}
     query_params = {}
 
     result = auth_middleware.authenticate_request(headers, query_params)
     assert result is not None
-    assert result['authenticated'] is True
-    assert result['method'] == 'api_key'
-    assert 'user_id' in result
-    assert 'permissions' in result
+    assert result["authenticated"] is True
+    assert result["method"] == "api_key"
+    assert "user_id" in result
+    assert "permissions" in result
 
 
 @pytest.mark.unit
-def test_middleware_authenticate_api_key_from_query(auth_middleware: MultiAuthMiddleware):
+def test_middleware_authenticate_api_key_from_query(
+    auth_middleware: MultiAuthMiddleware,
+):
     """Test API key authentication from query parameter."""
     headers = {}
-    query_params = {'api_key': 'test_api_key'}
+    query_params = {"api_key": "test_api_key"}
 
     result = auth_middleware.authenticate_request(headers, query_params)
     assert result is not None
-    assert result['authenticated'] is True
-    assert result['method'] == 'api_key'
+    assert result["authenticated"] is True
+    assert result["method"] == "api_key"
 
 
 @pytest.mark.unit
@@ -440,27 +443,27 @@ def test_middleware_authenticate_jwt(sample_payload: Dict[str, Any], jwt_secret:
     middleware = MultiAuthMiddleware(jwt_secret)
     token = generate_jwt_token(sample_payload, jwt_secret)
 
-    headers = {'authorization': f'Bearer {token}'}
+    headers = {"authorization": f"Bearer {token}"}
     query_params = {}
 
     result = middleware.authenticate_request(headers, query_params)
     assert result is not None
-    assert result['authenticated'] is True
-    assert result['method'] == 'jwt'
-    assert result['user_id'] == sample_payload['user_id']
+    assert result["authenticated"] is True
+    assert result["method"] == "jwt"
+    assert result["user_id"] == sample_payload["user_id"]
 
 
 @pytest.mark.unit
 def test_middleware_authenticate_mtls(auth_middleware: MultiAuthMiddleware):
     """Test mTLS authentication via middleware."""
-    headers = {'x-client-cert': 'test_client_cert_data'}
+    headers = {"x-client-cert": "test_client_cert_data"}
     query_params = {}
 
     result = auth_middleware.authenticate_request(headers, query_params)
     assert result is not None
-    assert result['authenticated'] is True
-    assert result['method'] == 'mtls'
-    assert 'client_cert_fingerprint' in result
+    assert result["authenticated"] is True
+    assert result["method"] == "mtls"
+    assert "client_cert_fingerprint" in result
 
 
 @pytest.mark.unit
@@ -476,7 +479,7 @@ def test_middleware_no_auth_provided(auth_middleware: MultiAuthMiddleware):
 @pytest.mark.unit
 def test_middleware_header_case_insensitive(auth_middleware: MultiAuthMiddleware):
     """Test that header matching is case-insensitive."""
-    headers = {'X-API-KEY': 'test_api_key'}  # Uppercase
+    headers = {"X-API-KEY": "test_api_key"}  # Uppercase
     query_params = {}
 
     result = auth_middleware.authenticate_request(headers, query_params)
@@ -489,30 +492,24 @@ def test_middleware_api_key_priority(sample_payload: Dict[str, Any], jwt_secret:
     middleware = MultiAuthMiddleware(jwt_secret)
     token = generate_jwt_token(sample_payload, jwt_secret)
 
-    headers = {
-        'x-api-key': 'test_api_key',
-        'authorization': f'Bearer {token}'
-    }
+    headers = {"x-api-key": "test_api_key", "authorization": f"Bearer {token}"}
     query_params = {}
 
     result = middleware.authenticate_request(headers, query_params)
     # API key should be tried first
-    assert result['method'] == 'api_key'
+    assert result["method"] == "api_key"
 
 
 @pytest.mark.unit
 def test_middleware_invalid_jwt_falls_back(auth_middleware: MultiAuthMiddleware):
     """Test that invalid JWT doesn't break mTLS fallback."""
-    headers = {
-        'authorization': 'Bearer invalid_token',
-        'x-client-cert': 'test_cert'
-    }
+    headers = {"authorization": "Bearer invalid_token", "x-client-cert": "test_cert"}
     query_params = {}
 
     result = auth_middleware.authenticate_request(headers, query_params)
     # Should fall back to mTLS after JWT fails
     assert result is not None
-    assert result['method'] == 'mtls'
+    assert result["method"] == "mtls"
 
 
 # ============================================================================
@@ -523,7 +520,7 @@ def test_middleware_invalid_jwt_falls_back(auth_middleware: MultiAuthMiddleware)
 @pytest.mark.unit
 def test_require_auth_decorator_requires_py4web():
     """Test that decorator requires py4web framework."""
-    auth_middleware = MultiAuthMiddleware('secret')
+    auth_middleware = MultiAuthMiddleware("secret")
 
     @require_auth(auth_middleware)
     def dummy_func():
@@ -536,9 +533,9 @@ def test_require_auth_decorator_requires_py4web():
 @pytest.mark.unit
 def test_require_auth_decorator_with_permissions():
     """Test require_auth decorator with permission checks."""
-    auth_middleware = MultiAuthMiddleware('secret')
+    auth_middleware = MultiAuthMiddleware("secret")
 
-    @require_auth(auth_middleware, required_permissions=['admin', 'read'])
+    @require_auth(auth_middleware, required_permissions=["admin", "read"])
     def protected_func():
         return "success"
 
@@ -555,7 +552,7 @@ def test_require_auth_decorator_with_permissions():
 def test_require_ip_access_decorator():
     """Test require_ip_access decorator."""
 
-    @require_ip_access(['192.168.1.0/24'])
+    @require_ip_access(["192.168.1.0/24"])
     def ip_protected_func():
         return "success"
 
@@ -571,36 +568,28 @@ def test_require_ip_access_decorator():
 @pytest.mark.unit
 def test_verify_auth_with_api_key():
     """Test standalone verify_auth with API key."""
-    headers = {'x-api-key': 'test_key'}
+    headers = {"x-api-key": "test_key"}
     query_params = {}
 
-    authenticated, auth_context = verify_auth(
-        headers,
-        query_params,
-        'test_secret'
-    )
+    authenticated, auth_context = verify_auth(headers, query_params, "test_secret")
 
     assert authenticated is True
     assert auth_context is not None
-    assert auth_context['method'] == 'api_key'
+    assert auth_context["method"] == "api_key"
 
 
 @pytest.mark.unit
 def test_verify_auth_with_jwt(sample_payload: Dict[str, Any], jwt_secret: str):
     """Test standalone verify_auth with JWT token."""
     token = generate_jwt_token(sample_payload, jwt_secret)
-    headers = {'authorization': f'Bearer {token}'}
+    headers = {"authorization": f"Bearer {token}"}
     query_params = {}
 
-    authenticated, auth_context = verify_auth(
-        headers,
-        query_params,
-        jwt_secret
-    )
+    authenticated, auth_context = verify_auth(headers, query_params, jwt_secret)
 
     assert authenticated is True
     assert auth_context is not None
-    assert auth_context['method'] == 'jwt'
+    assert auth_context["method"] == "jwt"
 
 
 @pytest.mark.unit
@@ -609,11 +598,7 @@ def test_verify_auth_no_credentials():
     headers = {}
     query_params = {}
 
-    authenticated, auth_context = verify_auth(
-        headers,
-        query_params,
-        'test_secret'
-    )
+    authenticated, auth_context = verify_auth(headers, query_params, "test_secret")
 
     assert authenticated is False
     assert auth_context is None
@@ -622,17 +607,17 @@ def test_verify_auth_no_credentials():
 @pytest.mark.unit
 def test_verify_auth_with_ip_restriction():
     """Test verify_auth with IP-based access control."""
-    headers = {'x-api-key': 'test_key'}
+    headers = {"x-api-key": "test_key"}
     query_params = {}
-    allowed_networks = ['192.168.1.0/24']
+    allowed_networks = ["192.168.1.0/24"]
 
     # Allowed IP
     authenticated, _ = verify_auth(
         headers,
         query_params,
-        'test_secret',
+        "test_secret",
         allowed_networks=allowed_networks,
-        client_ip='192.168.1.100'
+        client_ip="192.168.1.100",
     )
     assert authenticated is True
 
@@ -640,9 +625,9 @@ def test_verify_auth_with_ip_restriction():
     authenticated, _ = verify_auth(
         headers,
         query_params,
-        'test_secret',
+        "test_secret",
         allowed_networks=allowed_networks,
-        client_ip='10.0.0.1'
+        client_ip="10.0.0.1",
     )
     assert authenticated is False
 
@@ -650,15 +635,11 @@ def test_verify_auth_with_ip_restriction():
 @pytest.mark.unit
 def test_verify_auth_exception_handling(caplog):
     """Test that verify_auth handles exceptions gracefully."""
-    headers = {'authorization': 'Bearer malformed_token'}
+    headers = {"authorization": "Bearer malformed_token"}
     query_params = {}
 
     # Should not raise, should return False
-    authenticated, auth_context = verify_auth(
-        headers,
-        query_params,
-        'test_secret'
-    )
+    authenticated, auth_context = verify_auth(headers, query_params, "test_secret")
 
     assert authenticated is False
     assert auth_context is None
@@ -697,19 +678,19 @@ def test_verify_api_key_with_special_characters():
 def test_generate_jwt_token_with_nested_payload(jwt_secret: str):
     """Test JWT generation with nested payload structures."""
     payload = {
-        'user_id': 'test_user',
-        'metadata': {
-            'org_id': 'org_123',
-            'roles': ['admin', 'user'],
-            'settings': {'theme': 'dark'}
-        }
+        "user_id": "test_user",
+        "metadata": {
+            "org_id": "org_123",
+            "roles": ["admin", "user"],
+            "settings": {"theme": "dark"},
+        },
     }
 
     token = generate_jwt_token(payload, jwt_secret)
     decoded = verify_jwt_token(token, jwt_secret)
 
-    assert decoded['metadata']['org_id'] == 'org_123'
-    assert 'admin' in decoded['metadata']['roles']
+    assert decoded["metadata"]["org_id"] == "org_123"
+    assert "admin" in decoded["metadata"]["roles"]
 
 
 @pytest.mark.unit
@@ -733,15 +714,15 @@ def test_verify_ip_access_large_network_list():
 @pytest.mark.unit
 def test_middleware_authenticate_with_malformed_bearer():
     """Test middleware handling of malformed Bearer header."""
-    auth_middleware = MultiAuthMiddleware('secret')
+    auth_middleware = MultiAuthMiddleware("secret")
 
     # Missing space after Bearer
-    headers = {'authorization': 'Bearertoken123'}
+    headers = {"authorization": "Bearertoken123"}
     query_params = {}
 
     result = auth_middleware.authenticate_request(headers, query_params)
     # Should not match and fall through to other methods
-    assert result is None or result['method'] != 'jwt'
+    assert result is None or result["method"] != "jwt"
 
 
 @pytest.mark.unit
@@ -788,29 +769,29 @@ def test_hash_api_key_unicode_handling():
 @pytest.mark.unit
 def test_generate_jwt_token_preserves_payload_mutations(jwt_secret: str):
     """Test that JWT generation doesn't mutate original payload."""
-    original_payload = {'user_id': 'test', 'data': {'key': 'value'}}
+    original_payload = {"user_id": "test", "data": {"key": "value"}}
     payload_copy = original_payload.copy()
 
     generate_jwt_token(original_payload, jwt_secret)
 
     # Original payload should be mutated (exp/iat added)
-    assert 'exp' in original_payload
-    assert 'iat' in original_payload
+    assert "exp" in original_payload
+    assert "iat" in original_payload
 
 
 @pytest.mark.unit
 def test_verify_auth_ip_priority():
     """Test that IP check happens before auth in verify_auth."""
-    headers = {'x-api-key': 'test_key'}
+    headers = {"x-api-key": "test_key"}
     query_params = {}
-    allowed_networks = ['192.168.1.0/24']
+    allowed_networks = ["192.168.1.0/24"]
 
     # IP not in allowed list - should fail before checking auth
     authenticated, _ = verify_auth(
         headers,
         query_params,
-        'test_secret',
+        "test_secret",
         allowed_networks=allowed_networks,
-        client_ip='10.0.0.1'
+        client_ip="10.0.0.1",
     )
     assert authenticated is False

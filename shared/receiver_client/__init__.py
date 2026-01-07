@@ -6,13 +6,9 @@ with JWT authentication and automatic gRPC/REST protocol fallback.
 """
 
 from .client import ReceiverClient
-from .exceptions import (
-    AuthenticationError,
-    ConnectionError,
-    SubmissionError,
-    ReceiverClientError,
-    TokenExpiredError,
-)
+from .exceptions import (AuthenticationError, ConnectionError,
+                         ReceiverClientError, SubmissionError,
+                         TokenExpiredError)
 
 __all__ = [
     "ReceiverClient",

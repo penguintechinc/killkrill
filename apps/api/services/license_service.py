@@ -4,14 +4,14 @@ PenguinTech License Server integration
 """
 
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
 import httpx
-from quart import Quart
 import structlog
+from quart import Quart
+from services.redis_service import cache
 
 from config import get_config
-from services.redis_service import cache
 
 logger = structlog.get_logger(__name__)
 
@@ -34,18 +34,18 @@ async def init_license(app: Quart) -> None:
     try:
         validation = await validate_license(config.LICENSE_KEY, config.PRODUCT_NAME)
 
-        if validation.get('valid'):
+        if validation.get("valid"):
             _license_info = validation
             _license_valid = True
             logger.info(
                 "license_validated",
-                customer=validation.get('customer'),
-                tier=validation.get('tier'),
-                expires=validation.get('expires_at')
+                customer=validation.get("customer"),
+                tier=validation.get("tier"),
+                expires=validation.get("expires_at"),
             )
         else:
             _license_valid = False
-            logger.error("license_invalid", message=validation.get('message'))
+            logger.error("license_invalid", message=validation.get("message"))
 
     except Exception as e:
         logger.error("license_init_failed", error=str(e))
@@ -69,32 +69,32 @@ async def validate_license(license_key: str, product: str) -> Dict[str, Any]:
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{config.LICENSE_SERVER_URL}/api/v2/validate",
-                headers={'Authorization': f'Bearer {license_key}'},
-                json={'product': product},
-                timeout=10.0
+                headers={"Authorization": f"Bearer {license_key}"},
+                json={"product": product},
+                timeout=10.0,
             )
 
             if response.status_code == 200:
                 data = response.json()
                 return {
-                    'valid': data.get('valid', False),
-                    'customer': data.get('customer'),
-                    'tier': data.get('tier'),
-                    'expires_at': data.get('expires_at'),
-                    'features': data.get('features', []),
-                    'limits': data.get('limits', {}),
-                    'message': data.get('message'),
+                    "valid": data.get("valid", False),
+                    "customer": data.get("customer"),
+                    "tier": data.get("tier"),
+                    "expires_at": data.get("expires_at"),
+                    "features": data.get("features", []),
+                    "limits": data.get("limits", {}),
+                    "message": data.get("message"),
                 }
             else:
                 return {
-                    'valid': False,
-                    'message': f'Validation failed: HTTP {response.status_code}'
+                    "valid": False,
+                    "message": f"Validation failed: HTTP {response.status_code}",
                 }
 
     except httpx.TimeoutException:
-        return {'valid': False, 'message': 'License server timeout'}
+        return {"valid": False, "message": "License server timeout"}
     except Exception as e:
-        return {'valid': False, 'message': str(e)}
+        return {"valid": False, "message": str(e)}
 
 
 async def check_feature(feature_name: str, use_cache: bool = True) -> bool:
@@ -114,19 +114,21 @@ async def check_feature(feature_name: str, use_cache: bool = True) -> bool:
     if use_cache:
         cached = await cache.get(f"feature:{feature_name}")
         if cached is not None:
-            return cached == 'true'
+            return cached == "true"
 
     # Check license info
     if not _license_info:
         return False
 
-    features = _license_info.get('features', [])
+    features = _license_info.get("features", [])
     for feature in features:
-        if feature.get('name') == feature_name:
-            entitled = feature.get('entitled', False)
+        if feature.get("name") == feature_name:
+            entitled = feature.get("entitled", False)
 
             # Cache the result for 5 minutes
-            await cache.set(f"feature:{feature_name}", 'true' if entitled else 'false', ttl=300)
+            await cache.set(
+                f"feature:{feature_name}", "true" if entitled else "false", ttl=300
+            )
 
             return entitled
 
@@ -146,8 +148,8 @@ async def get_all_features() -> Dict[str, bool]:
         return {}
 
     features = {}
-    for feature in _license_info.get('features', []):
-        features[feature.get('name')] = feature.get('entitled', False)
+    for feature in _license_info.get("features", []):
+        features[feature.get("name")] = feature.get("entitled", False)
 
     return features
 
@@ -171,21 +173,21 @@ async def send_keepalive(usage_data: Dict[str, Any] = None) -> bool:
         import socket
 
         payload = {
-            'product': config.PRODUCT_NAME,
-            'server_id': f"killkrill-{socket.gethostname()}",
-            'hostname': socket.gethostname(),
-            'version': '2.0.0',
+            "product": config.PRODUCT_NAME,
+            "server_id": f"killkrill-{socket.gethostname()}",
+            "hostname": socket.gethostname(),
+            "version": "2.0.0",
         }
 
         if usage_data:
-            payload['usage_stats'] = usage_data
+            payload["usage_stats"] = usage_data
 
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{config.LICENSE_SERVER_URL}/api/v2/keepalive",
-                headers={'Authorization': f'Bearer {config.LICENSE_KEY}'},
+                headers={"Authorization": f"Bearer {config.LICENSE_KEY}"},
                 json=payload,
-                timeout=10.0
+                timeout=10.0,
             )
 
             return response.status_code == 200
