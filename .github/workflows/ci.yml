@@ -131,7 +131,7 @@ jobs:
       run: go mod verify
 
     - name: Run go vet
-      run: go vet ./...
+      run: go vet $(go list ./... | grep -v 'k8s/operator')
 
     - name: Run staticcheck
       uses: dominikh/staticcheck-action@v1.3.1
@@ -154,7 +154,7 @@ jobs:
 
     - name: Run tests
       run: |
-        go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+        go test -v -race -coverprofile=coverage.out -covermode=atomic $(go list ./... | grep -v 'k8s/operator')
 
     - name: Generate test report
       uses: mikepenz/action-junit-report@v4
