@@ -53,4 +53,4 @@ flake8>=7.1.1
 mypy>=1.14.0
 
 # License Server Integration
-requests>=2.32.4
+requests>=2.32.0
