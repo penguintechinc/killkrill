@@ -1,4 +1,4 @@
-"user strict";
+'user strict';
 
 // Allows "bla {a} bla {b}".format({'a': 'hello', 'b': 'world'})
 if (!String.prototype.format) {
@@ -31,7 +31,7 @@ Q.ajax = function(method, url, data, headers) {
     var options = {
         method: method,
         referrerPolicy: 'no-referrer',
-    }
+    };
     if (data){
         if ( !(data instanceof FormData)){
             options.headers = {'Content-type': 'application/json'};
@@ -48,18 +48,18 @@ Q.ajax = function(method, url, data, headers) {
                             resolve(res);
                         }, reject);}).catch(reject);
     });
-}
+};
 
-Q.get = (url, headers) => Q.ajax("GET", url, null, headers);
-Q.post = (url, data, headers) => Q.ajax("POST", url, data, headers);
-Q.put = (url, data, headers) => Q.ajax("PUT", url, data, headers);
-Q.delete = (url, headers) => Q.ajax("DELETE", url, null, headers);
+Q.get = (url, headers) => Q.ajax('GET', url, null, headers);
+Q.post = (url, data, headers) => Q.ajax('POST', url, data, headers);
+Q.put = (url, data, headers) => Q.ajax('PUT', url, data, headers);
+Q.delete = (url, headers) => Q.ajax('DELETE', url, null, headers);
 
 // Gets a cookie value
 Q.get_cookie = function (name) {
-    var cookie = RegExp("" + name + "[^;]+").exec(document.cookie);
+    var cookie = RegExp('' + name + '[^;]+').exec(document.cookie);
     if (!cookie) return null;
-    return decodeURIComponent(!!cookie ? cookie.toString().replace(/^[^=]+./, "") : "");
+    return decodeURIComponent(cookie ? cookie.toString().replace(/^[^=]+./, '') : '');
 };
 
 // Load components lazily: https://vuejs.org/v2/guide/components.html#Async-Components
@@ -160,18 +160,18 @@ Q.tags_input = function(elem, options) {
     // set to false to only allow selecting one of the specified tags
     if (options.freetext === undefined) options.freetext = true;
     // how to transform typed tags to convert to actual tags
-    if (options.transform === undefined) options.transform = function(x) {return x.toLowerCase();}
+    if (options.transform === undefined) options.transform = function(x) {return x.toLowerCase();};
     // how to display tags
     if (options.labels === undefined) options.labels = {};
     // placeholder for the freetext field
-    if (options.placeholder === undefined) options.placeholder = "";
+    if (options.placeholder === undefined) options.placeholder = '';
     // autocomplete list attribute https://www.w3schools.com/tags/tag_datalist.asp
     if (options.autocomplete_list === undefined) options.autocomplete_list = null;
     var tags = options.tags;
     if(!elem) { console.log('Q.tags_input: elem '+selector+' not found'); return; }
-    elem.type = "hidden";
+    elem.type = 'hidden';
     var repl = document.createElement('ul');
-    repl.classList.add('tags-list')
+    repl.classList.add('tags-list');
     elem.parentNode.insertBefore(repl, elem);
     var keys = Q.eval(elem.value||'[]');
     keys.map(function(x) { if(tags.indexOf(x)<0) tags.push(x); });
@@ -194,7 +194,7 @@ Q.tags_input = function(elem, options) {
     if (options.freetext) {
       var inp = document.createElement('input');
       elem.parentNode.insertBefore(inp, elem);
-      inp.type = "text";
+      inp.type = 'text';
       inp.classList = elem.classList;
       inp.placeholder = options.placeholder;
       inp.setAttribute('list',  options.autocomplete_list);
@@ -232,7 +232,7 @@ Q.score_input = function(elem, reference) {
       var score = Q.score_password(elem.value.trim());
       var r = Math.round(255*Math.max(0,Math.min(2-2*score/reference,1)));
       var g = Math.round(255*Math.max(0,Math.min(2*score/reference,1)));
-      elem.style.backgroundImage = (score==0)?"":("url('"+'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10" width="30"><circle cx="5" cy="5" r="3" stroke-width="0" fill="rgb('+r+','+g+',0)"/></svg>'+"')");
+      elem.style.backgroundImage = (score==0)?'':("url('"+'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10" width="30"><circle cx="5" cy="5" r="3" stroke-width="0" fill="rgb('+r+','+g+',0)"/></svg>'+"')");
     };
 };
 
@@ -291,7 +291,7 @@ Q.handle_flash = function() {
     };
     var make_handler = function(elem) {
         return function (event) { 
-            var node = document.createElement("div");
+            var node = document.createElement('div');
             node.innerHTML = '<div role="alert"><span class="close"></span>{0}</div>'.format([event.detail.message]);
             node = Q('[role="alert"]', node)[0];
             node.classList.add(event.detail.class||'info');

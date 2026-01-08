@@ -5,10 +5,11 @@ Provides endpoints for monitoring and logging infrastructure status and queries.
 Proxies requests to Prometheus, Elasticsearch, Grafana, Kibana, and AlertManager.
 """
 
-from flask import Blueprint, jsonify, request, g
-import structlog
+from typing import Any, Dict, Optional
+
 import requests
-from typing import Optional, Dict, Any
+import structlog
+from flask import Blueprint, g, jsonify, request
 
 logger = structlog.get_logger()
 

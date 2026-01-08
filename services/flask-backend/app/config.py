@@ -14,11 +14,10 @@ All settings are loaded from environment variables with sensible defaults.
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from typing import Any, Optional
-import os
 from urllib.parse import quote
-
 
 # Valid PyDAL database types for input validation
 VALID_DB_TYPES = {

@@ -11,8 +11,8 @@ Environment Variables:
     LOG_LEVEL: DEBUG|INFO|WARNING|ERROR|CRITICAL (default: INFO)
 """
 
-import os
 import logging
+import os
 import sys
 
 # Configure logging

@@ -130,9 +130,9 @@ if settings.OAUTH2GOOGLE_CLIENT_ID:
     )
 
 if settings.OAUTH2GOOGLE_SCOPED_CREDENTIALS_FILE:
-    from py4web.utils.auth_plugins.oauth2google_scoped import (
+    from py4web.utils.auth_plugins.oauth2google_scoped import (  # TESTED
         OAuth2GoogleScoped,
-    )  # TESTED
+    )
 
     auth.register_plugin(
         OAuth2GoogleScoped(

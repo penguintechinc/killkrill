@@ -5,6 +5,7 @@ Flask-SQLAlchemy model for API key management.
 """
 
 from datetime import datetime
+
 from .database import db
 
 

@@ -5,6 +5,7 @@ Flask-SQLAlchemy model for audit logging.
 """
 
 from datetime import datetime
+
 from .database import db
 
 

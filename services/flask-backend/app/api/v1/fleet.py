@@ -3,14 +3,15 @@ KillKrill Flask Backend - Fleet API Blueprint
 Endpoints for Fleet server integration with license-gated features.
 """
 
-from datetime import datetime
-from flask import Blueprint, request, jsonify
-import requests
-import os
 import logging
+import os
+from datetime import datetime
 
+import requests
 from app.api.v1.schemas import APIResponse, ErrorResponse
-from shared.licensing.python_client import requires_feature, FeatureNotAvailableError
+from flask import Blueprint, jsonify, request
+
+from shared.licensing.python_client import FeatureNotAvailableError, requires_feature
 
 logger = logging.getLogger(__name__)
 

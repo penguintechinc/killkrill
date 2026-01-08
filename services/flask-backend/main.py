@@ -16,10 +16,10 @@ Environment Variables:
     LOG_LEVEL: DEBUG|INFO|WARNING|ERROR|CRITICAL (default: INFO)
 """
 
+import argparse
+import logging
 import os
 import sys
-import logging
-import argparse
 from typing import Optional
 
 import structlog
@@ -83,8 +83,9 @@ def run_http_server(
 def run_grpc_server(port: int = 50051) -> None:
     """Run gRPC server on separate port"""
     try:
-        import grpc
         from concurrent import futures
+
+        import grpc
 
         logger.info("starting_grpc_server", port=port)
 

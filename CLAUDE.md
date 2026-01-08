@@ -865,7 +865,13 @@ For enterprise deployments:
 5. **Enterprise Monitoring**: Prometheus + Grafana, alerting for SLA violations, usage reports
 6. **High Availability**: K8s replicas for workers, StatefulSets for stateful services, load balancing
 
----
+## License & Legal
+
+**License File**: `LICENSE.md` (located at project root)
+
+**License Type**: Limited AGPL-3.0 with commercial use restrictions and Contributor Employer Exception
+
+The `LICENSE.md` file is located at the project root following industry standards.
 
 **Template Version**: 1.3.0
 **Last Updated**: 2025-12-03

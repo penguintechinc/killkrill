@@ -6,7 +6,9 @@ Flask-SQLAlchemy models for authentication with Flask-Security-Too.
 
 from datetime import datetime
 from typing import List
-from flask_security import UserMixin, RoleMixin
+
+from flask_security import RoleMixin, UserMixin
+
 from .database import db
 
 # Association table for many-to-many relationship

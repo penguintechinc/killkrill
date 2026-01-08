@@ -8,6 +8,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
+import path from 'path';
 import { createPrometheusMetrics } from './lib/metrics.js';
 import { initializeLicensing, getClient } from './lib/license-client.js';
 
@@ -259,7 +260,7 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 // Error handling middleware
-app.use((error, req, res, next) => {
+app.use((error, req, res, _next) => {
   console.error('Server error:', error);
 
   res.status(error.status || 500).json({

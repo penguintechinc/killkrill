@@ -9,43 +9,43 @@ the Flask application with all necessary components including authentication,
 database connections, metrics collection, and error handling.
 """
 
+import logging
 import os
 import uuid
-import logging
-from datetime import datetime, timedelta
-from typing import Optional, Dict, Any
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from functools import wraps
+from typing import Any, Dict, Optional
 
-from flask import Flask, request, jsonify, g
+import structlog
+from decouple import config
+from flask import Flask, g, jsonify, request
 from flask_cors import CORS
-from flask_sqlalchemy import SQLAlchemy
-from flask_security import Security, SQLAlchemyUserDatastore, hash_password
 from flask_jwt_extended import (
     JWTManager,
     create_access_token,
-    jwt_required,
     get_jwt_identity,
+    jwt_required,
 )
+from flask_security import Security, SQLAlchemyUserDatastore, hash_password
+from flask_sqlalchemy import SQLAlchemy
 from prometheus_client import (
-    Counter,
-    Histogram,
-    Gauge,
     CollectorRegistry,
+    Counter,
+    Gauge,
+    Histogram,
     generate_latest,
 )
-import structlog
-from decouple import config
+
+from shared.auth.middleware import (
+    AuthenticationError,
+    MultiAuthMiddleware,
+    verify_jwt_token,
+)
 
 # Import shared modules
 from shared.config.settings import KillKrillConfig, get_config
 from shared.monitoring.metrics import MetricsCollector, export_metrics
-from shared.auth.middleware import (
-    MultiAuthMiddleware,
-    verify_jwt_token,
-    AuthenticationError,
-)
-
 
 # Configure structured logging
 structlog.configure(
@@ -237,7 +237,7 @@ def setup_database(app: Flask) -> SQLAlchemy:
 
 def setup_security(app: Flask, db: SQLAlchemy) -> Security:
     """Setup Flask-Security-Too"""
-    from models import User, Role
+    from models import Role, User
 
     user_datastore = SQLAlchemyUserDatastore(db, User, Role)
     security = Security(app, user_datastore, hash_password=hash_password)

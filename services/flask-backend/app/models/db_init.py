@@ -9,19 +9,19 @@ Handles database initialization with support for multiple database backends:
 Note: This module handles ONLY initialization. PyDAL handles day-to-day operations.
 """
 
+import logging
 import os
 from typing import Optional, Tuple
-from urllib.parse import urlparse, urlunparse, parse_qs
-import logging
+from urllib.parse import parse_qs, urlparse, urlunparse
 
 from sqlalchemy import (
-    create_engine,
     Engine,
+    create_engine,
     event,
     text,
 )
-from sqlalchemy.pool import NullPool, QueuePool
 from sqlalchemy.exc import OperationalError, ProgrammingError
+from sqlalchemy.pool import NullPool, QueuePool
 
 logger = logging.getLogger(__name__)
 
@@ -497,7 +497,7 @@ def get_pydal_connection():
 
     try:
         from pydal import DAL, Field
-        from pydal.validators import IS_NOT_EMPTY, IS_EMAIL, IS_IN_SET, IS_DATETIME
+        from pydal.validators import IS_DATETIME, IS_EMAIL, IS_IN_SET, IS_NOT_EMPTY
     except ImportError:
         logger.error("PyDAL not installed. Install with: pip install pydal")
         raise

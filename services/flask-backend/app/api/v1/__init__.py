@@ -12,14 +12,14 @@ api_v1_bp = Blueprint("api_v1", __name__)
 def register_blueprints(app):
     """Register all API v1 blueprints with the Flask application."""
     # Lazy imports to avoid circular dependencies
+    from .ai_analysis import ai_analysis_bp
     from .auth import auth_bp
-    from .users import users_bp
-    from .sensors import sensors_bp
     from .dashboard import dashboard_bp
     from .fleet import fleet_bp
     from .infrastructure import infrastructure_bp
-    from .ai_analysis import ai_analysis_bp
     from .licensing import licensing_bp
+    from .sensors import sensors_bp
+    from .users import users_bp
 
     blueprints = [
         (auth_bp, "/auth"),

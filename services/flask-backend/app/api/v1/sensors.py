@@ -4,16 +4,17 @@ Endpoints for sensor agents, checks, and results with Pydantic validation.
 """
 
 from datetime import datetime
-from flask import Blueprint, request, jsonify
-from pydantic import ValidationError
+
 from app.api.v1.schemas import (
+    APIResponse,
+    ErrorResponse,
     SensorAgentCreate,
     SensorCheckCreate,
     SensorResultSubmit,
-    APIResponse,
-    ErrorResponse,
 )
 from app.models.database import get_pydal_connection
+from flask import Blueprint, jsonify, request
+from pydantic import ValidationError
 
 sensors_bp = Blueprint("sensors", __name__)
 

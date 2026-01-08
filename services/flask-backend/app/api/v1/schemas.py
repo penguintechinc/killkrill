@@ -8,7 +8,6 @@ from typing import Any, Generic, Optional, TypeVar
 
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
-
 # ============================================================================
 # Enums
 # ============================================================================

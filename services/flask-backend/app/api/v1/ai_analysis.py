@@ -12,17 +12,19 @@ License required for:
 - Multiple Ollama endpoints
 """
 
+import logging
+import os
 from datetime import datetime
 from functools import wraps
-from flask import Blueprint, request, jsonify, g
-from pydantic import BaseModel, Field, ValidationError
-from typing import Optional, List, Literal
+from typing import List, Literal, Optional
+
+import httpx
 from app.api.v1.schemas import APIResponse, ErrorResponse
 from app.models.database import get_pydal_connection
+from flask import Blueprint, g, jsonify, request
+from pydantic import BaseModel, Field, ValidationError
+
 from shared.licensing.client import PenguinTechLicenseClient
-import os
-import logging
-import httpx
 
 logger = logging.getLogger(__name__)
 

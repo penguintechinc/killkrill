@@ -12,10 +12,10 @@ Services included:
 """
 
 from .server import (
+    AuthServicer,
     DashboardServicer,
     SensorServicer,
     UserServicer,
-    AuthServicer,
     create_grpc_server,
     serve,
 )
