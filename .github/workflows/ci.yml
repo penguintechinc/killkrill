@@ -178,31 +178,6 @@ jobs:
       matrix:
         python-version: ['3.12', '3.13']
 
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_DB: test_db
-          POSTGRES_USER: test_user
-          POSTGRES_PASSWORD: test_pass
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
-      redis:
-        image: redis:7
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 6379:6379
-
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -255,12 +230,10 @@ jobs:
       run: mypy . --ignore-missing-imports
       continue-on-error: true
 
-    - name: Run tests with pytest
+    - name: Run unit tests (mocked dependencies)
       run: |
-        pytest --cov=shared --cov=apps --cov-report=xml --cov-report=html --junitxml=test-results.xml
+        pytest --cov=shared --cov=apps --cov-report=xml --cov-report=html --junitxml=test-results.xml -m "not integration"
       env:
-        DATABASE_URL: postgresql://test_user:test_pass@localhost:5432/test_db
-        REDIS_URL: redis://localhost:6379/1
         LICENSE_KEY: PENG-TEST-TEST-TEST-TEST-ABCD
         PRODUCT_NAME: test-product
 
@@ -315,104 +288,6 @@ jobs:
       with:
         name: web-build-${{ matrix.node-version }}
         path: web/dist/
-
-  # Integration tests
-  integration-test:
-    runs-on: ubuntu-latest
-    needs: [go-test, python-test, node-test]
-    if: always() && (needs.go-test.result == 'success' || needs.go-test.result == 'skipped') && (needs.python-test.result == 'success' || needs.python-test.result == 'skipped') && (needs.node-test.result == 'success' || needs.node-test.result == 'skipped')
-
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_DB: integration_test
-          POSTGRES_USER: test_user
-          POSTGRES_PASSWORD: test_pass
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
-      redis:
-        image: redis:7
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 6379:6379
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: ${{ env.GO_VERSION }}
-
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
-
-    - name: Set up Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ env.NODE_VERSION }}
-        cache: 'npm'
-
-    - name: Install dependencies
-      run: |
-        go mod download
-        pip install -r requirements.txt
-        npm ci
-
-    - name: Build applications
-      run: |
-        go build -o bin/api ./apps/api
-        npm run build
-
-    - name: Start test environment
-      run: |
-        # Start applications in background
-        ./bin/api &
-        python apps/web/app.py &
-        npm start &
-        sleep 10
-      env:
-        DATABASE_URL: postgresql://test_user:test_pass@localhost:5432/integration_test
-        REDIS_URL: redis://localhost:6379/1
-        LICENSE_KEY: PENG-TEST-TEST-TEST-TEST-ABCD
-        PRODUCT_NAME: integration-test
-        PORT: 8080
-
-    - name: Run integration tests
-      run: |
-        # API health check
-        curl -f http://localhost:8080/health
-        curl -f http://localhost:8080/metrics
-
-        # Feature endpoints (should return 403 without proper license)
-        curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/v1/analytics | grep -q "403"
-
-        # License info endpoint
-        curl -f http://localhost:8080/api/v1/features
-
-    - name: Run end-to-end tests
-      run: |
-        # Install Playwright if e2e tests exist
-        if [ -f "tests/e2e/package.json" ]; then
-          cd tests/e2e
-          npm ci
-          npx playwright install
-          npm test
-        fi
 
   # Security scanning
   security:
@@ -472,7 +347,7 @@ jobs:
   # Generate test report
   test-summary:
     runs-on: ubuntu-latest
-    needs: [go-test, python-test, node-test, integration-test, security, license-check]
+    needs: [go-test, python-test, node-test, security, license-check]
     if: always()
 
     steps:
@@ -490,9 +365,12 @@ jobs:
         echo "- Go Tests: ${{ needs.go-test.result }}" >> test-summary.md
         echo "- Python Tests: ${{ needs.python-test.result }}" >> test-summary.md
         echo "- Node.js Tests: ${{ needs.node-test.result }}" >> test-summary.md
-        echo "- Integration Tests: ${{ needs.integration-test.result }}" >> test-summary.md
         echo "- Security Scan: ${{ needs.security.result }}" >> test-summary.md
         echo "- License Check: ${{ needs.license-check.result }}" >> test-summary.md
+        echo "" >> test-summary.md
+        echo "## Integration & E2E Tests" >> test-summary.md
+        echo "Integration tests and E2E smoke tests are run locally via pre-commit hooks." >> test-summary.md
+        echo "See [Pre-Commit Checklist](#pre-commit-checklist) for running these locally." >> test-summary.md
         echo "" >> test-summary.md
         echo "**Commit:** ${{ github.sha }}" >> test-summary.md
         echo "**Branch:** ${{ github.ref_name }}" >> test-summary.md
@@ -520,7 +398,7 @@ jobs:
           });
 
     - name: Fail if any required job failed
-      if: needs.go-test.result == 'failure' || needs.python-test.result == 'failure' || needs.node-test.result == 'failure' || needs.integration-test.result == 'failure'
+      if: needs.go-test.result == 'failure' || needs.python-test.result == 'failure' || needs.node-test.result == 'failure' || needs.security.result == 'failure'
       run: |
         echo "One or more required tests failed"
         exit 1
