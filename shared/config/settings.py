@@ -85,7 +85,7 @@ class KillKrillConfig:
             # Core service configuration
             database_url=config(
                 "DATABASE_URL",
-                default="postgresql://killkrill:killkrill123@postgres:5432/killkrill",
+                default="postgresql://killkrill:killkrill123@postgresql:5432/killkrill",
             ),
             redis_url=config("REDIS_URL", default="redis://:killkrill123@redis:6379"),
             # License server integration
@@ -99,10 +99,10 @@ class KillKrillConfig:
                 "JWT_SECRET", default="killkrill-secret-change-in-production"
             ),
             api_key_length=config("API_KEY_LENGTH", default=64, cast=int),
-            # Service ports
-            manager_port=config("MANAGER_PORT", default=8080, cast=int),
-            receiver_port=config("RECEIVER_HTTP_PORT", default=8081, cast=int),
-            metrics_port=config("METRICS_PORT", default=8082, cast=int),
+            # Service ports (avoid K8s service env var conflicts)
+            manager_port=config("APP_MANAGER_PORT", default=8080, cast=int),
+            receiver_port=config("APP_RECEIVER_PORT", default=8081, cast=int),
+            metrics_port=config("APP_METRICS_PORT", default=8082, cast=int),
             processor_workers=config("PROCESSOR_WORKERS", default=4, cast=int),
             # Network settings
             syslog_port_start=config(

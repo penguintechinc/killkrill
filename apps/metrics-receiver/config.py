@@ -8,7 +8,7 @@ class Config:
 
     # Database
     DATABASE_URL = os.environ.get(
-        "DATABASE_URL", "postgresql://killkrill:killkrill123@postgres:5432/killkrill"
+        "DATABASE_URL", "postgresql://killkrill:killkrill123@postgresql:5432/killkrill"
     )
 
     # Redis

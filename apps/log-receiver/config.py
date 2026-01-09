@@ -11,7 +11,7 @@ class Config:
     """Base configuration"""
 
     DATABASE_URL: str = os.getenv(
-        "DATABASE_URL", "postgresql://killkrill:killkrill123@postgres:5432/killkrill"
+        "DATABASE_URL", "postgresql://killkrill:killkrill123@postgresql:5432/killkrill"
     )
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://redis:6379")
     RECEIVER_PORT: int = int(os.getenv("RECEIVER_PORT", "8081"))

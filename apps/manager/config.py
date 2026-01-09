@@ -12,15 +12,15 @@ class Config:
 
     # Database
     DATABASE_URL: str = os.environ.get(
-        "DATABASE_URL", "postgresql://killkrill:killkrill123@postgres:5432/killkrill"
+        "DATABASE_URL", "postgresql://killkrill:killkrill123@postgresql:5432/killkrill"
     )
 
     # Redis
     REDIS_URL: str = os.environ.get("REDIS_URL", "redis://redis:6379")
 
     # Server
-    HOST: str = os.environ.get("MANAGER_HOST", "0.0.0.0")
-    PORT: int = int(os.environ.get("MANAGER_PORT", "8080"))
+    HOST: str = os.environ.get("APP_HOST", "0.0.0.0")
+    PORT: int = int(os.environ.get("APP_PORT", "8080"))
 
     # License
     LICENSE_KEY: str = os.environ.get("LICENSE_KEY", "PENG-DEMO-DEMO-DEMO-DEMO-DEMO")

@@ -14,8 +14,7 @@ from quart import Quart
 from quart_cors import cors
 
 # Import shared ReceiverClient
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../shared"))
-from receiver_client import ReceiverClient
+from shared.receiver_client import ReceiverClient
 
 from config import get_config
 

@@ -18,7 +18,18 @@ from config import config
 def create_app():
     """Application factory"""
     app = Quart(__name__)
-    app = cors(app, allow_origin="*")
+    # CORS configuration for production domain
+    app = cors(
+        app,
+        allow_origin=[
+            "https://killkrill.penguintech.io",
+            "http://localhost:3000",  # Local development
+            "http://localhost:8080",
+        ],
+        allow_credentials=True,
+        allow_headers=["Content-Type", "Authorization"],
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    )
 
     # Load configuration
     app.config["DATABASE_URL"] = config.DATABASE_URL
