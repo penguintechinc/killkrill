@@ -7,6 +7,9 @@ import hashlib
 from datetime import datetime, timedelta
 
 import structlog
+from quart import Blueprint, g, jsonify, request
+
+from config import get_config
 from middleware.auth import (
     generate_api_key,
     generate_jwt_token,
@@ -17,9 +20,6 @@ from middleware.auth import (
     verify_password,
 )
 from models.database import get_db
-from quart import Blueprint, g, jsonify, request
-
-from config import get_config
 
 logger = structlog.get_logger(__name__)
 

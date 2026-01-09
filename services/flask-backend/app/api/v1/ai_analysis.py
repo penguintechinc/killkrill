@@ -19,11 +19,11 @@ from functools import wraps
 from typing import List, Literal, Optional
 
 import httpx
-from app.api.v1.schemas import APIResponse, ErrorResponse
-from app.models.database import get_pydal_connection
 from flask import Blueprint, g, jsonify, request
 from pydantic import BaseModel, Field, ValidationError
 
+from app.api.v1.schemas import APIResponse, ErrorResponse
+from app.models.database import get_pydal_connection
 from shared.licensing.client import PenguinTechLicenseClient
 
 logger = logging.getLogger(__name__)

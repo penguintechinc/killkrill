@@ -7,10 +7,10 @@ from datetime import datetime
 
 import httpx
 import structlog
-from middleware.auth import require_auth, require_role
 from quart import Blueprint, jsonify, request
 
 from config import get_config
+from middleware.auth import require_auth, require_role
 
 logger = structlog.get_logger(__name__)
 

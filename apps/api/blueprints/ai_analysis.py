@@ -8,11 +8,11 @@ from datetime import datetime
 
 import httpx
 import structlog
-from middleware.auth import require_auth, require_feature
-from models.database import get_db
 from quart import Blueprint, g, jsonify, request
 
 from config import get_config
+from middleware.auth import require_auth, require_feature
+from models.database import get_db
 
 logger = structlog.get_logger(__name__)
 

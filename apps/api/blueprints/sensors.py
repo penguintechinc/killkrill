@@ -8,9 +8,10 @@ import uuid
 from datetime import datetime
 
 import structlog
+from quart import Blueprint, g, jsonify, request
+
 from middleware.auth import generate_api_key, hash_api_key, require_auth, require_role
 from models.database import get_db
-from quart import Blueprint, g, jsonify, request
 from services.redis_service import cache
 
 logger = structlog.get_logger(__name__)

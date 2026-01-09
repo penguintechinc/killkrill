@@ -8,9 +8,9 @@ import os
 from datetime import datetime
 
 import requests
-from app.api.v1.schemas import APIResponse, ErrorResponse
 from flask import Blueprint, jsonify, request
 
+from app.api.v1.schemas import APIResponse, ErrorResponse
 from shared.licensing.python_client import FeatureNotAvailableError, requires_feature
 
 logger = logging.getLogger(__name__)

@@ -11,7 +11,6 @@ from typing import Optional
 from uuid import uuid4
 
 import structlog
-from app.models.db_init import get_engine
 from flask import Blueprint, g, jsonify, request
 from flask_jwt_extended import (
     create_access_token,
@@ -22,6 +21,8 @@ from flask_jwt_extended import (
 )
 from passlib.hash import bcrypt
 from pydantic import BaseModel, EmailStr, Field, ValidationError, field_validator
+
+from app.models.db_init import get_engine
 
 logger = structlog.get_logger()
 

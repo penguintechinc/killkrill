@@ -8,11 +8,11 @@ from typing import Any, Dict
 
 import httpx
 import structlog
-from middleware.auth import require_auth
 from quart import Blueprint, jsonify
-from services.redis_service import cache
 
 from config import get_config
+from middleware.auth import require_auth
+from services.redis_service import cache
 
 logger = structlog.get_logger(__name__)
 

@@ -6,9 +6,10 @@ User management endpoints
 from datetime import datetime
 
 import structlog
+from quart import Blueprint, g, jsonify, request
+
 from middleware.auth import hash_password, require_auth, require_role
 from models.database import get_db
-from quart import Blueprint, g, jsonify, request
 
 logger = structlog.get_logger(__name__)
 

@@ -4,8 +4,9 @@ License management and feature information
 """
 
 import structlog
-from middleware.auth import require_auth
 from quart import Blueprint, jsonify
+
+from middleware.auth import require_auth
 from services.license_service import (
     get_all_features,
     get_license_info,

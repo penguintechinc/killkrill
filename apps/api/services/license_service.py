@@ -9,9 +9,9 @@ from typing import Any, Dict, Optional
 import httpx
 import structlog
 from quart import Quart
-from services.redis_service import cache
 
 from config import get_config
+from services.redis_service import cache
 
 logger = structlog.get_logger(__name__)
 
