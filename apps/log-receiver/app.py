@@ -70,15 +70,18 @@ def create_app() -> Quart:
         app.db = DAL(config.pydal_database_url, migrate=True, fake_migrate=False)
 
         # Create logs table
-        app.db.define_table(
-            "logs",
-            app.db.Field("timestamp", "datetime", default=datetime.utcnow),
-            app.db.Field("level", "string"),
-            app.db.Field("message", "text"),
-            app.db.Field("source", "string"),
-            migrate=True,
-        )
-        app.db.commit()
+        try:
+            app.db.define_table(
+                "logs",
+                app.db.Field("timestamp", "datetime", default=datetime.utcnow),
+                app.db.Field("level", "string"),
+                app.db.Field("message", "text"),
+                app.db.Field("source", "string"),
+                migrate=True,
+            )
+            app.db.commit()
+        except Exception as table_error:
+            logger.info("logs_table_init", status="already_exists_or_skipped", error=str(table_error))
 
         # ReceiverClient
         app.receiver_client = None
