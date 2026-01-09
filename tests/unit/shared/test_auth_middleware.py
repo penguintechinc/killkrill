@@ -20,18 +20,9 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 
 from shared.auth.middleware import (
-    AuthenticationError,
-    AuthorizationError,
-    MultiAuthMiddleware,
-    generate_api_key,
-    generate_jwt_token,
-    hash_api_key,
-    require_auth,
-    require_ip_access,
-    verify_api_key,
-    verify_auth,
-    verify_ip_access,
-    verify_jwt_token,
+    AuthenticationError, AuthorizationError, MultiAuthMiddleware, generate_api_key,
+    generate_jwt_token, hash_api_key, require_auth, require_ip_access, verify_api_key,
+    verify_auth, verify_ip_access, verify_jwt_token,
 )
 
 # ============================================================================

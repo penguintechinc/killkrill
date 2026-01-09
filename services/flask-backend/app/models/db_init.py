@@ -14,12 +14,7 @@ import os
 from typing import Optional, Tuple
 from urllib.parse import parse_qs, urlparse, urlunparse
 
-from sqlalchemy import (
-    Engine,
-    create_engine,
-    event,
-    text,
-)
+from sqlalchemy import Engine, create_engine, event, text
 from sqlalchemy.exc import OperationalError, ProgrammingError
 from sqlalchemy.pool import NullPool, QueuePool
 

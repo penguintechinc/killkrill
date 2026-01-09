@@ -17,10 +17,7 @@ from pydal.validators import IS_EMAIL, IS_IN_SET, IS_NOT_EMPTY
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from shared.licensing.python_client import (
-    FeatureNotAvailableError,
-    LicenseValidationError,
-    get_client,
-    initialize_licensing,
+    FeatureNotAvailableError, LicenseValidationError, get_client, initialize_licensing,
     requires_feature,
 )
 

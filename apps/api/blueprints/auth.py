@@ -8,13 +8,8 @@ from datetime import datetime, timedelta
 
 import structlog
 from middleware.auth import (
-    generate_api_key,
-    generate_jwt_token,
-    generate_refresh_token,
-    hash_api_key,
-    hash_password,
-    require_auth,
-    verify_password,
+    generate_api_key, generate_jwt_token, generate_refresh_token, hash_api_key,
+    hash_password, require_auth, verify_password,
 )
 from models.database import get_db
 from quart import Blueprint, g, jsonify, request

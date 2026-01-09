@@ -1,0 +1,34 @@
+# Helm charts with Go templates
+helm/*/templates/
+
+# Infrastructure configs with special formatting
+infrastructure/monitoring/
+
+# Build outputs
+dist/
+build/
+*.min.js
+*.min.css
+
+# Dependencies
+node_modules/
+vendor/
+
+# Generated files
+*.gen.js
+*.gen.ts
+*-gen.go
+
+# Lock files
+package-lock.json
+poetry.lock
+Pipfile.lock
+
+# Coverage
+htmlcov/
+coverage/
+.nyc_output/
+
+# Third-party
+app-skeleton/web/apps/_default/static/js/prism.js
+app-skeleton/web/apps/_default/static/css/prism.css

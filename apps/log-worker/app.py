@@ -27,11 +27,7 @@ import redis
 import structlog
 from elasticsearch import Elasticsearch, helpers
 from prometheus_client import (
-    CollectorRegistry,
-    Counter,
-    Gauge,
-    Histogram,
-    push_to_gateway,
+    CollectorRegistry, Counter, Gauge, Histogram, push_to_gateway,
 )
 
 # Add project root to path

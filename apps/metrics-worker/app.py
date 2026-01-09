@@ -19,11 +19,7 @@ import redis
 import requests
 import structlog
 from prometheus_client import (
-    CollectorRegistry,
-    Counter,
-    Gauge,
-    Histogram,
-    push_to_gateway,
+    CollectorRegistry, Counter, Gauge, Histogram, push_to_gateway,
 )
 
 # Add project root to path

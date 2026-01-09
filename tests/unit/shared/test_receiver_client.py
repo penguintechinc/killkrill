@@ -9,9 +9,7 @@ import pytest
 
 from shared.receiver_client.client import ReceiverClient, TokenInfo
 from shared.receiver_client.exceptions import (
-    AuthenticationError,
-    ConnectionError,
-    SubmissionError,
+    AuthenticationError, ConnectionError, SubmissionError,
 )
 from shared.receiver_client.grpc_client import GRPCSubmitter
 from shared.receiver_client.rest_client import RESTSubmitter

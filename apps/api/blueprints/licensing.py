@@ -7,9 +7,7 @@ import structlog
 from middleware.auth import require_auth
 from quart import Blueprint, jsonify
 from services.license_service import (
-    get_all_features,
-    get_license_info,
-    is_license_valid,
+    get_all_features, get_license_info, is_license_valid,
 )
 
 logger = structlog.get_logger(__name__)

@@ -14,11 +14,7 @@ import structlog
 from app.models.db_init import get_engine
 from flask import Blueprint, g, jsonify, request
 from flask_jwt_extended import (
-    create_access_token,
-    create_refresh_token,
-    get_jwt,
-    get_jwt_identity,
-    jwt_required,
+    create_access_token, create_refresh_token, get_jwt, get_jwt_identity, jwt_required,
 )
 from passlib.hash import bcrypt
 from pydantic import BaseModel, EmailStr, Field, ValidationError, field_validator
