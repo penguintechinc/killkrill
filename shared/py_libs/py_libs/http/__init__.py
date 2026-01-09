@@ -7,10 +7,16 @@ Provides:
 """
 
 from .client import (
-    CircuitBreakerConfig, CircuitState, HTTPClient, HTTPClientConfig, RetryConfig,
+    CircuitBreakerConfig,
+    CircuitState,
+    HTTPClient,
+    HTTPClientConfig,
+    RetryConfig,
 )
 from .correlation import (
-    CorrelationMiddleware, generate_correlation_id, get_correlation_id,
+    CorrelationMiddleware,
+    generate_correlation_id,
+    get_correlation_id,
 )
 
 __all__ = [

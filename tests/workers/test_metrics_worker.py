@@ -791,7 +791,9 @@ class TestPrometheusMetricsExposure:
     def test_metrics_exposed(self, mock_config, mock_redis):
         """Test that Prometheus metrics are properly exposed"""
         from apps.metrics_worker.app import (
-            metrics_processed_counter, processing_errors_counter, processing_time,
+            metrics_processed_counter,
+            processing_errors_counter,
+            processing_time,
             queue_size_gauge,
         )
 

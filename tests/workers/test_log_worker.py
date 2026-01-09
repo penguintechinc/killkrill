@@ -519,8 +519,11 @@ class TestPrometheusMetrics:
     def test_metrics_exposed(self, mock_config, mock_es, mock_redis):
         """Test that Prometheus metrics are properly exposed"""
         from apps.log_worker.app import (
-            active_workers, logs_processed_counter, metrics_forwarded_counter,
-            processing_duration, queue_lag,
+            active_workers,
+            logs_processed_counter,
+            metrics_forwarded_counter,
+            processing_duration,
+            queue_lag,
         )
 
         # Verify metrics objects exist

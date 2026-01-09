@@ -22,17 +22,27 @@ from decouple import config
 from flask import Flask, g, jsonify, request
 from flask_cors import CORS
 from flask_jwt_extended import (
-    JWTManager, create_access_token, get_jwt_identity, jwt_required,
+    JWTManager,
+    create_access_token,
+    get_jwt_identity,
+    jwt_required,
 )
 from flask_security import Security, SQLAlchemyUserDatastore, hash_password
 from flask_sqlalchemy import SQLAlchemy
 from prometheus_client import (
-    CollectorRegistry, Counter, Gauge, Histogram, generate_latest,
+    CollectorRegistry,
+    Counter,
+    Gauge,
+    Histogram,
+    generate_latest,
 )
 
 from shared.auth.middleware import (
-    AuthenticationError, MultiAuthMiddleware, verify_jwt_token,
+    AuthenticationError,
+    MultiAuthMiddleware,
+    verify_jwt_token,
 )
+
 # Import shared modules
 from shared.config.settings import KillKrillConfig, get_config
 from shared.monitoring.metrics import MetricsCollector, export_metrics
