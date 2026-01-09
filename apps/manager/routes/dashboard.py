@@ -102,9 +102,10 @@ async def index():
     metrics = get_system_metrics()
 
     # Read the dashboard template
-    with open(
-        "/home/penguin/code/killkrill/apps/manager/templates/dashboard.html", "r"
-    ) as f:
+    template_path = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), "templates", "dashboard.html"
+    )
+    with open(template_path, "r") as f:
         template = f.read()
 
     return await render_template_string(
