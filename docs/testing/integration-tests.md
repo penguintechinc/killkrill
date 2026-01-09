@@ -375,6 +375,7 @@ Before committing integration tests:
 ## Best Practices
 
 1. **Isolation**: Each test should be independent
+
    ```python
    # Good - cleanup after each test
    @pytest.fixture
@@ -388,6 +389,7 @@ Before committing integration tests:
    ```
 
 2. **Realistic Data**: Use production-like test data
+
    ```python
    # Good - realistic metrics
    metric = {
@@ -401,6 +403,7 @@ Before committing integration tests:
    ```
 
 3. **Waits & Retries**: Use proper waits for async operations
+
    ```python
    # Good - explicit wait
    elasticsearch_client.indices.refresh(index='logs-*')
@@ -412,6 +415,7 @@ Before committing integration tests:
    ```
 
 4. **Environment Variables**: Use env vars for service URLs
+
    ```python
    # Good
    @pytest.fixture

@@ -443,6 +443,7 @@ pytest tests/e2e/ --docker-compose-no-cleanup
 ## Best Practices
 
 1. **Use Waits**: Use explicit waits for async operations
+
    ```python
    # Good
    time.sleep(2)  # Allow worker processing
@@ -453,6 +454,7 @@ pytest tests/e2e/ --docker-compose-no-cleanup
    ```
 
 2. **Test Critical Paths Only**: Don't repeat unit test scenarios
+
    ```python
    # Good - E2E tests main workflows
    def test_complete_user_workflow():
@@ -464,6 +466,7 @@ pytest tests/e2e/ --docker-compose-no-cleanup
    ```
 
 3. **Use Unique Identifiers**: Avoid test data collisions
+
    ```python
    # Good - unique per test run
    log_id = f"e2e-{datetime.utcnow().timestamp()}"
@@ -474,6 +477,7 @@ pytest tests/e2e/ --docker-compose-no-cleanup
    ```
 
 4. **Independent Tests**: Tests shouldn't depend on order
+
    ```python
    # Good - each test is independent
    def test_log_pipeline():

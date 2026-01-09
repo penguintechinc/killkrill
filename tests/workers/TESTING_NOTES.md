@@ -3,6 +3,7 @@
 ## Import Path Handling
 
 The worker services are in directories with hyphens:
+
 - `apps/log-worker/app.py`
 - `apps/metrics-worker/app.py`
 
@@ -42,6 +43,7 @@ spec.loader.exec_module(log_worker)
 ## Test Execution Modes
 
 ### 1. Unit Tests (Fast)
+
 - All dependencies mocked
 - No external services required
 - Run time: <1s per test
@@ -51,6 +53,7 @@ pytest workers/ -m unit
 ```
 
 ### 2. Integration Tests (Mocked Services)
+
 - Mock Redis, Elasticsearch, Prometheus
 - Test component interactions
 - Run time: ~2s per test
@@ -60,6 +63,7 @@ pytest workers/ -m integration
 ```
 
 ### 3. End-to-End Tests (Real Services)
+
 - Requires Docker Compose services
 - Full pipeline testing
 - Run time: Variable (10-30s per test)
@@ -78,6 +82,7 @@ docker-compose -f docker-compose.test.yml down
 ## Mock Strategy
 
 ### Redis Streams Mocking
+
 ```python
 # Mock xreadgroup to return messages
 mock_redis.xreadgroup.return_value = [
@@ -88,6 +93,7 @@ mock_redis.xreadgroup.return_value = [
 ```
 
 ### Elasticsearch Mocking
+
 ```python
 # Mock bulk operation
 with patch('elasticsearch.helpers.bulk', return_value=(10, [])):
@@ -95,6 +101,7 @@ with patch('elasticsearch.helpers.bulk', return_value=(10, [])):
 ```
 
 ### Prometheus Mocking
+
 ```python
 # Mock HTTP POST to pushgateway
 with patch('requests.post') as mock_post:
@@ -105,16 +112,19 @@ with patch('requests.post') as mock_post:
 ## Test Data Conventions
 
 ### Log Messages
+
 - Use realistic syslog format
 - Include all required ECS fields
 - Test with optional fields (trace_id, span_id, etc.)
 
 ### Metrics
+
 - Cover all metric types: counter, gauge, histogram, summary
 - Include labels in JSON format
 - Test timestamp handling (ISO8601)
 
 ### Message IDs
+
 - Format: `{timestamp_ms}-{sequence}`
 - Example: `1704623400000-0`
 
@@ -128,39 +138,47 @@ with patch('requests.post') as mock_post:
 ## Common Test Failures
 
 ### 1. Import Errors
+
 **Problem**: Cannot import worker modules
 **Solution**: Set PYTHONPATH or use importlib
 
 ### 2. Prometheus Metrics Already Registered
+
 **Problem**: Metrics registered in previous test
 **Solution**: Use `reset_metrics` fixture (auto-applied)
 
 ### 3. Redis Connection Refused
+
 **Problem**: Real Redis client trying to connect
 **Solution**: Ensure mock_redis fixture is used
 
 ### 4. Elasticsearch Timeout
+
 **Problem**: Real ES client trying to connect
 **Solution**: Ensure mock_elasticsearch_client fixture is used
 
 ## Debugging Tips
 
 ### Enable Verbose Logging
+
 ```bash
 pytest workers/ -v --log-cli-level=DEBUG
 ```
 
 ### Run Single Test
+
 ```bash
 pytest workers/test_log_worker.py::TestElasticsearchProcessor::test_process_logs_batch_success -v
 ```
 
 ### Print Captured Output
+
 ```bash
 pytest workers/ -v -s  # -s disables output capture
 ```
 
 ### Debug with PDB
+
 ```python
 def test_something():
     import pdb; pdb.set_trace()
@@ -174,6 +192,7 @@ def test_something():
 - **Critical Paths**: 100% (error handling, shutdown)
 
 Current coverage:
+
 ```bash
 pytest workers/ --cov=apps.log_worker --cov=apps.metrics_worker --cov-report=term-missing
 ```

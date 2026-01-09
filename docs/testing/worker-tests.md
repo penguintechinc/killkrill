@@ -30,11 +30,11 @@ Redis Stream (Input)
 
 ## Testing Levels for Workers
 
-| Level | Tests | Speed | Real Services |
-|-------|-------|-------|---------------|
-| **Unit** | Parse, validate, transform | <1 min | None (mocked) |
-| **Integration** | Redis → Transform → ES/DB | 2-5 min | Redis, ES/DB |
-| **E2E** | API → Redis → Worker → Query | 5-10 min | Full stack |
+| Level           | Tests                        | Speed    | Real Services |
+| --------------- | ---------------------------- | -------- | ------------- |
+| **Unit**        | Parse, validate, transform   | <1 min   | None (mocked) |
+| **Integration** | Redis → Transform → ES/DB    | 2-5 min  | Redis, ES/DB  |
+| **E2E**         | API → Redis → Worker → Query | 5-10 min | Full stack    |
 
 ## Unit Tests: Worker Functions
 
@@ -520,11 +520,13 @@ def test_worker_throughput(redis_client, log_worker, benchmark):
 ## Test Best Practices for Workers
 
 1. **Use Separate Redis DB for Tests**
+
    ```python
    redis_client = redis.Redis(db=15)  # Use DB 15 for tests
    ```
 
 2. **Clean Up Between Tests**
+
    ```python
    @pytest.fixture
    def redis_client():
@@ -534,6 +536,7 @@ def test_worker_throughput(redis_client, log_worker, benchmark):
    ```
 
 3. **Test Idempotency**
+
    ```python
    def test_worker_is_idempotent():
        """Processing same message twice should be safe"""
@@ -550,6 +553,7 @@ def test_worker_throughput(redis_client, log_worker, benchmark):
    ```
 
 4. **Monitor Resource Usage**
+
    ```python
    @pytest.mark.performance
    def test_worker_memory_usage():

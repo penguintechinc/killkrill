@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   # PostgreSQL Database (Development)
@@ -15,7 +15,11 @@ services:
       - postgres_data_dev:/var/lib/postgresql/data
       - ./infrastructure/docker/postgres/init:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-killkrill} -d ${POSTGRES_DB:-killkrill}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-killkrill} -d ${POSTGRES_DB:-killkrill}",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -67,7 +71,8 @@ services:
       - elasticsearch_data_dev:/usr/share/elasticsearch/data
       - ./infrastructure/monitoring/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      test:
+        ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -100,7 +105,11 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:9600/_node/stats?pretty || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "curl -f http://localhost:9600/_node/stats?pretty || exit 1",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -140,14 +149,14 @@ services:
     image: prom/prometheus:v2.47.0
     container_name: killkrill-prometheus-dev
     command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--storage.tsdb.retention.time=7d'
-      - '--storage.tsdb.retention.size=1GB'
-      - '--web.console.libraries=/etc/prometheus/console_libraries'
-      - '--web.console.templates=/etc/prometheus/consoles'
-      - '--web.enable-lifecycle'
-      - '--log.level=warn'
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=7d"
+      - "--storage.tsdb.retention.size=1GB"
+      - "--web.console.libraries=/etc/prometheus/console_libraries"
+      - "--web.console.templates=/etc/prometheus/consoles"
+      - "--web.enable-lifecycle"
+      - "--log.level=warn"
     ports:
       - "${PROMETHEUS_PORT:-9090}:9090"
     volumes:
@@ -155,7 +164,11 @@ services:
       - ./infrastructure/monitoring/prometheus/alerts/:/etc/prometheus/alerts/:ro
       - prometheus_data_dev:/prometheus
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:9090/-/healthy || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://localhost:9090/-/healthy || exit 1",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -170,14 +183,18 @@ services:
     image: prom/alertmanager:latest
     container_name: killkrill-alertmanager-dev
     command:
-      - '--config.file=/etc/alertmanager/alertmanager.yml'
-      - '--storage.path=/alertmanager'
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
     ports:
       - "${ALERTMANAGER_PORT:-9093}:9093"
     volumes:
       - ./infrastructure/monitoring/alertmanager:/etc/alertmanager
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:9093/-/healthy || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://localhost:9093/-/healthy || exit 1",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -206,7 +223,11 @@ services:
     depends_on:
       - prometheus
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -279,7 +300,11 @@ services:
       - ./services/webui:/app
       - /app/node_modules
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3000/healthz', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})\""]
+      test:
+        [
+          "CMD-SHELL",
+          'node -e "require(''http'').get(''http://localhost:3000/healthz'', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"',
+        ]
       interval: 30s
       timeout: 10s
       retries: 3

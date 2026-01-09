@@ -176,6 +176,7 @@ sudo systemctl enable --now orbit
 Primary access point: http://localhost:8080
 
 Available services:
+
 - **Fleet Management**: Device monitoring and queries
 - **Grafana Dashboards**: Metrics visualization
 - **Kibana Logs**: Log search and analysis
@@ -185,25 +186,27 @@ Available services:
 
 ### Service Endpoints
 
-| Service | Port | URL | Purpose |
-|---------|------|-----|---------|
+| Service        | Port | URL                   | Purpose                      |
+| -------------- | ---- | --------------------- | ---------------------------- |
 | Manager Portal | 8080 | http://localhost:8080 | Unified management interface |
-| Fleet Server | 8084 | http://localhost:8084 | Fleet web interface |
-| Grafana | 3000 | http://localhost:3000 | Direct Grafana access |
-| Kibana | 5601 | http://localhost:5601 | Direct Kibana access |
-| Prometheus | 9090 | http://localhost:9090 | Direct Prometheus access |
+| Fleet Server   | 8084 | http://localhost:8084 | Fleet web interface          |
+| Grafana        | 3000 | http://localhost:3000 | Direct Grafana access        |
+| Kibana         | 5601 | http://localhost:5601 | Direct Kibana access         |
+| Prometheus     | 9090 | http://localhost:9090 | Direct Prometheus access     |
 
 ## 📊 Monitoring & Dashboards
 
 ### Pre-built Dashboards
 
 **Fleet Overview Dashboard** (`fleet-overview`)
+
 - Host status and connectivity
 - Agent enrollment statistics
 - Query performance metrics
 - Log ingestion rates
 
 **Fleet Security Dashboard** (`fleet-security`)
+
 - Security event monitoring
 - Vulnerability assessments
 - Compliance tracking
@@ -212,10 +215,12 @@ Available services:
 ### Custom Queries
 
 Access Fleet query interface through:
+
 - Manager Portal: http://localhost:8080 → Fleet Management
 - Direct Fleet UI: http://localhost:8084
 
 Example queries:
+
 ```sql
 -- System information
 SELECT hostname, platform, osquery_version FROM system_info;
@@ -232,6 +237,7 @@ SELECT pid, family, protocol, local_address, remote_address FROM process_open_so
 ### Enabling AI Analysis
 
 1. **Configure AI Provider** in `.env`:
+
 ```bash
 AI_ENDPOINT_URL=https://api.anthropic.com/v1/messages
 AI_API_KEY=your-api-key-here
@@ -239,29 +245,32 @@ AI_PROVIDER=anthropic
 ```
 
 2. **Set Enterprise License**:
+
 ```bash
 LICENSE_KEY=PENG-XXXX-XXXX-XXXX-XXXX-ENTERPRISE
 ```
 
 3. **Access AI Features**:
+
 - Automated analysis runs every 4 hours
 - Manual analysis: http://localhost:8080 → AI Analysis
 - View insights and recommendations
 
 ### Supported AI Providers
 
-| Provider | Endpoint URL | Model Examples |
-|----------|--------------|----------------|
-| Anthropic Claude | `https://api.anthropic.com/v1/messages` | `claude-3-haiku-20240307` |
-| OpenAI | `https://api.openai.com/v1/chat/completions` | `gpt-4o-mini` |
-| Azure OpenAI | `https://your-resource.openai.azure.com/...` | `gpt-4` |
-| Ollama (Local) | `http://localhost:11434/api/generate` | `llama2`, `codellama` |
+| Provider         | Endpoint URL                                 | Model Examples            |
+| ---------------- | -------------------------------------------- | ------------------------- |
+| Anthropic Claude | `https://api.anthropic.com/v1/messages`      | `claude-3-haiku-20240307` |
+| OpenAI           | `https://api.openai.com/v1/chat/completions` | `gpt-4o-mini`             |
+| Azure OpenAI     | `https://your-resource.openai.azure.com/...` | `gpt-4`                   |
+| Ollama (Local)   | `http://localhost:11434/api/generate`        | `llama2`, `codellama`     |
 
 ## 🔧 Troubleshooting
 
 ### Common Issues
 
 **Fleet Server Won't Start**
+
 ```bash
 # Check MySQL connectivity
 docker-compose logs fleet-mysql
@@ -274,6 +283,7 @@ docker-compose exec fleet-mysql mysql -u fleet -pfleet123 -e "SHOW DATABASES;"
 ```
 
 **Agents Not Enrolling**
+
 ```bash
 # Check agent logs
 sudo journalctl -u orbit -f
@@ -286,6 +296,7 @@ grep -i enroll /opt/orbit/orbit.yml
 ```
 
 **Missing Metrics**
+
 ```bash
 # Check Prometheus targets
 open http://localhost:9090/targets
@@ -315,6 +326,7 @@ docker-compose ps
 ### Production Deployment
 
 1. **Change Default Passwords**:
+
 ```bash
 # Generate secure passwords
 FLEET_MYSQL_PASSWORD=$(openssl rand -base64 32)
@@ -323,16 +335,19 @@ FLEET_ENROLL_SECRET=$(openssl rand -base64 32)
 ```
 
 2. **Enable TLS**:
+
 - Replace development certificates in `infrastructure/fleet/certs/`
 - Update `TLS_CERT_PATH` and `TLS_KEY_PATH` in `.env`
 - Set `FLEET_TLS_SKIP_VERIFY=false`
 
 3. **Network Security**:
+
 - Restrict Fleet server access (port 8084)
 - Use VPN/private networks for agent communication
 - Enable firewall rules for required ports only
 
 4. **API Security**:
+
 - Generate and rotate API tokens regularly
 - Implement IP allowlisting for sensitive endpoints
 - Enable audit logging for all administrative actions
@@ -352,6 +367,7 @@ docker-compose up -d --scale log-worker=3 --scale metrics-worker=3
 ### Performance Tuning
 
 **MySQL Optimization** (production):
+
 ```sql
 -- Add to Fleet MySQL configuration
 innodb_buffer_pool_size = 8G
@@ -360,6 +376,7 @@ max_connections = 500
 ```
 
 **Redis Optimization**:
+
 ```bash
 # Add to fleet-redis configuration
 maxmemory 2gb

@@ -86,7 +86,9 @@ export interface StrongPasswordValidatorOptions extends PasswordOptions {
 /**
  * Validates password strength based on configurable requirements.
  */
-export function strongPassword(options: StrongPasswordValidatorOptions = {}): Validator<string, string> {
+export function strongPassword(
+  options: StrongPasswordValidatorOptions = {}
+): Validator<string, string> {
   const opts: Required<PasswordOptions> = { ...DEFAULT_OPTIONS, ...options };
 
   return (value: string): ValidationResult<string> => {
@@ -178,7 +180,7 @@ export function passwordStrengthScore(
     /(.)\1{2,}/, // Repeated characters
   ];
 
-  const hasCommon = commonPatterns.some(pattern => pattern.test(password));
+  const hasCommon = commonPatterns.some((pattern) => pattern.test(password));
   if (!hasCommon) {
     score += 10;
   }
@@ -189,7 +191,9 @@ export function passwordStrengthScore(
 /**
  * Gets a human-readable strength label for a password score.
  */
-export function passwordStrengthLabel(score: number): 'very weak' | 'weak' | 'fair' | 'strong' | 'very strong' {
+export function passwordStrengthLabel(
+  score: number
+): 'very weak' | 'weak' | 'fair' | 'strong' | 'very strong' {
   if (score < 20) return 'very weak';
   if (score < 40) return 'weak';
   if (score < 60) return 'fair';

@@ -5,8 +5,9 @@
  * https://license.penguintech.io
  */
 
-const LICENSE_SERVER_URL = process.env.LICENSE_SERVER_URL || 'https://license.penguintech.io';
-const PRODUCT_NAME = process.env.PRODUCT_NAME || 'killkrill';
+const LICENSE_SERVER_URL =
+  process.env.LICENSE_SERVER_URL || "https://license.penguintech.io";
+const PRODUCT_NAME = process.env.PRODUCT_NAME || "killkrill";
 
 /**
  * License client for killkrill
@@ -16,7 +17,7 @@ class LicenseClient {
     this.licenseKey = licenseKey || process.env.LICENSE_KEY;
     this.baseUrl = baseUrl || LICENSE_SERVER_URL;
     this.productName = PRODUCT_NAME;
-    this.releaseMode = process.env.RELEASE_MODE === 'true';
+    this.releaseMode = process.env.RELEASE_MODE === "true";
     this.cache = new Map();
     this.cacheTimeout = 300000; // 5 minutes
   }
@@ -27,8 +28,10 @@ class LicenseClient {
    * @returns {boolean} True if format is valid
    */
   isValidFormat(key) {
-    if (!key || typeof key !== 'string') return false;
-    return /^PENG-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(key);
+    if (!key || typeof key !== "string") return false;
+    return /^PENG-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(
+      key,
+    );
   }
 
   /**
@@ -40,24 +43,24 @@ class LicenseClient {
     if (!this.releaseMode) {
       return {
         valid: true,
-        tier: 'enterprise',
-        features: ['all'],
-        message: 'Development mode - all features enabled',
+        tier: "enterprise",
+        features: ["all"],
+        message: "Development mode - all features enabled",
       };
     }
 
     if (!this.licenseKey) {
-      throw new Error('License key not provided');
+      throw new Error("License key not provided");
     }
 
     if (!this.isValidFormat(this.licenseKey)) {
-      throw new Error('Invalid license key format');
+      throw new Error("Invalid license key format");
     }
 
     const response = await fetch(`${this.baseUrl}/api/v2/validate`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         license_key: this.licenseKey,
@@ -71,7 +74,7 @@ class LicenseClient {
 
     const data = await response.json();
     if (!data.valid) {
-      throw new Error(data.message || 'License validation failed');
+      throw new Error(data.message || "License validation failed");
     }
 
     return data;
@@ -99,9 +102,9 @@ class LicenseClient {
 
     try {
       const response = await fetch(`${this.baseUrl}/api/v2/features`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           license_key: this.licenseKey,
@@ -142,9 +145,9 @@ class LicenseClient {
 
     try {
       const response = await fetch(`${this.baseUrl}/api/v2/keepalive`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           license_key: this.licenseKey,
@@ -160,7 +163,7 @@ class LicenseClient {
 
       return await response.json();
     } catch (error) {
-      console.error('License keepalive failed:', error);
+      console.error("License keepalive failed:", error);
       throw error;
     }
   }
@@ -205,7 +208,7 @@ function requiresFeature(featureName) {
 
       if (!hasFeature) {
         throw new Error(
-          `Feature '${featureName}' not available with current license`
+          `Feature '${featureName}' not available with current license`,
         );
       }
 

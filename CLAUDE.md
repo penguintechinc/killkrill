@@ -5,6 +5,7 @@
 Killkrill is an enterprise-grade data processing and observability system built on modern distributed architecture patterns. It provides high-performance log and metrics ingestion, processing, and querying with Kubernetes-native deployment.
 
 **Project Features:**
+
 - High-performance Go services (API, K8s Operator, K8s Agent)
 - Python workers and receivers for data processing (log/metrics)
 - Web-based management and monitoring (Python + React)
@@ -18,6 +19,7 @@ Killkrill is an enterprise-grade data processing and observability system built 
 ### Languages & Frameworks
 
 **Killkrill Technology Choices:**
+
 - **Go 1.23.x**: High-performance services requiring >10K req/sec
   - API service: REST endpoints, request routing, query handling
   - K8s Operator: Custom resource reconciliation
@@ -32,6 +34,7 @@ Killkrill is an enterprise-grade data processing and observability system built 
   - User authentication and RBAC
 
 **Python Stack:**
+
 - **Python**: 3.12+ for all applications
 - **Web Framework**: Quart with Hypercorn server (mandatory async framework)
 - **Database ORM**: Hybrid approach - SQLAlchemy for initialization, PyDAL for day-to-day operations (mandatory for all Python applications)
@@ -39,16 +42,19 @@ Killkrill is an enterprise-grade data processing and observability system built 
 - **Server**: Hypercorn ASGI server for production deployments
 
 **Frontend Stack:**
+
 - **React**: ReactJS for all frontend applications
 - **Node.js**: 18+ for build tooling and React development
 - **JavaScript/TypeScript**: Modern ES2022+ standards
 
 **Go Stack (When Required):**
+
 - **Go**: 1.23.x (latest patch version)
 - **Database**: Use DAL with PostgreSQL/MySQL cross-support (e.g., GORM, sqlx)
 - Use only for traffic-intensive applications
 
 ### Infrastructure & DevOps
+
 - **Containers**: Docker with multi-stage builds, Docker Compose
 - **Orchestration**: Kubernetes with Helm charts
 - **Configuration Management**: Ansible for infrastructure automation
@@ -57,6 +63,7 @@ Killkrill is an enterprise-grade data processing and observability system built 
 - **Logging**: Structured logging with configurable levels
 
 ### Databases & Storage
+
 - **Primary**: PostgreSQL (default, configurable via `DB_TYPE` environment variable)
 - **Cache**: Redis/Valkey with optional TLS and authentication
 - **Database Abstraction Layers (DALs)**:
@@ -72,11 +79,13 @@ Killkrill is an enterprise-grade data processing and observability system built 
 - **MariaDB Galera Support**: Handle Galera-specific requirements (WSREP, auto-increment, transactions)
 
 **Supported DB_TYPE Values (PyDAL prefixes)**:
+
 - `postgres` - PostgreSQL (default)
 - `mysql` - MySQL/MariaDB
 - `sqlite` - SQLite
 
 **MariaDB Galera Cluster Requirements**:
+
 - Connection pooling with sticky sessions for consistent reads
 - WSREP synchronization control via `wsrep_sync_wait` for read-your-writes consistency
 - Auto-increment offset configuration for multi-node writes (WSREP_ON=ON)
@@ -86,6 +95,7 @@ Killkrill is an enterprise-grade data processing and observability system built 
 - Environment variables: `GALERA_MODE=true`, `GALERA_NODES=node1,node2,node3`
 
 ### Security & Authentication
+
 - **Quart-JWT or Custom Auth**: Authentication for Quart applications
   - Role-based access control (RBAC) via decorators
   - JWT token-based authentication and session management
@@ -105,17 +115,20 @@ Killkrill is an enterprise-grade data processing and observability system built 
 All projects integrate with the centralized PenguinTech License Server at `https://license.penguintech.io` for feature gating and enterprise functionality.
 
 **IMPORTANT: License enforcement is ONLY enabled when project is marked as release-ready**
+
 - Development phase: All features available, no license checks
 - Release phase: License validation required, feature gating active
 
 **License Key Format**: `PENG-XXXX-XXXX-XXXX-XXXX-ABCD`
 
 **Core Endpoints**:
+
 - `POST /api/v2/validate` - Validate license
 - `POST /api/v2/features` - Check feature entitlements
 - `POST /api/v2/keepalive` - Report usage statistics
 
 **Environment Variables**:
+
 ```bash
 # License configuration
 LICENSE_KEY=PENG-XXXX-XXXX-XXXX-XXXX-ABCD
@@ -134,6 +147,7 @@ RELEASE_MODE=true   # Production (explicitly set)
 For projects requiring AI capabilities, integrate with WaddleAI located at `~/code/WaddleAI`.
 
 **When to Use WaddleAI:**
+
 - Natural language processing (NLP)
 - Machine learning model inference
 - AI-powered features and automation
@@ -141,6 +155,7 @@ For projects requiring AI capabilities, integrate with WaddleAI located at `~/co
 - Chatbots and conversational interfaces
 
 **Integration Pattern:**
+
 - WaddleAI runs as separate microservice container
 - Communicate via REST API or gRPC
 - Environment variable configuration for API endpoints
@@ -182,16 +197,16 @@ killkrill/
 
 Killkrill consists of multiple specialized microservices, each optimized for its role:
 
-| Service | Language | Purpose | SLA |
-|---------|----------|---------|-----|
-| **api** | Go | REST API gateway, request routing | 10K+ req/sec, P99 <100ms |
-| **log-worker** | Python | Process log entries asynchronously | 50K+ events/sec |
-| **metrics-worker** | Python | Aggregate and process metrics | 50K+ events/sec |
-| **log-receiver** | Python | High-throughput log ingestion | 100K+ msg/sec |
-| **metrics-receiver** | Python | Prometheus/HTTP metrics ingestion | 100K+ msg/sec |
-| **manager** | Python/React | Web UI and admin API | <500ms response time |
-| **k8s-operator** | Go | Kubernetes custom resource operator | Sub-second reconciliation |
-| **k8s-agent** | Go | Per-pod sidecar for coordination | <50MB memory |
+| Service              | Language     | Purpose                             | SLA                       |
+| -------------------- | ------------ | ----------------------------------- | ------------------------- |
+| **api**              | Go           | REST API gateway, request routing   | 10K+ req/sec, P99 <100ms  |
+| **log-worker**       | Python       | Process log entries asynchronously  | 50K+ events/sec           |
+| **metrics-worker**   | Python       | Aggregate and process metrics       | 50K+ events/sec           |
+| **log-receiver**     | Python       | High-throughput log ingestion       | 100K+ msg/sec             |
+| **metrics-receiver** | Python       | Prometheus/HTTP metrics ingestion   | 100K+ msg/sec             |
+| **manager**          | Python/React | Web UI and admin API                | <500ms response time      |
+| **k8s-operator**     | Go           | Kubernetes custom resource operator | Sub-second reconciliation |
+| **k8s-agent**        | Go           | Per-pod sidecar for coordination    | <50MB memory              |
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
@@ -229,21 +244,23 @@ Killkrill consists of multiple specialized microservices, each optimized for its
 
 ### Default Roles (WebUI)
 
-| Role | Permissions |
-|------|-------------|
-| **Admin** | Full access: user CRUD, settings, all features |
+| Role           | Permissions                                        |
+| -------------- | -------------------------------------------------- |
+| **Admin**      | Full access: user CRUD, settings, all features     |
 | **Maintainer** | Read/write access to resources, no user management |
-| **Viewer** | Read-only access to resources |
+| **Viewer**     | Read-only access to resources                      |
 
 ## Version Management System
 
 **Format**: `vMajor.Minor.Patch.build`
+
 - **Major**: Breaking changes, API changes, removed features
 - **Minor**: Significant new features and functionality additions
 - **Patch**: Minor updates, bug fixes, security patches
 - **Build**: Epoch64 timestamp of build time
 
 **Update Commands**:
+
 ```bash
 ./scripts/version/update-version.sh          # Increment build timestamp
 ./scripts/version/update-version.sh patch    # Increment patch version
@@ -254,6 +271,7 @@ Killkrill consists of multiple specialized microservices, each optimized for its
 ## Development Workflow
 
 ### Local Development Setup
+
 ```bash
 git clone <repository-url>
 cd project-name
@@ -262,6 +280,7 @@ make dev                      # Start development environment
 ```
 
 ### Essential Commands
+
 ```bash
 # Development
 make dev                      # Start development services
@@ -293,6 +312,7 @@ make license-check-features  # Check available features
 **NEVER take shortcuts or the "easy route" - ALWAYS prioritize safety, stability, and feature completeness**
 
 #### Core Principles
+
 - **No Quick Fixes**: Resist quick workarounds or partial solutions
 - **Complete Features**: Fully implemented with proper error handling and validation
 - **Safety First**: Security, data integrity, and fault tolerance are non-negotiable
@@ -301,6 +321,7 @@ make license-check-features  # Check available features
 - **No Technical Debt**: Address issues properly the first time
 
 #### Red Flags (Never Do These)
+
 - ❌ Skipping input validation "just this once"
 - ❌ Hardcoding credentials or configuration
 - ❌ Ignoring error returns or exceptions
@@ -313,6 +334,7 @@ make license-check-features  # Check available features
 - ❌ Leaving debug code or backdoors in production
 
 #### Quality Checklist Before Completion
+
 - ✅ All error cases handled properly
 - ✅ Unit tests cover all code paths
 - ✅ Integration tests verify component interactions
@@ -327,6 +349,7 @@ make license-check-features  # Check available features
 - ✅ Edge cases and boundary conditions tested
 
 ### Git Workflow
+
 - **NEVER commit automatically** unless explicitly requested by the user
 - **NEVER push to remote repositories** under any circumstances
 - **ONLY commit when explicitly asked** - never assume commit permission
@@ -335,6 +358,7 @@ make license-check-features  # Check available features
 - Automated testing must pass before merge
 
 **Before Every Commit - Security Scanning**:
+
 - **Run security audits on all modified packages**:
   - **Go packages**: Run `gosec ./...` on modified Go services
   - **Node.js packages**: Run `npm audit` on modified Node.js services
@@ -343,6 +367,7 @@ make license-check-features  # Check available features
 - **Document vulnerability fixes** in commit message if applicable
 
 **Before Every Commit - API Testing**:
+
 - **Create and run API testing scripts** for each modified container service
 - **Testing scope**: All new endpoints and modified functionality
 - **Test files location**: `tests/api/` directory with service-specific subdirectories
@@ -354,12 +379,14 @@ make license-check-features  # Check available features
 - **Command pattern**: `cd services/<service-name> && npm run test:api` or equivalent
 
 **Before Every Commit - Screenshots**:
+
 - **Run screenshot tool to update UI screenshots in documentation**
   - Run `cd services/webui && npm run screenshots` to capture current UI state
   - This automatically removes old screenshots and captures fresh ones
   - Commit updated screenshots with relevant feature/documentation changes
 
 ### Local State Management (Crash Recovery)
+
 - **ALWAYS maintain local .PLAN and .TODO files** for crash recovery
 - **Keep .PLAN file updated** with current implementation plans and progress
 - **Keep .TODO file updated** with task lists and completion status
@@ -369,6 +396,7 @@ make license-check-features  # Check available features
 - **Automatic recovery**: Upon restart, check for existing files to resume work
 
 ### Dependency Security Requirements
+
 - **ALWAYS check for Dependabot alerts** before every commit
 - **Monitor vulnerabilities via Socket.dev** for all dependencies
 - **Mandatory security scanning** before any dependency changes
@@ -376,6 +404,7 @@ make license-check-features  # Check available features
 - **Regular security audits**: `npm audit`, `go mod audit`, `safety check`
 
 ### Linting & Code Quality Requirements
+
 - **ALL code must pass linting** before commit - no exceptions
 - **Python**: flake8, black, isort, mypy (type checking), bandit (security)
 - **JavaScript/TypeScript**: ESLint, Prettier
@@ -389,12 +418,14 @@ make license-check-features  # Check available features
 - **PEP Compliance**: Python code must follow PEP 8, PEP 257 (docstrings), PEP 484 (type hints)
 
 ### Build & Deployment Requirements
+
 - **NEVER mark tasks as completed until successful build verification**
 - All Go and Python builds MUST be executed within Docker containers
 - Use containerized builds for local development and CI/CD pipelines
 - Build failures must be resolved before task completion
 
 ### Documentation Standards
+
 - **README.md**: Keep as overview and pointer to comprehensive docs/ folder
 - **docs/ folder**: Create comprehensive documentation for all aspects
 - **RELEASE_NOTES.md**: Maintain in docs/ folder, prepend new version releases to top
@@ -405,6 +436,7 @@ make license-check-features  # Check available features
 - **License**: All projects use Limited AGPL3 with preamble for fair use
 
 ### File Size Limits
+
 - **Maximum file size**: 25,000 characters for ALL code and markdown files
 - **Split large files**: Decompose into modules, libraries, or separate documents
 - **CLAUDE.md exception**: Maximum 39,000 characters (only exception to 25K rule)
@@ -424,6 +456,7 @@ Comprehensive development standards are documented separately to keep this file 
 ### Quick Reference
 
 **API Versioning**:
+
 - ALL REST APIs MUST use versioning: `/api/v{major}/endpoint` format
 - Semantic versioning for major versions only in URL
 - Support current and previous versions (N-1) minimum
@@ -431,17 +464,20 @@ Comprehensive development standards are documented separately to keep this file 
 - Document migration paths for version changes
 
 **Database Standards**:
+
 - PyDAL mandatory for ALL Python applications
 - Thread-safe usage with thread-local connections
 - Environment variable configuration for all database settings
 - Connection pooling and retry logic required
 
 **Protocol Support**:
+
 - REST API, gRPC, HTTP/1.1, HTTP/2, HTTP/3 support
 - Environment variables for protocol configuration
 - Multi-protocol implementation required
 
 **Performance Optimization (Python):**
+
 - Dataclasses with slots mandatory (30-50% memory reduction)
 - Type hints required for all Python code
 - asyncio for I/O-bound operations
@@ -450,12 +486,14 @@ Comprehensive development standards are documented separately to keep this file 
 - Avoid premature optimization - profile first
 
 **High-Performance Networking (Case-by-Case):**
+
 - XDP (eXpress Data Path): Kernel-level packet processing
 - AF_XDP: Zero-copy socket for user-space packet processing
 - Use only for network-intensive applications requiring >100K packets/sec
 - Evaluate Python vs Go based on traffic requirements
 
 **Microservices Architecture**:
+
 - Web UI, API, and Connector as **separate containers by default**
 - Single responsibility per service
 - API-first design
@@ -463,18 +501,21 @@ Comprehensive development standards are documented separately to keep this file 
 - Each service has its own Dockerfile and dependencies
 
 **Docker Standards**:
+
 - Multi-arch builds (amd64/arm64)
 - Debian-slim base images
 - Docker Compose for local development
 - Minimal host port exposure
 
 **Testing**:
+
 - Unit tests: Network isolated, mocked dependencies
 - Integration tests: Component interactions
 - E2E tests: Critical workflows
 - Performance tests: Scalability validation
 
 **Security**:
+
 - TLS 1.2+ required
 - Input validation mandatory
 - JWT, MFA, mTLS standard
@@ -489,12 +530,14 @@ Comprehensive development standards are documented separately to keep this file 
 3. **Connector Container**: External system integration (separate container)
 
 **Default Container Separation**: Web UI and API are ALWAYS separate containers by default. This provides:
+
 - Independent scaling of frontend and backend
 - Different resource allocation per service
 - Separate deployment lifecycles
 - Technology-specific optimization
 
 **Benefits**:
+
 - Independent scaling
 - Technology diversity
 - Team autonomy
@@ -506,6 +549,7 @@ Comprehensive development standards are documented separately to keep this file 
 ## Common Integration Patterns
 
 ### Quart + JWT Auth + PyDAL
+
 ```python
 from quart import Quart, jsonify, request
 from quart_cors import cors
@@ -553,15 +597,18 @@ async def health():
 ### Hybrid Database Approach: SQLAlchemy Initialization + PyDAL Day-to-Day
 
 The killkrill project uses a hybrid database strategy:
+
 - **Initialization Phase**: SQLAlchemy for schema design, migrations, and complex setup operations
 - **Runtime Operations**: PyDAL for daily CRUD operations and business logic
 
 **Rationale**:
+
 - SQLAlchemy provides robust schema versioning and migration capabilities
 - PyDAL offers simpler syntax and better multi-database abstraction for routine operations
 - Clear separation of concerns between setup (SQLAlchemy) and operations (PyDAL)
 
 **Setup Example (SQLAlchemy)**:
+
 ```python
 from sqlalchemy import create_engine, Column, Integer, String, Boolean
 from sqlalchemy.ext.declarative import declarative_base
@@ -579,6 +626,7 @@ class User(Base):
 ```
 
 ### Database Integration (PyDAL with Multi-Database Support - Day-to-Day Operations)
+
 ```python
 from pydal import DAL, Field
 from dataclasses import dataclass
@@ -629,22 +677,23 @@ def get_db_connection() -> DAL:
 ```
 
 ### ReactJS Frontend Integration
+
 ```javascript
 // API client for Quart backend
-import axios from 'axios';
+import axios from "axios";
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
 
 // Add JWT token to requests
 apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('authToken');
+  const token = localStorage.getItem("authToken");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -652,15 +701,16 @@ apiClient.interceptors.request.use((config) => {
 });
 
 // Protected component example
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 
 function ProtectedComponent() {
   const [data, setData] = useState(null);
 
   useEffect(() => {
-    apiClient.get('/api/v1/protected')
-      .then(response => setData(response.data))
-      .catch(error => console.error('Error:', error));
+    apiClient
+      .get("/api/v1/protected")
+      .then((response) => setData(response.data))
+      .catch((error) => console.error("Error:", error));
   }, []);
 
   return <div>{data?.message}</div>;
@@ -668,6 +718,7 @@ function ProtectedComponent() {
 ```
 
 ### License-Gated Features (Python)
+
 ```python
 from shared.licensing import license_client, requires_feature
 
@@ -679,6 +730,7 @@ async def generate_advanced_report():
 ```
 
 ### Monitoring Integration
+
 ```python
 from prometheus_client import Counter, Histogram, generate_latest
 
@@ -698,6 +750,7 @@ async def metrics():
 Killkrill's distributed architecture processes high-volume log and metrics data across specialized services. This section documents critical integration patterns for multi-service data pipelines.
 
 **Log Processing Pipeline Architecture**:
+
 ```
 [Log Receiver] → [Redis Queue] → [Log Worker] → [PostgreSQL]
   (syslog/HTTP)    (async)      (parsing)      (storage)
@@ -705,12 +758,14 @@ Killkrill's distributed architecture processes high-volume log and metrics data 
 ```
 
 **Log Ingestion Pattern**:
+
 - Receiver service: Flask endpoint accepts POST requests with log batches
 - Queue storage: Redis list for async processing (`log_queue`)
 - Worker service: Async consumer pulls from queue, processes, persists to PostgreSQL
 - Database: PyDAL table with timestamp, level, message, source fields
 
 **Metrics Pipeline** (aggregation pattern):
+
 ```
 [Metrics Receiver] → [Redis Queue] → [Metrics Worker] → [Time-Series DB]
 (Prometheus/HTTP)   (batching)      (aggregation)      (PostgreSQL)
@@ -718,12 +773,14 @@ Killkrill's distributed architecture processes high-volume log and metrics data 
 ```
 
 **Metrics Aggregation Pattern**:
+
 - Worker service: Consumes metrics from Redis queue
 - In-memory buffering: Aggregates stats (sum, min, max, avg) per metric
 - Periodic flush: Writes aggregated results to PostgreSQL time-series table
 - Batching: Flushes when buffer reaches threshold (e.g., 100 metrics)
 
 **API Query Pattern**:
+
 - API service queries aggregated metrics and logs from PostgreSQL
 - Endpoints: `/api/v1/metrics?name=...` and `/api/v1/logs?level=...&source=...`
 - Pagination: LIMIT/OFFSET for large result sets
@@ -734,6 +791,7 @@ Killkrill's distributed architecture processes high-volume log and metrics data 
 ## Website Integration Requirements
 
 **Killkrill Deployment MUST include two integrated websites**:
+
 1. **Marketing/Sales Website** (Node.js + React, separately hosted)
 2. **Documentation Website** (Auto-generated from Markdown docs/)
 
@@ -744,6 +802,7 @@ Killkrill's distributed architecture processes high-volume log and metrics data 
 **Marketing Features**: Product overview, architecture/data flow, performance benchmarks, customer case studies, pricing, trial options
 
 **Repository Setup**:
+
 - Add `github.com/penguintechinc/website` as sparse checkout submodule
 - Create Killkrill-specific folders: `killkrill/` and `killkrill-docs/`
 - Marketing site in `killkrill/` (Node.js + React)
@@ -754,6 +813,7 @@ Killkrill's distributed architecture processes high-volume log and metrics data 
 ## Troubleshooting & Support
 
 ### Common Issues
+
 1. **Port Conflicts**: Check docker-compose port mappings
 2. **Database Connections**: Verify connection strings and permissions
 3. **License Validation Failures**: Check license key format and network connectivity
@@ -761,6 +821,7 @@ Killkrill's distributed architecture processes high-volume log and metrics data 
 5. **Test Failures**: Review test environment setup
 
 ### Debug Commands
+
 ```bash
 # Container debugging
 docker-compose logs -f service-name
@@ -777,6 +838,7 @@ make license-validate         # Validate current license
 ```
 
 ### Support Resources
+
 - **Technical Documentation**: [Development Standards](docs/STANDARDS.md)
 - **License Integration**: [License Server Guide](docs/licensing/license-server-integration.md)
 - **Integration Support**: support@penguintech.io
@@ -786,6 +848,7 @@ make license-validate         # Validate current license
 ## CI/CD & Workflows
 
 ### Documentation
+
 - **Complete workflow documentation**: See [`docs/WORKFLOWS.md`](docs/WORKFLOWS.md)
 - **CI/CD standards and requirements**: See [`docs/STANDARDS.md`](docs/STANDARDS.md)
 
@@ -793,11 +856,11 @@ make license-validate         # Validate current license
 
 All container images follow automatic naming based on branch and version changes:
 
-| Scenario | Main Branch | Other Branches |
-|----------|------------|-----------------|
-| Regular build (no `.version` change) | `beta-<epoch64>` | `alpha-<epoch64>` |
-| Version release (`.version` changed) | `vX.X.X-beta` | `vX.X.X-alpha` |
-| Tagged release | `vX.X.X` + `latest` | N/A |
+| Scenario                             | Main Branch         | Other Branches    |
+| ------------------------------------ | ------------------- | ----------------- |
+| Regular build (no `.version` change) | `beta-<epoch64>`    | `alpha-<epoch64>` |
+| Version release (`.version` changed) | `vX.X.X-beta`       | `vX.X.X-alpha`    |
+| Tagged release                       | `vX.X.X` + `latest` | N/A               |
 
 **Example**: Updating `.version` to `1.2.0` on main branch triggers builds tagged `v1.2.0-beta` (and auto-creates a GitHub pre-release).
 
@@ -879,6 +942,7 @@ The `LICENSE.md` file is located at the project root following industry standard
 **License Server**: https://license.penguintech.io
 
 **Key Updates in v1.3.0:**
+
 - Three-container architecture: Flask backend, Go backend, WebUI shell
 - WebUI shell with Node.js + React, role-based access (Admin, Maintainer, Viewer)
 - Flask backend with PyDAL, JWT auth, user management
@@ -888,6 +952,7 @@ The `LICENSE.md` file is located at the project root following industry standard
 - Docker Compose updated for new architecture
 
 **Key Updates in v1.2.0:**
+
 - Web UI and API as separate containers by default
 - Mandatory linting for all languages (flake8, ansible-lint, eslint, etc.)
 - CodeQL inspection compliance required
@@ -896,6 +961,7 @@ The `LICENSE.md` file is located at the project root following industry standard
 - Flask as sole web framework (PyDAL for database abstraction)
 
 **Key Updates in v1.1.0:**
+
 - Flask-Security-Too mandatory for authentication
 - ReactJS as standard frontend framework
 - Python 3.13 vs Go decision criteria
@@ -904,4 +970,4 @@ The `LICENSE.md` file is located at the project root following industry standard
 - Release-mode license enforcement
 - Performance optimization requirements (dataclasses with slots)
 
-*This template provides a production-ready foundation for enterprise software development with comprehensive tooling, security, operational capabilities, and integrated licensing management.*
+_This template provides a production-ready foundation for enterprise software development with comprehensive tooling, security, operational capabilities, and integrated licensing management._

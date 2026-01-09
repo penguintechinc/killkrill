@@ -49,6 +49,7 @@ tests/unit/
 - Test function: `test_<what>_<condition>_<expected>`
 
 Example:
+
 ```python
 # tests/unit/log-worker/test_parsing.py
 
@@ -118,6 +119,7 @@ def sample_metric():
 ### Mocking Patterns
 
 **Mock External Services**:
+
 ```python
 @patch('log_worker.worker.redis.Redis')
 @patch('log_worker.worker.elasticsearch.Elasticsearch')
@@ -134,6 +136,7 @@ def test_worker_processes_logs(mock_es, mock_redis):
 ```
 
 **Mock Database Operations**:
+
 ```python
 @patch('shared.database.db')
 def test_user_creation(mock_db):
@@ -147,6 +150,7 @@ def test_user_creation(mock_db):
 ```
 
 **Spy on Calls**:
+
 ```python
 from unittest.mock import call
 
@@ -401,6 +405,7 @@ pytest --cov=services --cov-report=term-missing tests/unit/
 ### Best Practices
 
 1. **One assertion per test** (when possible)
+
    ```python
    # Good - single responsibility
    def test_parse_sets_timestamp():
@@ -411,6 +416,7 @@ pytest --cov=services --cov-report=term-missing tests/unit/
    ```
 
 2. **Use descriptive names**
+
    ```python
    # Good
    def test_parse_syslog_extracts_service_name_from_bracket():
@@ -422,6 +428,7 @@ pytest --cov=services --cov-report=term-missing tests/unit/
    ```
 
 3. **Mock external dependencies**
+
    ```python
    # Good - fully isolated
    @patch('log_worker.elasticsearch')
@@ -434,6 +441,7 @@ pytest --cov=services --cov-report=term-missing tests/unit/
    ```
 
 4. **Use fixtures for common setup**
+
    ```python
    # Good - DRY, reusable
    @pytest.fixture
@@ -452,6 +460,7 @@ pytest --cov=services --cov-report=term-missing tests/unit/
    ```
 
 5. **Avoid test interdependence**
+
    ```python
    # Good - independent tests
    def test_create_user():

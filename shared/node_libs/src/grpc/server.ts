@@ -143,19 +143,15 @@ export function startServerWithGracefulShutdown(
   port: number = 50051,
   gracePeriod: number = 30000
 ): void {
-  server.bindAsync(
-    `0.0.0.0:${port}`,
-    grpc.ServerCredentials.createInsecure(),
-    (err, boundPort) => {
-      if (err) {
-        console.error(`Failed to bind server: ${err.message}`);
-        throw err;
-      }
-
-      server.start();
-      console.log(`gRPC server listening on port ${boundPort}`);
+  server.bindAsync(`0.0.0.0:${port}`, grpc.ServerCredentials.createInsecure(), (err, boundPort) => {
+    if (err) {
+      console.error(`Failed to bind server: ${err.message}`);
+      throw err;
     }
-  );
+
+    server.start();
+    console.log(`gRPC server listening on port ${boundPort}`);
+  });
 
   // Setup graceful shutdown
   const handleShutdown = (signal: string) => {

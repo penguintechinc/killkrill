@@ -154,8 +154,7 @@ export class AuditLogger {
 
     // Rotate files
     for (let i = this.options.maxFiles - 1; i >= 0; i--) {
-      const oldPath =
-        i === 0 ? this.options.logFilePath : `${this.options.logFilePath}.${i}`;
+      const oldPath = i === 0 ? this.options.logFilePath : `${this.options.logFilePath}.${i}`;
       const newPath = `${this.options.logFilePath}.${i + 1}`;
 
       if (fs.existsSync(oldPath)) {
@@ -235,24 +234,20 @@ export class AuditLogger {
    * Log authentication event
    */
   public logAuth(action: string, success: boolean, details: Partial<AuditEvent> = {}): void {
-    this.log(
-      success ? AuditLevel.INFO : AuditLevel.WARNING,
-      AuditCategory.AUTHENTICATION,
-      action,
-      { success, ...details }
-    );
+    this.log(success ? AuditLevel.INFO : AuditLevel.WARNING, AuditCategory.AUTHENTICATION, action, {
+      success,
+      ...details,
+    });
   }
 
   /**
    * Log authorization event
    */
   public logAuthz(action: string, success: boolean, details: Partial<AuditEvent> = {}): void {
-    this.log(
-      success ? AuditLevel.INFO : AuditLevel.WARNING,
-      AuditCategory.AUTHORIZATION,
-      action,
-      { success, ...details }
-    );
+    this.log(success ? AuditLevel.INFO : AuditLevel.WARNING, AuditCategory.AUTHORIZATION, action, {
+      success,
+      ...details,
+    });
   }
 
   /**
@@ -295,7 +290,7 @@ export class AuditLogger {
       userName: (req as any).user?.email || (req as any).user?.username,
       ipAddress: this.getClientIp(req),
       userAgent: req.headers['user-agent'],
-      requestId: (req as any).id || req.headers['x-request-id'] as string,
+      requestId: (req as any).id || (req.headers['x-request-id'] as string),
       sessionId: (req as any).sessionID,
     };
   }

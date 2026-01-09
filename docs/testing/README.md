@@ -4,14 +4,14 @@ Killkrill's multi-service architecture requires comprehensive testing across uni
 
 ## Test Levels & Categories
 
-| Level | Purpose | Speed | Coverage | Markers |
-|-------|---------|-------|----------|---------|
-| **Unit** | Isolated function testing with mocks | <1 min | Logic, validation | `@pytest.mark.unit` |
-| **API** | HTTP endpoint verification | <2 min | Request/response | `@pytest.mark.api` |
-| **Integration** | Component interactions with services | 2-5 min | Data flows | `@pytest.mark.integration` |
-| **E2E** | Complete pipeline workflows | 5-10 min | Full system | `@pytest.mark.e2e` |
-| **Load** | Throughput & performance | 5-15 min | Scalability | `@pytest.mark.load` |
-| **Security** | Auth, encryption, validation | 2-5 min | Safety | `@pytest.mark.security` |
+| Level           | Purpose                              | Speed    | Coverage          | Markers                    |
+| --------------- | ------------------------------------ | -------- | ----------------- | -------------------------- |
+| **Unit**        | Isolated function testing with mocks | <1 min   | Logic, validation | `@pytest.mark.unit`        |
+| **API**         | HTTP endpoint verification           | <2 min   | Request/response  | `@pytest.mark.api`         |
+| **Integration** | Component interactions with services | 2-5 min  | Data flows        | `@pytest.mark.integration` |
+| **E2E**         | Complete pipeline workflows          | 5-10 min | Full system       | `@pytest.mark.e2e`         |
+| **Load**        | Throughput & performance             | 5-15 min | Scalability       | `@pytest.mark.load`        |
+| **Security**    | Auth, encryption, validation         | 2-5 min  | Safety            | `@pytest.mark.security`    |
 
 ## Quick Start
 
@@ -200,13 +200,13 @@ See [WORKFLOWS.md](../WORKFLOWS.md) for complete CI/CD details.
 
 ## Common Issues & Solutions
 
-| Issue | Solution |
-|-------|----------|
-| Tests fail locally but pass in CI | Check Python version, dependencies, env vars |
-| Flaky tests | Use proper waits/retries, avoid hardcoded timeouts |
-| Slow tests | Check for unnecessary sleeps, use mocks instead of real services |
-| Import errors | Ensure app is installed: `pip install -e .` |
-| DB locked errors | Use separate test DB (redis db=15, MySQL test prefix) |
+| Issue                             | Solution                                                         |
+| --------------------------------- | ---------------------------------------------------------------- |
+| Tests fail locally but pass in CI | Check Python version, dependencies, env vars                     |
+| Flaky tests                       | Use proper waits/retries, avoid hardcoded timeouts               |
+| Slow tests                        | Check for unnecessary sleeps, use mocks instead of real services |
+| Import errors                     | Ensure app is installed: `pip install -e .`                      |
+| DB locked errors                  | Use separate test DB (redis db=15, MySQL test prefix)            |
 
 ## Performance Benchmarks
 

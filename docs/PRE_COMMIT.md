@@ -11,12 +11,14 @@
 ```
 
 This script will:
+
 1. Run all checks in the correct order
 2. Log output to `/tmp/pre-commit-killkrill-<epoch>.log`
 3. Provide a summary of pass/fail status
 4. Echo the log file location for review
 
 **Individual check scripts** (run separately if needed):
+
 - `./scripts/pre-commit/check-python.sh` - Python linting & security (workers, receivers, manager)
 - `./scripts/pre-commit/check-go.sh` - Go linting & security (API, K8s components)
 - `./scripts/pre-commit/check-node.sh` - Node.js/React linting, audit & build (Manager UI)
@@ -30,6 +32,7 @@ This script will:
 Before committing, run in this order (or use `./scripts/pre-commit/pre-commit.sh`):
 
 ### Foundation Checks
+
 - [ ] **Linters**:
   - `flake8 services/log-worker services/metrics-worker services/log-receiver services/metrics-receiver services/manager` (Python)
   - `npm run lint` (Node.js - Manager UI)
@@ -41,6 +44,7 @@ Before committing, run in this order (or use `./scripts/pre-commit/pre-commit.sh
 - [ ] **No secrets**: Verify no credentials, API keys, or tokens in code
 
 ### Build & Integration Verification
+
 - [ ] **Build & Run**: Verify code compiles and containers start successfully
 - [ ] **Smoke tests** (mandatory, <2 min): `make smoke-test`
   - All containers build without errors (log-worker, metrics-worker, receivers, manager)
@@ -51,6 +55,7 @@ Before committing, run in this order (or use `./scripts/pre-commit/pre-commit.sh
   - See: [Testing Documentation - Smoke Tests](TESTING.md#smoke-tests)
 
 ### Feature Testing & Worker Validation
+
 - [ ] **Mock data** (for testing workers): Ensure 3-4 test items per worker via `make seed-mock-data`
   - Populate Redis Streams with realistic log and metrics entries
   - Needed before testing worker processing and output
@@ -61,6 +66,7 @@ Before committing, run in this order (or use `./scripts/pre-commit/pre-commit.sh
   - Check worker logs for errors or warnings
 
 ### Comprehensive Testing
+
 - [ ] **Unit tests**: `pytest tests/unit/`
   - Log/metrics parsing tests must pass
   - Worker transformation tests must pass
@@ -74,6 +80,7 @@ Before committing, run in this order (or use `./scripts/pre-commit/pre-commit.sh
   - See: [Testing Documentation - Integration Tests](TESTING.md#integration-tests)
 
 ### Multi-Service Testing
+
 - [ ] **Receiver protocol testing**:
   - [ ] HTTP REST API: `curl -X POST http://localhost:8081/api/v1/logs ...`
   - [ ] Syslog UDP: `echo "<14>message" | nc -u localhost 514`
@@ -85,6 +92,7 @@ Before committing, run in this order (or use `./scripts/pre-commit/pre-commit.sh
   - Verify no message loss on worker restart
 
 ### Worker-Specific Validation
+
 - [ ] **Log worker modifications** (if changed):
   - [ ] Log parsing handles all expected formats (JSON, structured, unstructured)
   - [ ] Field extraction works for all configured log sources
@@ -104,6 +112,7 @@ Before committing, run in this order (or use `./scripts/pre-commit/pre-commit.sh
   - [ ] Error responses appropriate (400, 401, 429, etc.)
 
 ### Finalization
+
 - [ ] **Version updates**: Update `.version` if releasing new version
 - [ ] **Documentation**: Update docs if adding/changing workflows or worker behavior
 - [ ] **Docker builds**: Verify Dockerfile uses debian-slim base (no alpine)
@@ -208,6 +217,7 @@ docker compose -f docker-compose.dev.yml down            # Cleanup
 ## Security Scanning Requirements
 
 ### Before Every Commit
+
 - **Run security audits on all modified packages**:
   - **Go packages**: Run `gosec ./apps/api ./apps/k8s-operator ./apps/k8s-agent` on modified Go services
   - **Node.js packages**: Run `npm audit` on modified Node.js services (Manager UI)
@@ -216,6 +226,7 @@ docker compose -f docker-compose.dev.yml down            # Cleanup
 - **Document vulnerability fixes** in commit message if applicable
 
 ### Vulnerability Response
+
 1. Identify affected packages and severity
 2. Update to patched versions immediately
 3. Test updated dependencies thoroughly
@@ -271,6 +282,7 @@ HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
 ## Worker Testing Requirements
 
 ### Log Worker
+
 Before committing log worker changes:
 
 - [ ] **Parse tests**: All log formats parse correctly
@@ -289,6 +301,7 @@ Before committing log worker changes:
   - [ ] Worker recovers from transient errors
 
 ### Metrics Worker
+
 Before committing metrics worker changes:
 
 - [ ] **Parse tests**: Prometheus format parsing
@@ -309,6 +322,7 @@ Before committing metrics worker changes:
 ## Receiver Testing Requirements
 
 ### Log Receiver
+
 Before committing log receiver changes:
 
 - [ ] **Authentication test**: API key, JWT token validation
@@ -322,6 +336,7 @@ Before committing log receiver changes:
   - [ ] 429 for rate limit exceeded
 
 ### Metrics Receiver
+
 Before committing metrics receiver changes:
 
 - [ ] **Authentication test**: API key, JWT token validation
@@ -379,6 +394,7 @@ If modifying Kubernetes deployment manifests or Helm charts:
 ## Screenshot & Documentation Requirements
 
 ### Prerequisites
+
 Before capturing screenshots, ensure development environment is running with mock data:
 
 ```bash
@@ -387,6 +403,7 @@ make seed-mock-data       # Populate with test logs and metrics
 ```
 
 ### Capture Screenshots
+
 For all UI changes, update screenshots to show current application state with realistic data:
 
 ```bash
@@ -395,6 +412,7 @@ node scripts/capture-screenshots.cjs
 ```
 
 ### What to Screenshot (Manager UI)
+
 - **Login page** (unauthenticated state)
 - **Dashboard** with realistic mock logs and metrics
   - 3-4 representative log entries
@@ -408,6 +426,7 @@ node scripts/capture-screenshots.cjs
   - Empty states vs populated views
 
 ### Commit Guidelines
+
 - Automatically removes old screenshots and captures fresh ones
 - Commit updated screenshots with relevant feature/UI/documentation changes
 - Screenshots demonstrate feature purpose and functionality

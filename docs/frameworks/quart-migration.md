@@ -33,6 +33,7 @@ async def create_user():
 ```
 
 **Key differences from Flask:**
+
 - All route handlers must be `async def` (though Quart supports sync functions)
 - Request body access requires `await` (e.g., `await request.get_json()`)
 - Return values identical to Flask
@@ -62,6 +63,7 @@ app.register_blueprint(users_bp)
 ```
 
 **Best practices:**
+
 - Organize by resource type (users, logs, metrics)
 - One blueprint per service domain
 - Maintain consistent URL prefix versioning (`/api/v1/...`)

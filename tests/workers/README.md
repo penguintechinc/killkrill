@@ -16,12 +16,14 @@ workers/
 ## Test Categories
 
 ### Integration Tests (`@pytest.mark.integration`)
+
 - Mock external dependencies (Redis, Elasticsearch, Prometheus)
 - Test component interactions
 - Verify business logic and data transformations
 - Fast execution (~1-2 seconds per test)
 
 ### End-to-End Tests (`@pytest.mark.e2e`)
+
 - Require real service instances
 - Test complete data pipelines
 - Currently skipped by default (require infrastructure)
@@ -29,6 +31,7 @@ workers/
 ## Running Tests
 
 ### All Worker Tests
+
 ```bash
 # From project root
 pytest tests/workers/
@@ -41,6 +44,7 @@ pytest tests/workers/ --cov=apps.log_worker --cov=apps.metrics_worker
 ```
 
 ### Specific Test Files
+
 ```bash
 # Log worker tests only
 pytest tests/workers/test_log_worker.py
@@ -50,6 +54,7 @@ pytest tests/workers/test_metrics_worker.py
 ```
 
 ### Specific Test Classes
+
 ```bash
 # Elasticsearch processor tests
 pytest tests/workers/test_log_worker.py::TestElasticsearchProcessor
@@ -59,6 +64,7 @@ pytest tests/workers/test_metrics_worker.py::TestPrometheusDestination
 ```
 
 ### By Markers
+
 ```bash
 # Integration tests only (mocked dependencies)
 pytest tests/workers/ -m integration
@@ -70,6 +76,7 @@ pytest tests/workers/ -m "not e2e"
 ## Test Coverage
 
 ### Log Worker Tests (test_log_worker.py)
+
 - **ElasticsearchProcessor**: 6 tests
   - Batch processing (success, partial failure, empty)
   - ECS document conversion
@@ -104,6 +111,7 @@ pytest tests/workers/ -m "not e2e"
   - Counter increments
 
 ### Metrics Worker Tests (test_metrics_worker.py)
+
 - **MetricEntry**: 3 tests
   - Valid entry creation
   - Default values
@@ -155,31 +163,41 @@ pytest tests/workers/ -m "not e2e"
 ## Key Test Patterns
 
 ### 1. Consumer Group Membership
+
 Tests verify proper Redis Streams consumer group behavior:
+
 - Group creation and existence checking
 - Message claiming from failed consumers
 - Pending message recovery
 
 ### 2. Message Acknowledgment
+
 Tests ensure messages are acknowledged only after successful processing:
+
 - Successful processing → ACK
 - Failed processing → No ACK (retry later)
 - Idempotent processing
 
 ### 3. Batch Processing
+
 Tests verify efficient batch operations:
+
 - Configurable batch sizes
 - Bulk operations to destinations
 - Partial success handling
 
 ### 4. Error Handling
+
 Tests ensure resilient operation:
+
 - Connection failures (retry logic)
 - Malformed data (skip and log)
 - Destination errors (graceful degradation)
 
 ### 5. Graceful Shutdown
+
 Tests verify clean shutdown:
+
 - Signal handler registration (SIGTERM, SIGINT)
 - Queue draining before exit
 - Thread pool shutdown with timeout
@@ -187,30 +205,36 @@ Tests verify clean shutdown:
 ## Fixtures Reference
 
 ### Mock Services
+
 - `mock_redis_client`: Mock Redis client with stream operations
 - `mock_elasticsearch_client`: Mock Elasticsearch with bulk operations
 - `mock_license_client`: Mock license validation
 - `mock_prometheus_gateway`: Mock Prometheus pushgateway
 
 ### Test Data
+
 - `sample_log_message`: Single log message (syslog format)
 - `sample_log_batch`: Batch of 10 log messages
 - `sample_metric_message`: Single metric (Prometheus format)
 - `sample_metric_batch`: Batch of 20 metrics (mixed types)
 
 ### Data Generators
+
 - `redis_stream_messages(count, stream)`: Generate stream messages
 - `pending_messages(count, idle_time)`: Generate pending message info
 - `elasticsearch_bulk_response(success, failed)`: Generate bulk response
 
 ### Configuration
+
 - `mock_config`: Complete configuration mock
 - `reset_metrics`: Auto-cleanup of Prometheus metrics between tests
 
 ## Common Issues
 
 ### Import Errors
+
 If you see import errors for `apps.log_worker` or `apps.metrics_worker`:
+
 ```bash
 # Set PYTHONPATH to include project root
 export PYTHONPATH=/home/penguin/code/killkrill:$PYTHONPATH
@@ -218,7 +242,9 @@ pytest tests/workers/
 ```
 
 ### Mock Not Working
+
 Ensure you're patching the correct module path:
+
 ```python
 # Correct: Patch where it's used
 @patch('apps.log_worker.app.redis_client')
@@ -228,7 +254,9 @@ Ensure you're patching the correct module path:
 ```
 
 ### Prometheus Metrics Conflicts
+
 If metrics are already registered:
+
 ```python
 # Use the reset_metrics fixture (auto-applied)
 # Or manually reset in test
@@ -241,6 +269,7 @@ for collector in collectors:
 ## Adding New Tests
 
 ### 1. Add to Existing Test Class
+
 ```python
 @pytest.mark.integration
 class TestElasticsearchProcessor:
@@ -250,6 +279,7 @@ class TestElasticsearchProcessor:
 ```
 
 ### 2. Add New Test Class
+
 ```python
 @pytest.mark.integration
 class TestNewFeature:
@@ -261,6 +291,7 @@ class TestNewFeature:
 ```
 
 ### 3. Use Existing Fixtures
+
 ```python
 def test_with_data(self, sample_log_batch, mock_redis):
     """Tests can use any fixture from conftest.py"""
@@ -276,11 +307,13 @@ def test_with_data(self, sample_log_batch, mock_redis):
 ## CI/CD Integration
 
 Tests run automatically in GitHub Actions:
+
 - On every pull request
 - On push to main branch
 - Scheduled nightly runs
 
 CI command:
+
 ```bash
 pytest tests/workers/ -m "not e2e" --cov=apps.log_worker --cov=apps.metrics_worker
 ```

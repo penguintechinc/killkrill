@@ -192,7 +192,10 @@ export class RateLimiter {
         // Set headers if enabled
         if (this.options.headers) {
           res.setHeader('X-RateLimit-Limit', String(this.options.maxRequests));
-          res.setHeader('X-RateLimit-Remaining', String(Math.max(0, this.options.maxRequests - count)));
+          res.setHeader(
+            'X-RateLimit-Remaining',
+            String(Math.max(0, this.options.maxRequests - count))
+          );
           res.setHeader('X-RateLimit-Reset', String(Date.now() + ttl * 1000));
         }
 

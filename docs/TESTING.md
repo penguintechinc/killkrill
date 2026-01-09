@@ -6,13 +6,13 @@ Comprehensive testing documentation for KillKrill's log and metrics ingestion wo
 
 KillKrill's testing strategy ensures reliable log and metrics processing across multiple workers and receiver services. Testing is organized into multiple levels to ensure comprehensive coverage, fast feedback, and production-ready code:
 
-| Test Level | Purpose | Speed | Coverage |
-|-----------|---------|-------|----------|
-| **Smoke Tests** | Fast verification of basic functionality | <2 min | Build, run, API health, receiver health |
-| **Unit Tests** | Isolated worker function/method testing | <1 min | Log parsing, metrics parsing, validation logic |
-| **Integration Tests** | Worker-to-queue and queue-to-backend verification | 2-5 min | Redis Streams flow, Elasticsearch output, Prometheus output |
-| **E2E Tests** | Complete log/metrics pipelines end-to-end | 5-10 min | HTTP/Syslog ingestion → Redis → Worker → ELK/Prometheus |
-| **Performance Tests** | Throughput and latency validation | 5-15 min | Log ingestion rate, metrics throughput, queue depth |
+| Test Level            | Purpose                                           | Speed    | Coverage                                                    |
+| --------------------- | ------------------------------------------------- | -------- | ----------------------------------------------------------- |
+| **Smoke Tests**       | Fast verification of basic functionality          | <2 min   | Build, run, API health, receiver health                     |
+| **Unit Tests**        | Isolated worker function/method testing           | <1 min   | Log parsing, metrics parsing, validation logic              |
+| **Integration Tests** | Worker-to-queue and queue-to-backend verification | 2-5 min  | Redis Streams flow, Elasticsearch output, Prometheus output |
+| **E2E Tests**         | Complete log/metrics pipelines end-to-end         | 5-10 min | HTTP/Syslog ingestion → Redis → Worker → ELK/Prometheus     |
+| **Performance Tests** | Throughput and latency validation                 | 5-15 min | Log ingestion rate, metrics throughput, queue depth         |
 
 ## Mock Data Scripts
 
@@ -41,6 +41,7 @@ scripts/mock-data/
 Each seeder should create exactly 3-4 representative items to test worker variations:
 
 **Example (Logs)**:
+
 ```bash
 # seed-logs.sh
 LOGS=(
@@ -52,6 +53,7 @@ LOGS=(
 ```
 
 **Example (Metrics)**:
+
 ```bash
 # seed-metrics.sh
 METRICS=(
@@ -65,12 +67,14 @@ METRICS=(
 ### Execution
 
 **Seed all test data**:
+
 ```bash
 make seed-mock-data          # Via Makefile
 bash scripts/mock-data/seed-all.sh  # Direct execution
 ```
 
 **Seed specific category**:
+
 ```bash
 bash scripts/mock-data/seed-logs.sh
 bash scripts/mock-data/seed-metrics.sh
@@ -79,6 +83,7 @@ bash scripts/mock-data/seed-metrics.sh
 ### Implementation Pattern
 
 **Shell Script (Sending via API)**:
+
 ```bash
 #!/bin/bash
 # scripts/mock-data/seed-logs.sh
@@ -106,6 +111,7 @@ echo "✓ Seeded ${#LOGS[@]} test logs"
 ```
 
 **Syslog Seeder**:
+
 ```bash
 #!/bin/bash
 # scripts/mock-data/seed-syslog.sh
@@ -151,6 +157,7 @@ clean-data:
 ### When to Create Mock Data Scripts
 
 **Create mock data scripts for each worker/receiver test cycle**:
+
 - After implementing log-worker → create `seed-logs.sh`
 - After implementing metrics-worker → create `seed-metrics.sh`
 - After modifying receiver validation → update corresponding seeder
@@ -205,12 +212,14 @@ tests/smoke/
 ### Execution
 
 **Run all smoke tests**:
+
 ```bash
 make smoke-test              # Via Makefile
 ./tests/smoke/run-all.sh     # Direct execution
 ```
 
 **Run specific test category**:
+
 ```bash
 ./tests/smoke/api/test-log-receiver-health.sh
 ./tests/smoke/queue/test-redis-streams.sh
@@ -224,6 +233,7 @@ Complete smoke test suite **MUST run in under 2 minutes** to provide fast feedba
 ### Implementation Examples
 
 **Build Test (Shell)**:
+
 ```bash
 #!/bin/bash
 # tests/smoke/build/test-receivers-build.sh
@@ -241,6 +251,7 @@ fi
 ```
 
 **Receiver Health Check Test**:
+
 ```bash
 #!/bin/bash
 # tests/smoke/api/test-log-receiver-health.sh
@@ -263,6 +274,7 @@ fi
 ```
 
 **Redis Streams Connectivity Test**:
+
 ```bash
 #!/bin/bash
 # tests/smoke/queue/test-redis-streams.sh
@@ -290,6 +302,7 @@ fi
 ```
 
 **Elasticsearch Connectivity Test**:
+
 ```bash
 #!/bin/bash
 # tests/smoke/backends/test-elasticsearch.sh

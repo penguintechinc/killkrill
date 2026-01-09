@@ -7,6 +7,7 @@ Development and operational standards for the Killkrill data processing system.
 ### Go Services (API, K8s Operator, K8s Agent)
 
 **Minimum Requirements**:
+
 - Go 1.23.5 or later
 - Pass `go vet ./...` without warnings
 - Pass `staticcheck` (https://staticcheck.dev/)
@@ -16,6 +17,7 @@ Development and operational standards for the Killkrill data processing system.
 - No hardcoded secrets or credentials
 
 **Linting Tools**:
+
 ```bash
 golangci-lint run ./...
 gosec ./...
@@ -24,6 +26,7 @@ staticcheck ./...
 ```
 
 **Code Style**:
+
 - Follow Go idioms from "Effective Go"
 - Use interfaces for abstractions
 - Minimize exported surface area
@@ -31,6 +34,7 @@ staticcheck ./...
 - Context usage for cancellation
 
 **Performance Requirements**:
+
 - API: Handle 10K+ req/sec
 - Workers: Process 100K+ events/sec
 - Operators: Sub-second reconciliation time
@@ -40,6 +44,7 @@ staticcheck ./...
 ### Python Services (Workers, Receivers, Manager)
 
 **Minimum Requirements**:
+
 - Python 3.12 minimum
 - Pass `flake8` linting
 - Pass `black` formatting check
@@ -50,6 +55,7 @@ staticcheck ./...
 - PEP 8, PEP 257, PEP 484 compliance
 
 **Linting Tools**:
+
 ```bash
 black . --check
 isort . --check-only
@@ -59,6 +65,7 @@ bandit -r . --skip B101,B601
 ```
 
 **Code Style**:
+
 - Type hints for all functions (PEP 484)
 - Docstrings for all modules/classes/functions (PEP 257)
 - Use dataclasses with slots for memory efficiency
@@ -66,6 +73,7 @@ bandit -r . --skip B101,B601
 - Logging at appropriate levels
 
 **Performance Requirements**:
+
 - Workers: Process 50K+ events/sec
 - Receivers: Ingest 100K+ msg/sec with Quart + Hypercorn
 - Memory: <500MB per service
@@ -73,6 +81,7 @@ bandit -r . --skip B101,B601
 - Async/await for I/O operations (Quart mandatory for all web services)
 
 **Quart Framework Requirements**:
+
 - Use Quart for all new Python web services
 - Hypercorn ASGI server for production deployments
 - Blueprint organization for modular routes
@@ -84,6 +93,7 @@ bandit -r . --skip B101,B601
 ### Testing Standards
 
 **Unit Tests**:
+
 - Isolated from external dependencies
 - No network access required
 - Mock all I/O operations and async calls
@@ -93,6 +103,7 @@ bandit -r . --skip B101,B601
 - Use pytest with async fixtures for Quart apps
 
 **Integration Tests**:
+
 - Test component interactions with Docker containers
 - Real database/cache usage OK
 - Test Quart blueprints and async handlers
@@ -100,12 +111,14 @@ bandit -r . --skip B101,B601
 - Test error conditions and auth decorators
 
 **End-to-End Tests**:
+
 - Full system workflows with production config
 - Production-like environment (docker-compose.yml)
 - Real data scenarios through message queues
 - Performance baseline validation
 
 **Pytest Command Reference**:
+
 ```bash
 make test                    # Run all tests (unit + integration + e2e)
 make test-unit              # Unit tests only (fast)
@@ -129,15 +142,15 @@ All workflows must follow these standards:
 on:
   push:
     paths:
-      - '.version'                    # Always monitored
-      - 'go.mod'                      # Go dependency changes
-      - '**/*.go'                     # All Go source
-      - 'apps/**'                     # All service code
-      - 'requirements.txt'            # Python dependencies
-      - '**/*.py'                     # All Python source
-      - 'package.json'                # Node.js dependencies
-      - 'Dockerfile*'                 # Container definitions
-      - '.github/workflows/.*'        # Workflow changes
+      - ".version" # Always monitored
+      - "go.mod" # Go dependency changes
+      - "**/*.go" # All Go source
+      - "apps/**" # All service code
+      - "requirements.txt" # Python dependencies
+      - "**/*.py" # All Python source
+      - "package.json" # Node.js dependencies
+      - "Dockerfile*" # Container definitions
+      - ".github/workflows/.*" # Workflow changes
 ```
 
 #### Version Detection
@@ -189,6 +202,7 @@ gosec ./... -fmt json -out gosec-results.json
 ```
 
 **Must Pass**:
+
 - No high-severity findings (fixable)
 - Low-severity findings documented
 
@@ -201,6 +215,7 @@ bandit -r . -f json -o bandit-results.json --skip B101,B601
 ```
 
 **Must Pass**:
+
 - No high-severity findings (fixable)
 - Excluded: B101 (assert), B601 (paramiko)
 
@@ -213,6 +228,7 @@ trivy image ghcr.io/killkrill/api:latest
 ```
 
 **Policy**:
+
 - HIGH and CRITICAL vulnerabilities: Must be fixed
 - MEDIUM vulnerabilities: Should be addressed
 - LOW vulnerabilities: Monitor, fix when convenient
@@ -222,6 +238,7 @@ trivy image ghcr.io/killkrill/api:latest
 #### Multi-Architecture Support
 
 All containers must support:
+
 - `linux/amd64` (x86-64)
 - `linux/arm64` (ARM64/Apple Silicon)
 
@@ -241,6 +258,7 @@ FROM python:3.12-slim
 ```
 
 **Rationale**:
+
 - Smaller than full Debian
 - More compatible than Alpine
 - Reduced CVE surface vs. full OS images
@@ -272,13 +290,13 @@ CMD ["/app"]
 
 **Version Tag Format**:
 
-| Scenario | Branch | Tag |
-|----------|--------|-----|
-| Regular commit | main | `main-<EPOCH64>-<DATE>` |
-| Version update | main | `v<VERSION>-beta` |
-| Release | tag | `v<VERSION>` + `latest` |
+| Scenario       | Branch  | Tag                        |
+| -------------- | ------- | -------------------------- |
+| Regular commit | main    | `main-<EPOCH64>-<DATE>`    |
+| Version update | main    | `v<VERSION>-beta`          |
+| Release        | tag     | `v<VERSION>` + `latest`    |
 | Regular commit | develop | `develop-<EPOCH64>-<DATE>` |
-| Version update | develop | `v<VERSION>-alpha` |
+| Version update | develop | `v<VERSION>-alpha`         |
 
 #### Metadata Labels
 
@@ -302,6 +320,7 @@ LABEL org.opencontainers.image.description="Killkrill API service"
 **Purpose**: Main entry point for all data submission and queries
 
 **Requirements**:
+
 - REST API with versioning: `/api/v1/...`
 - Health check: `GET /health`
 - Metrics endpoint: `GET /metrics` (Prometheus format)
@@ -312,6 +331,7 @@ LABEL org.opencontainers.image.description="Killkrill API service"
 - License validation for enterprise features
 
 **Performance SLA**:
+
 - P50: <5ms
 - P95: <20ms
 - P99: <100ms
@@ -320,10 +340,12 @@ LABEL org.opencontainers.image.description="Killkrill API service"
 ### Worker Services (Python)
 
 **Components**:
+
 - log-worker: Processes log entries
 - metrics-worker: Processes metrics and aggregations
 
 **Requirements**:
+
 - Consume from message queue (Redis/Kafka)
 - Idempotent processing
 - Batch operations for efficiency
@@ -333,6 +355,7 @@ LABEL org.opencontainers.image.description="Killkrill API service"
 - Metrics emission
 
 **Performance SLA**:
+
 - Latency: <1 second per event
 - Throughput: 50K events/sec minimum
 - Memory: <500MB
@@ -340,10 +363,12 @@ LABEL org.opencontainers.image.description="Killkrill API service"
 ### Receiver Services (Python)
 
 **Components**:
+
 - log-receiver: Syslog/HTTP ingestion
 - metrics-receiver: Prometheus/HTTP ingestion
 
 **Requirements**:
+
 - Accept multiple formats (syslog, HTTP, gRPC)
 - High-throughput ingestion
 - Connection pooling
@@ -352,6 +377,7 @@ LABEL org.opencontainers.image.description="Killkrill API service"
 - Health checks for upstream dependencies
 
 **Performance SLA**:
+
 - Latency: <100ms for submission
 - Throughput: 100K msg/sec minimum
 - Tail latencies: <500ms at P99
@@ -361,6 +387,7 @@ LABEL org.opencontainers.image.description="Killkrill API service"
 **Purpose**: Configuration, monitoring, and administration
 
 **Requirements**:
+
 - Web UI for management
 - REST API for automation
 - Database connectivity
@@ -374,6 +401,7 @@ LABEL org.opencontainers.image.description="Killkrill API service"
 **Purpose**: Kubernetes-native management of Killkrill deployments
 
 **Requirements**:
+
 - Watch Custom Resources
 - Reconcile service deployments
 - Handle scale-up/scale-down
@@ -382,6 +410,7 @@ LABEL org.opencontainers.image.description="Killkrill API service"
 - Emit events for user awareness
 
 **Controller Patterns**:
+
 - Exponential backoff for retries
 - Status subresource updates
 - Finalizers for cleanup
@@ -392,6 +421,7 @@ LABEL org.opencontainers.image.description="Killkrill API service"
 **Purpose**: Per-pod agent for data collection and coordination
 
 **Requirements**:
+
 - Sidecar container model
 - Pod-local metrics/logs collection
 - Communication with API
@@ -406,6 +436,7 @@ LABEL org.opencontainers.image.description="Killkrill API service"
 ### Deployment Manifests
 
 All services must provide:
+
 - Deployment with resource requests/limits
 - Service for internal/external access
 - ConfigMap for configuration
@@ -416,20 +447,21 @@ All services must provide:
 
 ### Resource Requirements
 
-| Service | CPU Request | CPU Limit | Memory Request | Memory Limit |
-|---------|-------------|-----------|----------------|--------------|
-| api | 250m | 1000m | 256Mi | 512Mi |
-| log-worker | 200m | 800m | 256Mi | 512Mi |
-| metrics-worker | 200m | 800m | 256Mi | 512Mi |
-| log-receiver | 250m | 1000m | 256Mi | 512Mi |
-| metrics-receiver | 250m | 1000m | 256Mi | 512Mi |
-| manager | 200m | 500m | 256Mi | 512Mi |
-| k8s-operator | 100m | 500m | 128Mi | 256Mi |
-| k8s-agent | 50m | 200m | 64Mi | 128Mi |
+| Service          | CPU Request | CPU Limit | Memory Request | Memory Limit |
+| ---------------- | ----------- | --------- | -------------- | ------------ |
+| api              | 250m        | 1000m     | 256Mi          | 512Mi        |
+| log-worker       | 200m        | 800m      | 256Mi          | 512Mi        |
+| metrics-worker   | 200m        | 800m      | 256Mi          | 512Mi        |
+| log-receiver     | 250m        | 1000m     | 256Mi          | 512Mi        |
+| metrics-receiver | 250m        | 1000m     | 256Mi          | 512Mi        |
+| manager          | 200m        | 500m      | 256Mi          | 512Mi        |
+| k8s-operator     | 100m        | 500m      | 128Mi          | 256Mi        |
+| k8s-agent        | 50m         | 200m      | 64Mi           | 128Mi        |
 
 ### Health Checks
 
 **Liveness Probe**:
+
 ```yaml
 livenessProbe:
   httpGet:
@@ -442,6 +474,7 @@ livenessProbe:
 ```
 
 **Readiness Probe**:
+
 ```yaml
 readinessProbe:
   httpGet:
@@ -491,6 +524,7 @@ http_request_duration_seconds_bucket{le="0.01",method="POST"} 450
 **Format**: Semantic versioning only (major.minor.patch)
 
 **Process**:
+
 1. Update `.version` file on main branch
 2. Commit and push
 3. `version-release.yml` creates pre-release
@@ -498,6 +532,7 @@ http_request_duration_seconds_bucket{le="0.01",method="POST"} 450
 5. `release.yml` publishes production images
 
 **Example**:
+
 ```bash
 echo "1.2.3" > .version
 git add .version

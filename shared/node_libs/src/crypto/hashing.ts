@@ -6,9 +6,9 @@ import * as argon2 from 'argon2';
  */
 const DEFAULT_OPTIONS: argon2.Options = {
   type: argon2.argon2id, // Hybrid mode (resistant to both GPU and side-channel attacks)
-  memoryCost: 65536,     // 64 MB
-  timeCost: 3,           // 3 iterations
-  parallelism: 4,        // 4 parallel threads
+  memoryCost: 65536, // 64 MB
+  timeCost: 3, // 3 iterations
+  parallelism: 4, // 4 parallel threads
 };
 
 /**
@@ -40,10 +40,7 @@ export async function hashPasswordWithOptions(
  * Verifies that a plaintext password matches an Argon2 hash.
  * Returns true if the password is correct, false otherwise.
  */
-export async function verifyPassword(
-  password: string,
-  hash: string
-): Promise<boolean> {
+export async function verifyPassword(password: string, hash: string): Promise<boolean> {
   if (!password || !hash) {
     throw new Error('Password and hash cannot be empty');
   }

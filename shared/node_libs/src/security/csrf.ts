@@ -125,9 +125,7 @@ export function csrfProtection(
     if (config.protectedMethods.includes(method)) {
       // Get token from header or body
       const submittedToken =
-        req.headers[config.headerName.toLowerCase()] ||
-        req.body?._csrf ||
-        req.query?._csrf;
+        req.headers[config.headerName.toLowerCase()] || req.body?._csrf || req.query?._csrf;
 
       // Validate token
       if (!submittedToken || submittedToken !== token) {

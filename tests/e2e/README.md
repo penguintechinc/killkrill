@@ -22,6 +22,7 @@ docker-compose ps
 ```
 
 **Required services:**
+
 - **log-receiver** (port 8081)
 - **metrics-receiver** (port 8082)
 - **log-worker** (background)
@@ -42,6 +43,7 @@ export REDIS_URL=redis://localhost:6379
 ```
 
 **Defaults:**
+
 - `LOG_RECEIVER_URL`: http://localhost:8081
 - `METRICS_RECEIVER_URL`: http://localhost:8082
 - `API_BASE_URL`: http://localhost:8080
@@ -201,6 +203,7 @@ def log_receiver_available():
 **Cause:** Required services not running
 
 **Solution:**
+
 ```bash
 # Check service health
 curl http://localhost:8081/healthz  # log-receiver
@@ -216,6 +219,7 @@ docker-compose up -d
 **Cause:** Worker services not processing messages
 
 **Solution:**
+
 ```bash
 # Check worker logs
 docker-compose logs log-worker
@@ -231,6 +235,7 @@ redis-cli XINFO STREAM metrics:raw
 **Cause:** Service ports not exposed or firewall blocking
 
 **Solution:**
+
 ```bash
 # Verify port bindings
 docker-compose ps
@@ -247,6 +252,7 @@ telnet localhost 6379
 **Cause:** Redis requires authentication but REDIS_URL doesn't include credentials
 
 **Solution:**
+
 ```bash
 # Update REDIS_URL with authentication
 export REDIS_URL=redis://:password@localhost:6379

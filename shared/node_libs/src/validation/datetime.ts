@@ -234,11 +234,15 @@ export function dateInRange(
     const dateValue = dateResult.value as Date;
 
     if (minDate !== null && dateValue < minDate) {
-      return failure(options.errorMessage ?? `Date must be on or after ${minDate.toISOString().split('T')[0]}`);
+      return failure(
+        options.errorMessage ?? `Date must be on or after ${minDate.toISOString().split('T')[0]}`
+      );
     }
 
     if (maxDate !== null && dateValue > maxDate) {
-      return failure(options.errorMessage ?? `Date must be on or before ${maxDate.toISOString().split('T')[0]}`);
+      return failure(
+        options.errorMessage ?? `Date must be on or before ${maxDate.toISOString().split('T')[0]}`
+      );
     }
 
     return success(dateValue);
@@ -248,14 +252,20 @@ export function dateInRange(
 /**
  * Validates that a date is after a minimum date.
  */
-export function dateAfter(minDate: Date, options: DateInRangeOptions = {}): Validator<DateInput, Date> {
+export function dateAfter(
+  minDate: Date,
+  options: DateInRangeOptions = {}
+): Validator<DateInput, Date> {
   return dateInRange(minDate, null, options);
 }
 
 /**
  * Validates that a date is before a maximum date.
  */
-export function dateBefore(maxDate: Date, options: DateInRangeOptions = {}): Validator<DateInput, Date> {
+export function dateBefore(
+  maxDate: Date,
+  options: DateInRangeOptions = {}
+): Validator<DateInput, Date> {
   return dateInRange(null, maxDate, options);
 }
 

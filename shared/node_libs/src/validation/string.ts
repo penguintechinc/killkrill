@@ -38,7 +38,11 @@ export interface LengthOptions {
  * @param minLen - Minimum length (inclusive)
  * @param maxLen - Maximum length (inclusive), 0 for unlimited
  */
-export function length(minLen: number, maxLen: number = 0, options: LengthOptions = {}): Validator<string, string> {
+export function length(
+  minLen: number,
+  maxLen: number = 0,
+  options: LengthOptions = {}
+): Validator<string, string> {
   return (value: string): ValidationResult<string> => {
     if (typeof value !== 'string') {
       return failure('Value must be a string');
@@ -79,7 +83,10 @@ export interface MatchOptions {
 /**
  * Validates that a string matches a regex pattern.
  */
-export function match(pattern: RegExp | string, options: MatchOptions = {}): Validator<string, string> {
+export function match(
+  pattern: RegExp | string,
+  options: MatchOptions = {}
+): Validator<string, string> {
   const regex = typeof pattern === 'string' ? new RegExp(pattern) : pattern;
   const errorMessage = options.errorMessage ?? 'Value does not match required pattern';
 
@@ -169,11 +176,14 @@ export interface IsInOptions {
 /**
  * Validates that a value is in an allowed set.
  */
-export function isIn(allowedOptions: readonly string[], options: IsInOptions = {}): Validator<string, string> {
+export function isIn(
+  allowedOptions: readonly string[],
+  options: IsInOptions = {}
+): Validator<string, string> {
   const { caseSensitive = true } = options;
 
   const optionSet = new Set(
-    caseSensitive ? allowedOptions : allowedOptions.map(o => o.toLowerCase())
+    caseSensitive ? allowedOptions : allowedOptions.map((o) => o.toLowerCase())
   );
 
   return (value: string): ValidationResult<string> => {

@@ -1,6 +1,7 @@
 # Testing Strategy & Separation
 
 This document outlines the comprehensive testing strategy for Killkrill, with clear separation between:
+
 1. **CI/GHA Tests** - Automated tests in GitHub Actions (no container dependencies)
 2. **Local Pre-Commit Tests** - Developer machine tests with full environment
 3. **E2E/Smoke Tests** - Integration tests against running clusters
@@ -40,6 +41,7 @@ This document outlines the comprehensive testing strategy for Killkrill, with cl
 **Location:** `.github/workflows/ci.yml`, `.github/workflows/docker-build.yml`
 
 **Requirements:**
+
 - ✅ **No container runtime dependencies**
 - ✅ **No external services required** (PostgreSQL, Redis, etc.)
 - ✅ **Fast execution** (< 10 minutes per workflow)
@@ -49,6 +51,7 @@ This document outlines the comprehensive testing strategy for Killkrill, with cl
 **What Runs in CI:**
 
 #### Linting & Code Quality
+
 ```yaml
 - Go: golangci-lint, go vet, staticcheck
 - Python: black, isort, flake8, mypy
@@ -57,6 +60,7 @@ This document outlines the comprehensive testing strategy for Killkrill, with cl
 ```
 
 #### Security Scanning
+
 ```yaml
 - Trivy filesystem scanning
 - CodeQL analysis (Go, Python, JavaScript)
@@ -66,6 +70,7 @@ This document outlines the comprehensive testing strategy for Killkrill, with cl
 ```
 
 #### Unit Tests (Mocked Dependencies)
+
 ```yaml
 - Go: go test -short ./...
 - Python: pytest -m "not integration" (mocked DB/Redis)
@@ -73,6 +78,7 @@ This document outlines the comprehensive testing strategy for Killkrill, with cl
 ```
 
 #### Docker Builds & Image Scanning
+
 ```yaml
 - Build multi-arch images (amd64, arm64)
 - Trivy scan of built container images
@@ -80,12 +86,14 @@ This document outlines the comprehensive testing strategy for Killkrill, with cl
 ```
 
 #### License Validation
+
 ```yaml
 - Verify license client files exist
 - Check license server configuration
 ```
 
 **What Does NOT Run in CI:**
+
 - ❌ Integration tests (require running services)
 - ❌ E2E smoke tests (require running cluster)
 - ❌ Performance tests (require full environment)
@@ -102,6 +110,7 @@ This document outlines the comprehensive testing strategy for Killkrill, with cl
 **Purpose:** Comprehensive validation before pushing code, run on developer machine
 
 **Requirements:**
+
 - ✅ **Full Docker/container support** (docker, docker-compose)
 - ✅ **All languages installed** (Go, Python, Node.js)
 - ✅ **Can run full integration tests** (PostgreSQL, Redis, etc.)
@@ -111,12 +120,14 @@ This document outlines the comprehensive testing strategy for Killkrill, with cl
 **What Runs:**
 
 #### Phase 1: Pre-Flight Checks
+
 ```bash
 ✓ Required tools installed (git, docker, go, python, npm)
 ✓ Working directory state check
 ```
 
 #### Phase 2: Linting & Code Quality
+
 ```bash
 ✓ golangci-lint (Go)
 ✓ black, isort, flake8, mypy (Python)
@@ -124,6 +135,7 @@ This document outlines the comprehensive testing strategy for Killkrill, with cl
 ```
 
 #### Phase 3: Unit Tests (Mocked)
+
 ```bash
 ✓ go test -v -short ./...
 ✓ pytest -m "not integration" (Python)
@@ -131,6 +143,7 @@ This document outlines the comprehensive testing strategy for Killkrill, with cl
 ```
 
 #### Phase 4: Security Scanning
+
 ```bash
 ✓ Trivy filesystem scan
 ✓ Bandit (Python security)
@@ -139,6 +152,7 @@ This document outlines the comprehensive testing strategy for Killkrill, with cl
 ```
 
 #### Phase 5: Integration Tests (WITH CONTAINERS)
+
 ```bash
 ✓ Start docker-compose.dev.yml
 ✓ pytest -m "integration" (with live database/cache)
@@ -147,12 +161,14 @@ This document outlines the comprehensive testing strategy for Killkrill, with cl
 ```
 
 #### Phase 6: Build Verification
+
 ```bash
 ✓ go build ./apps/api
 ✓ npm run build (Node.js)
 ```
 
 #### Phase 7: Dependency Security
+
 ```bash
 ✓ npm audit --audit-level=moderate
 ✓ govulncheck ./...
@@ -172,6 +188,7 @@ This document outlines the comprehensive testing strategy for Killkrill, with cl
 ```
 
 **Exit Codes:**
+
 - `0` = All checks passed, safe to commit
 - `1` = One or more checks failed, fix issues before commit
 
@@ -184,6 +201,7 @@ This document outlines the comprehensive testing strategy for Killkrill, with cl
 **Purpose:** Validate system behavior against running clusters (for manual testing, staging verification)
 
 **Requirements:**
+
 - ✅ **Full cluster environment** (docker-compose or Kubernetes)
 - ✅ **Running services** (API, web, Python app, database, cache)
 - ✅ **Health checks** (all services healthy before testing)
@@ -192,6 +210,7 @@ This document outlines the comprehensive testing strategy for Killkrill, with cl
 **What Tests:**
 
 #### Service Health
+
 ```bash
 ✓ API /health endpoint
 ✓ Web /health endpoint
@@ -200,6 +219,7 @@ This document outlines the comprehensive testing strategy for Killkrill, with cl
 ```
 
 #### API Functionality
+
 ```bash
 ✓ GET /api/v1/status
 ✓ GET /api/v1/features
@@ -208,24 +228,28 @@ This document outlines the comprehensive testing strategy for Killkrill, with cl
 ```
 
 #### License Integration
+
 ```bash
 ✓ License features accessible
 ✓ Feature gating works
 ```
 
 #### Error Handling
+
 ```bash
 ✓ 404 responses
 ✓ Error message formatting
 ```
 
 #### Performance Baseline
+
 ```bash
 ✓ API response time < 1000ms (good)
 ✓ Warn if > 5000ms (slow)
 ```
 
 #### Database Connectivity
+
 ```bash
 ✓ Data is persisted
 ✓ Queries return results
@@ -250,15 +274,15 @@ This document outlines the comprehensive testing strategy for Killkrill, with cl
 
 **When deciding which test to write, use this matrix:**
 
-| Test Type | Unit | Lint | Security | Integration | E2E | Location |
-|-----------|------|------|----------|-------------|-----|----------|
-| **Where** | GHA + Local | GHA + Local | GHA + Local | Local only | Local only |
-| **When** | Always | Always | Always | Pre-commit | Manual/staging |
-| **Duration** | Fast (<1s) | Fast (<1s) | Medium (1-10s) | Medium (10-60s) | Slow (30s-5m) |
-| **External Services** | None (mocked) | None | None | All (PostgreSQL, Redis) | All |
-| **Docker Required** | No | No | No | Yes | Yes |
-| **Runs in GHA** | Yes | Yes | Yes | No | No |
-| **Example** | `test_api.go` | `black --check` | `trivy fs .` | `test_integration.py` | Health checks |
+| Test Type             | Unit          | Lint            | Security       | Integration             | E2E            | Location |
+| --------------------- | ------------- | --------------- | -------------- | ----------------------- | -------------- | -------- |
+| **Where**             | GHA + Local   | GHA + Local     | GHA + Local    | Local only              | Local only     |
+| **When**              | Always        | Always          | Always         | Pre-commit              | Manual/staging |
+| **Duration**          | Fast (<1s)    | Fast (<1s)      | Medium (1-10s) | Medium (10-60s)         | Slow (30s-5m)  |
+| **External Services** | None (mocked) | None            | None           | All (PostgreSQL, Redis) | All            |
+| **Docker Required**   | No            | No              | No             | Yes                     | Yes            |
+| **Runs in GHA**       | Yes           | Yes             | Yes            | No                      | No             |
+| **Example**           | `test_api.go` | `black --check` | `trivy fs .`   | `test_integration.py`   | Health checks  |
 
 ## CI/GHA Workflow Structure
 
@@ -313,6 +337,7 @@ jobs:
 ```
 
 **Removed from CI:**
+
 - ❌ `integration-test` job (moved to local pre-commit)
 - ❌ `performance-test` job (moved to local pre-commit)
 
@@ -331,6 +356,7 @@ jobs:
 ```
 
 **What happens:**
+
 1. Linting & code quality checks
 2. Unit tests (mocked dependencies)
 3. Security scanning
@@ -363,6 +389,7 @@ jobs:
 ### Unit Test Pattern (Mocked Dependencies)
 
 **Good - Mocked (runs in both GHA and local):**
+
 ```python
 # tests/test_api.py
 import pytest
@@ -377,6 +404,7 @@ def test_api_status():
 ```
 
 **Bad - Real database (GHA will fail):**
+
 ```python
 def test_api_status():
     """Integration test - don't put in CI!"""
@@ -386,6 +414,7 @@ def test_api_status():
 ```
 
 **Mark integration tests properly:**
+
 ```python
 @pytest.mark.integration
 def test_data_pipeline_with_real_db():
@@ -397,6 +426,7 @@ def test_data_pipeline_with_real_db():
 ### Security Test Pattern
 
 **Good - Static analysis (runs in GHA):**
+
 ```bash
 # In ci.yml
 - name: Run Trivy scan
@@ -407,6 +437,7 @@ def test_data_pipeline_with_real_db():
 ```
 
 **Bad - Dynamic security testing (local only):**
+
 ```bash
 # Don't put in CI - requires running server
 - name: Run OWASP ZAP scan
@@ -416,6 +447,7 @@ def test_data_pipeline_with_real_db():
 ### Integration Test Pattern
 
 **Good location: `scripts/pre-commit-checklist.sh`**
+
 ```bash
 if [ "$SKIP_DOCKER" = false ]; then
     docker-compose -f docker-compose.dev.yml up -d
@@ -425,6 +457,7 @@ fi
 ```
 
 **Bad location: `.github/workflows/ci.yml`**
+
 ```yaml
 # DON'T DO THIS - requires docker services
 services:
@@ -443,6 +476,7 @@ services:
 **Likely cause:** Database/cache not running
 
 **Fix:**
+
 ```bash
 # Ensure docker-compose is running
 docker-compose -f docker-compose.dev.yml up -d
@@ -456,6 +490,7 @@ docker-compose -f docker-compose.dev.yml up -d
 **Likely cause:** Version mismatch (Go, Python, Node.js)
 
 **Fix:**
+
 ```bash
 # Match GHA versions
 go version  # Should be 1.23.5 or 1.24.0
@@ -468,6 +503,7 @@ node --version  # Should be 18, 20, or 22
 **Likely cause:** Database/cache not properly mocked in local tests
 
 **Solution:**
+
 1. Run tests in mocked mode: `pytest -m "not integration"`
 2. Verify no external service calls in unit tests
 3. Mock all I/O in unit tests
@@ -477,6 +513,7 @@ node --version  # Should be 18, 20, or 22
 **Expected behavior:** E2E tests are slow (30s-5m)
 
 **To speed up pre-commit:**
+
 ```bash
 ./scripts/pre-commit-checklist.sh --skip-docker
 ```
@@ -494,24 +531,24 @@ GITHUB_TOKEN: Automatic (no configuration needed)
 ### Workflow Variables
 
 ```yaml
-GO_VERSION: '1.23.5'
-PYTHON_VERSION: '3.12'
-NODE_VERSION: '18'
+GO_VERSION: "1.23.5"
+PYTHON_VERSION: "3.12"
+NODE_VERSION: "18"
 ```
 
 ---
 
 ## Performance Targets
 
-| Test Category | Target Time | Acceptable | Warn If |
-|---------------|------------|-----------|---------|
-| Linting | <30s | <1m | >2m |
-| Unit tests | <2m | <5m | >10m |
-| Security scan | <1m | <3m | >5m |
-| GHA total | <10m | <15m | >20m |
-| Integration tests | <5m | <10m | >15m |
-| Pre-commit total | <15m | <30m | >45m |
-| E2E smoke tests | <5m | <10m | >15m |
+| Test Category     | Target Time | Acceptable | Warn If |
+| ----------------- | ----------- | ---------- | ------- |
+| Linting           | <30s        | <1m        | >2m     |
+| Unit tests        | <2m         | <5m        | >10m    |
+| Security scan     | <1m         | <3m        | >5m     |
+| GHA total         | <10m        | <15m       | >20m    |
+| Integration tests | <5m         | <10m       | >15m    |
+| Pre-commit total  | <15m        | <30m       | >45m    |
+| E2E smoke tests   | <5m         | <10m       | >15m    |
 
 ---
 

@@ -232,7 +232,7 @@ groups:
           runbook_url: "https://docs.killkrill.com/runbooks/ai-analysis-failures"
 
       - alert: FleetAIAnalysisStale
-        expr: time() - fleet_last_ai_analysis_timestamp > 14400  # 4 hours
+        expr: time() - fleet_last_ai_analysis_timestamp > 14400 # 4 hours
         for: 0s
         labels:
           severity: warning
