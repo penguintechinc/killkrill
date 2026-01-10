@@ -21,13 +21,22 @@ from shared.auth.middleware import (
     verify_ip_access,
     verify_jwt_token,
 )
-from shared.auth.quart_auth import (
-    require_auth,
-    require_ip_access,
-    require_permission,
-    require_role,
-    verify_auth,
-)
+
+# Conditionally import Quart-specific auth (only if Quart is installed)
+try:
+    from shared.auth.quart_auth import (
+        require_auth,
+        require_ip_access,
+        require_permission,
+        require_role,
+        verify_auth,
+    )
+except ImportError:
+    # Quart not installed, skip Quart-specific decorators
+    require_auth = None
+    require_permission = None
+    require_role = None
+    verify_auth = None
 
 __all__ = [
     # Exceptions
