@@ -13,13 +13,14 @@ import struct
 import subprocess
 import sys
 import time
-from ctypes import c_uint32, c_uint16, c_uint8, c_uint64, Structure
-from ipaddress import IPv4Network, IPv4Address
-from typing import List, Dict, Optional, Tuple
+from ctypes import Structure, c_uint8, c_uint16, c_uint32, c_uint64
+from ipaddress import IPv4Address, IPv4Network
+from typing import Dict, List, Optional, Tuple
 
 # Try to import BPF libraries
 try:
     from bcc import BPF
+
     HAS_BCC = True
 except ImportError:
     HAS_BCC = False
@@ -27,6 +28,7 @@ except ImportError:
 
 try:
     import pyroute2
+
     HAS_PYROUTE2 = True
 except ImportError:
     HAS_PYROUTE2 = False
@@ -35,6 +37,7 @@ except ImportError:
 
 class CIDRRule(Structure):
     """CIDR rule structure matching the C struct"""
+
     _fields_ = [
         ("network", c_uint32),
         ("mask", c_uint32),
@@ -46,6 +49,7 @@ class CIDRRule(Structure):
 
 class XDPStats(Structure):
     """XDP statistics structure matching the C struct"""
+
     _fields_ = [
         ("packets_total", c_uint64),
         ("packets_allowed", c_uint64),
@@ -79,7 +83,9 @@ class XDPFilterManager:
             # Get the interface used for the default route
             result = subprocess.run(
                 ["ip", "route", "show", "default"],
-                capture_output=True, text=True, check=True
+                capture_output=True,
+                text=True,
+                check=True,
             )
 
             for line in result.stdout.splitlines():
@@ -102,10 +108,13 @@ class XDPFilterManager:
             cmd = [
                 "clang",
                 "-O2",
-                "-target", "bpf",
-                "-c", "/app/xdp_filter.c",
-                "-o", self.program_path,
-                "-I/usr/include/bpf"
+                "-target",
+                "bpf",
+                "-c",
+                "/app/xdp_filter.c",
+                "-o",
+                self.program_path,
+                "-I/usr/include/bpf",
             ]
 
             result = subprocess.run(cmd, capture_output=True, text=True)
@@ -204,7 +213,9 @@ class XDPFilterManager:
 
                     cidr_map[ctypes.c_uint32(idx)] = rule
 
-                    self.logger.debug(f"Added CIDR rule {idx}: {rule_data['cidr']} port={port}")
+                    self.logger.debug(
+                        f"Added CIDR rule {idx}: {rule_data['cidr']} port={port}"
+                    )
 
                 except Exception as e:
                     self.logger.error(f"Invalid CIDR rule {rule_data}: {e}")
@@ -259,7 +270,7 @@ class XDPFilterManager:
                 "syslog_packets": 0,
                 "api_packets": 0,
                 "block_rate": 0.0,
-                "throughput_mbps": 0.0
+                "throughput_mbps": 0.0,
             }
 
         try:
@@ -286,11 +297,13 @@ class XDPFilterManager:
             # Calculate rates
             block_rate = 0.0
             if total_stats.packets_total > 0:
-                block_rate = (total_stats.packets_blocked / total_stats.packets_total) * 100
+                block_rate = (
+                    total_stats.packets_blocked / total_stats.packets_total
+                ) * 100
 
             # Estimate throughput (bytes/sec converted to Mbps)
             throughput_mbps = 0.0
-            if hasattr(self, '_last_bytes') and hasattr(self, '_last_time'):
+            if hasattr(self, "_last_bytes") and hasattr(self, "_last_time"):
                 time_diff = time.time() - self._last_time
                 if time_diff > 0:
                     bytes_diff = total_stats.bytes_total - self._last_bytes
@@ -313,7 +326,7 @@ class XDPFilterManager:
                 "syslog_packets": total_stats.syslog_packets,
                 "api_packets": total_stats.api_packets,
                 "block_rate": round(block_rate, 2),
-                "throughput_mbps": round(throughput_mbps, 2)
+                "throughput_mbps": round(throughput_mbps, 2),
             }
 
         except Exception as e:
@@ -351,10 +364,7 @@ class XDPFilterManager:
             "available": self.enabled,
             "loaded": self.bpf is not None,
             "interface": self.interface,
-            "dependencies": {
-                "bcc": HAS_BCC,
-                "pyroute2": HAS_PYROUTE2
-            }
+            "dependencies": {"bcc": HAS_BCC, "pyroute2": HAS_PYROUTE2},
         }
 
 
@@ -375,7 +385,7 @@ def main():
 
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
 
     manager = XDPFilterManager(interface=args.interface)
@@ -404,7 +414,7 @@ def main():
         print(json.dumps(stats, indent=2))
 
     if args.config:
-        with open(args.config, 'r') as f:
+        with open(args.config, "r") as f:
             config = json.load(f)
 
         if manager.reload_config(config):

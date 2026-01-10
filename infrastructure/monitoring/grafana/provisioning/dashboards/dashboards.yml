@@ -5,9 +5,9 @@ apiVersion: 1
 
 providers:
   # KillKrill system dashboards
-  - name: 'KillKrill System'
+  - name: "KillKrill System"
     orgId: 1
-    folder: 'KillKrill'
+    folder: "KillKrill"
     type: file
     disableDeletion: false
     updateIntervalSeconds: 10
@@ -16,9 +16,9 @@ providers:
       path: /var/lib/grafana/dashboards/system
 
   # KillKrill application dashboards
-  - name: 'KillKrill Applications'
+  - name: "KillKrill Applications"
     orgId: 1
-    folder: 'KillKrill/Applications'
+    folder: "KillKrill/Applications"
     type: file
     disableDeletion: false
     updateIntervalSeconds: 10
@@ -27,9 +27,9 @@ providers:
       path: /var/lib/grafana/dashboards/applications
 
   # Infrastructure monitoring dashboards
-  - name: 'Infrastructure'
+  - name: "Infrastructure"
     orgId: 1
-    folder: 'Infrastructure'
+    folder: "Infrastructure"
     type: file
     disableDeletion: false
     updateIntervalSeconds: 10

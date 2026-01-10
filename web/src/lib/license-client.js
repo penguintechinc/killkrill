@@ -1,0 +1,1 @@
+../../../shared/licensing/license-client.js

@@ -143,9 +143,7 @@ class GRPCSubmitter:
             return True
 
         except grpc.RpcError as e:
-            logger.error(
-                "grpc_metric_submission_failed", error=str(e), code=e.code()
-            )
+            logger.error("grpc_metric_submission_failed", error=str(e), code=e.code())
             raise SubmissionError(f"gRPC metric submission failed: {e.details()}")
 
     def __enter__(self) -> "GRPCSubmitter":

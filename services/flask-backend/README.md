@@ -394,36 +394,36 @@ spec:
         app: killkrill-flask-backend
     spec:
       containers:
-      - name: flask-backend
-        image: killkrill:flask-backend-latest
-        ports:
-        - containerPort: 5000
-          name: http
-        - containerPort: 50051
-          name: grpc
-        livenessProbe:
-          httpGet:
-            path: /healthz
-            port: 5000
-          initialDelaySeconds: 10
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /healthz
-            port: 5000
-          initialDelaySeconds: 5
-          periodSeconds: 5
-        env:
-        - name: DATABASE_URL
-          valueFrom:
-            secretKeyRef:
-              name: killkrill-secrets
-              key: database-url
-        - name: JWT_SECRET
-          valueFrom:
-            secretKeyRef:
-              name: killkrill-secrets
-              key: jwt-secret
+        - name: flask-backend
+          image: killkrill:flask-backend-latest
+          ports:
+            - containerPort: 5000
+              name: http
+            - containerPort: 50051
+              name: grpc
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 5000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: killkrill-secrets
+                  key: database-url
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: killkrill-secrets
+                  key: jwt-secret
 ```
 
 ## License

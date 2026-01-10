@@ -10,28 +10,35 @@ Features:
 - Batch processing for performance
 """
 
-import os
-import sys
-import json
 import asyncio
-import logging
-import structlog
-import time
-import signal
-from datetime import datetime
-from typing import Dict, Any, Optional, List
-import redis
-from elasticsearch import Elasticsearch, helpers
-from prometheus_client import Counter, Histogram, Gauge, CollectorRegistry, push_to_gateway
-import threading
-from concurrent.futures import ThreadPoolExecutor
 import hashlib
+import json
+import logging
+import os
+import signal
+import sys
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+import redis
+import structlog
+from elasticsearch import Elasticsearch, helpers
+from prometheus_client import (
+    CollectorRegistry,
+    Counter,
+    Gauge,
+    Histogram,
+    push_to_gateway,
+)
 
 # Add project root to path
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../'))
+sys.path.append(os.path.join(os.path.dirname(__file__), "../../"))
 
-from shared.licensing.client import PenguinTechLicenseClient
 from shared.config.settings import get_config
+from shared.licensing.client import PenguinTechLicenseClient
 
 # Configure structured logging
 structlog.configure(
@@ -44,7 +51,7 @@ structlog.configure(
         structlog.processors.StackInfoRenderer(),
         structlog.processors.format_exc_info,
         structlog.processors.UnicodeDecoder(),
-        structlog.processors.JSONRenderer()
+        structlog.processors.JSONRenderer(),
     ],
     context_class=dict,
     logger_factory=structlog.stdlib.LoggerFactory(),
@@ -57,7 +64,7 @@ logger = structlog.get_logger()
 # Configuration
 config = get_config()
 REDIS_URL = config.redis_url
-ELASTICSEARCH_HOSTS = config.elasticsearch_hosts.split(',')
+ELASTICSEARCH_HOSTS = config.elasticsearch_hosts.split(",")
 PROMETHEUS_GATEWAY = config.prometheus_gateway
 LICENSE_KEY = config.license_key
 PRODUCT_NAME = config.product_name
@@ -72,40 +79,40 @@ es_client = Elasticsearch(
     verify_certs=False,
     request_timeout=30,
     retry_on_timeout=True,
-    max_retries=3
+    max_retries=3,
 )
 license_client = PenguinTechLicenseClient(LICENSE_KEY, PRODUCT_NAME)
 
 # Prometheus metrics
 metrics_registry = CollectorRegistry()
 logs_processed_counter = Counter(
-    'killkrill_processor_logs_processed_total',
-    'Total logs processed',
-    ['destination', 'status'],
-    registry=metrics_registry
+    "killkrill_processor_logs_processed_total",
+    "Total logs processed",
+    ["destination", "status"],
+    registry=metrics_registry,
 )
 metrics_forwarded_counter = Counter(
-    'killkrill_processor_metrics_forwarded_total',
-    'Total metrics forwarded to Prometheus',
-    ['status'],
-    registry=metrics_registry
+    "killkrill_processor_metrics_forwarded_total",
+    "Total metrics forwarded to Prometheus",
+    ["status"],
+    registry=metrics_registry,
 )
 processing_duration = Histogram(
-    'killkrill_processor_processing_duration_seconds',
-    'Time spent processing batches',
-    ['destination'],
-    registry=metrics_registry
+    "killkrill_processor_processing_duration_seconds",
+    "Time spent processing batches",
+    ["destination"],
+    registry=metrics_registry,
 )
 queue_lag = Gauge(
-    'killkrill_processor_queue_lag_messages',
-    'Number of pending messages in Redis Streams',
-    ['stream'],
-    registry=metrics_registry
+    "killkrill_processor_queue_lag_messages",
+    "Number of pending messages in Redis Streams",
+    ["stream"],
+    registry=metrics_registry,
 )
 active_workers = Gauge(
-    'killkrill_processor_active_workers',
-    'Number of active worker threads',
-    registry=metrics_registry
+    "killkrill_processor_active_workers",
+    "Number of active worker threads",
+    registry=metrics_registry,
 )
 
 # Global state
@@ -126,7 +133,7 @@ class ElasticsearchProcessor:
             return 0
 
         try:
-            with processing_duration.labels(destination='elasticsearch').time():
+            with processing_duration.labels(destination="elasticsearch").time():
                 # Convert to Elasticsearch documents
                 docs = []
                 for msg_id, fields in messages:
@@ -135,8 +142,9 @@ class ElasticsearchProcessor:
                         if doc:
                             docs.append(doc)
                     except Exception as e:
-                        logger.error("Error converting log to ECS",
-                                   msg_id=msg_id, error=str(e))
+                        logger.error(
+                            "Error converting log to ECS", msg_id=msg_id, error=str(e)
+                        )
                         continue
 
                 if not docs:
@@ -147,15 +155,13 @@ class ElasticsearchProcessor:
 
                 # Update metrics
                 logs_processed_counter.labels(
-                    destination='elasticsearch',
-                    status='success'
+                    destination="elasticsearch", status="success"
                 ).inc(success_count)
 
                 if success_count < len(docs):
                     failed_count = len(docs) - success_count
                     logs_processed_counter.labels(
-                        destination='elasticsearch',
-                        status='failed'
+                        destination="elasticsearch", status="failed"
                     ).inc(failed_count)
 
                 return success_count
@@ -163,19 +169,20 @@ class ElasticsearchProcessor:
         except Exception as e:
             logger.error("Error processing logs batch", error=str(e))
             logs_processed_counter.labels(
-                destination='elasticsearch',
-                status='error'
+                destination="elasticsearch", status="error"
             ).inc(len(messages))
             return 0
 
-    def _convert_to_ecs_document(self, fields: Dict[str, Any], msg_id: str) -> Optional[Dict[str, Any]]:
+    def _convert_to_ecs_document(
+        self, fields: Dict[str, Any], msg_id: str
+    ) -> Optional[Dict[str, Any]]:
         """Convert log message to Elasticsearch document with ECS compliance"""
         try:
             # Parse timestamp
-            timestamp = fields.get('timestamp')
+            timestamp = fields.get("timestamp")
             if isinstance(timestamp, str):
                 try:
-                    timestamp = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                    timestamp = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
                 except ValueError:
                     timestamp = datetime.utcnow()
             elif not isinstance(timestamp, datetime):
@@ -186,80 +193,92 @@ class ElasticsearchProcessor:
 
             # Build ECS-compliant document
             doc = {
-                '@timestamp': timestamp.isoformat(),
-                'ecs': {'version': fields.get('ecs_version', '8.0')},
-                'event': {
-                    'created': datetime.utcnow().isoformat(),
-                    'dataset': 'killkrill.logs',
-                    'ingested': datetime.utcnow().isoformat(),
-                    'kind': 'event',
-                    'module': 'killkrill',
-                    'type': ['info']
+                "@timestamp": timestamp.isoformat(),
+                "ecs": {"version": fields.get("ecs_version", "8.0")},
+                "event": {
+                    "created": datetime.utcnow().isoformat(),
+                    "dataset": "killkrill.logs",
+                    "ingested": datetime.utcnow().isoformat(),
+                    "kind": "event",
+                    "module": "killkrill",
+                    "type": ["info"],
                 },
-                'log': {
-                    'level': fields.get('log_level', fields.get('severity', 'info')),
-                    'logger': fields.get('logger_name', fields.get('program', '')),
+                "log": {
+                    "level": fields.get("log_level", fields.get("severity", "info")),
+                    "logger": fields.get("logger_name", fields.get("program", "")),
                 },
-                'message': fields.get('message', ''),
-                'service': {
-                    'name': fields.get('service_name', fields.get('application', 'unknown')),
-                    'type': 'application'
+                "message": fields.get("message", ""),
+                "service": {
+                    "name": fields.get(
+                        "service_name", fields.get("application", "unknown")
+                    ),
+                    "type": "application",
                 },
-                'host': {
-                    'name': fields.get('hostname', ''),
-                    'ip': fields.get('source_ip', '')
+                "host": {
+                    "name": fields.get("hostname", ""),
+                    "ip": fields.get("source_ip", ""),
                 },
-                'source': {
-                    'ip': fields.get('source_ip', ''),
+                "source": {
+                    "ip": fields.get("source_ip", ""),
                 },
-                'killkrill': {
-                    'source_id': fields.get('source_id'),
-                    'protocol': fields.get('protocol', 'unknown'),
-                    'message_id': msg_id,
-                    'facility': fields.get('facility', ''),
-                    'raw_log': fields.get('raw_log', '')
-                }
+                "killkrill": {
+                    "source_id": fields.get("source_id"),
+                    "protocol": fields.get("protocol", "unknown"),
+                    "message_id": msg_id,
+                    "facility": fields.get("facility", ""),
+                    "raw_log": fields.get("raw_log", ""),
+                },
             }
 
             # Add optional ECS fields if present
-            if fields.get('trace_id'):
-                doc['trace'] = {'id': fields['trace_id']}
+            if fields.get("trace_id"):
+                doc["trace"] = {"id": fields["trace_id"]}
 
-            if fields.get('span_id'):
-                doc.setdefault('trace', {})['span'] = {'id': fields['span_id']}
+            if fields.get("span_id"):
+                doc.setdefault("trace", {})["span"] = {"id": fields["span_id"]}
 
-            if fields.get('transaction_id'):
-                doc.setdefault('trace', {})['transaction'] = {'id': fields['transaction_id']}
+            if fields.get("transaction_id"):
+                doc.setdefault("trace", {})["transaction"] = {
+                    "id": fields["transaction_id"]
+                }
 
-            if fields.get('error_type') or fields.get('error_message'):
-                doc['error'] = {
-                    'type': fields.get('error_type', ''),
-                    'message': fields.get('error_message', ''),
-                    'stack_trace': fields.get('error_stack_trace', '')
+            if fields.get("error_type") or fields.get("error_message"):
+                doc["error"] = {
+                    "type": fields.get("error_type", ""),
+                    "message": fields.get("error_message", ""),
+                    "stack_trace": fields.get("error_stack_trace", ""),
                 }
 
             # Add labels as tags
-            if fields.get('labels'):
+            if fields.get("labels"):
                 try:
-                    labels = json.loads(fields['labels']) if isinstance(fields['labels'], str) else fields['labels']
+                    labels = (
+                        json.loads(fields["labels"])
+                        if isinstance(fields["labels"], str)
+                        else fields["labels"]
+                    )
                     if isinstance(labels, dict):
-                        doc['labels'] = labels
+                        doc["labels"] = labels
                 except json.JSONDecodeError:
                     pass
 
-            if fields.get('tags'):
+            if fields.get("tags"):
                 try:
-                    tags = json.loads(fields['tags']) if isinstance(fields['tags'], str) else fields['tags']
+                    tags = (
+                        json.loads(fields["tags"])
+                        if isinstance(fields["tags"], str)
+                        else fields["tags"]
+                    )
                     if isinstance(tags, list):
-                        doc['tags'] = tags
+                        doc["tags"] = tags
                 except json.JSONDecodeError:
                     pass
 
             # Use message ID as document ID to prevent duplicates
             return {
-                '_index': index_name,
-                '_id': hashlib.sha256(msg_id.encode()).hexdigest(),
-                '_source': doc
+                "_index": index_name,
+                "_id": hashlib.sha256(msg_id.encode()).hexdigest(),
+                "_source": doc,
             }
 
         except Exception as e:
@@ -276,12 +295,13 @@ class ElasticsearchProcessor:
                 request_timeout=60,
                 max_retries=3,
                 initial_backoff=2,
-                max_backoff=600
+                max_backoff=600,
             )
 
             if failed_items:
-                logger.warning("Some documents failed to index",
-                             failed_count=len(failed_items))
+                logger.warning(
+                    "Some documents failed to index", failed_count=len(failed_items)
+                )
 
             return success_count
 
@@ -294,9 +314,11 @@ class PrometheusProcessor:
     """Process metrics for Prometheus forwarding"""
 
     def __init__(self):
-        self.gateway_url = PROMETHEUS_GATEWAY.replace('http://', '').replace('https://', '')
-        if ':' not in self.gateway_url:
-            self.gateway_url += ':9091'  # Default pushgateway port
+        self.gateway_url = PROMETHEUS_GATEWAY.replace("http://", "").replace(
+            "https://", ""
+        )
+        if ":" not in self.gateway_url:
+            self.gateway_url += ":9091"  # Default pushgateway port
 
     def process_metrics_batch(self, messages: List[Dict[str, Any]]) -> int:
         """Process a batch of metrics messages for Prometheus"""
@@ -304,7 +326,7 @@ class PrometheusProcessor:
             return 0
 
         try:
-            with processing_duration.labels(destination='prometheus').time():
+            with processing_duration.labels(destination="prometheus").time():
                 # Group metrics by type and labels
                 metrics_groups = self._group_metrics(messages)
 
@@ -315,39 +337,43 @@ class PrometheusProcessor:
                         success_count += len(metrics)
 
                 # Update local metrics
-                metrics_forwarded_counter.labels(status='success').inc(success_count)
+                metrics_forwarded_counter.labels(status="success").inc(success_count)
 
                 if success_count < len(messages):
                     failed_count = len(messages) - success_count
-                    metrics_forwarded_counter.labels(status='failed').inc(failed_count)
+                    metrics_forwarded_counter.labels(status="failed").inc(failed_count)
 
                 return success_count
 
         except Exception as e:
             logger.error("Error processing metrics batch", error=str(e))
-            metrics_forwarded_counter.labels(status='error').inc(len(messages))
+            metrics_forwarded_counter.labels(status="error").inc(len(messages))
             return 0
 
-    def _group_metrics(self, messages: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
+    def _group_metrics(
+        self, messages: List[Dict[str, Any]]
+    ) -> Dict[str, List[Dict[str, Any]]]:
         """Group metrics by source and type for efficient processing"""
         groups = {}
         for msg_id, fields in messages:
             try:
-                source = fields.get('source', 'unknown')
-                metric_type = fields.get('metric_type', 'gauge')
+                source = fields.get("source", "unknown")
+                metric_type = fields.get("metric_type", "gauge")
                 group_key = f"{source}_{metric_type}"
 
                 if group_key not in groups:
                     groups[group_key] = []
 
-                groups[group_key].append({
-                    'name': fields.get('metric_name', 'unknown'),
-                    'value': float(fields.get('metric_value', 0)),
-                    'labels': self._parse_labels(fields.get('labels', '{}')),
-                    'timestamp': fields.get('timestamp'),
-                    'help': fields.get('help', ''),
-                    'type': metric_type
-                })
+                groups[group_key].append(
+                    {
+                        "name": fields.get("metric_name", "unknown"),
+                        "value": float(fields.get("metric_value", 0)),
+                        "labels": self._parse_labels(fields.get("labels", "{}")),
+                        "timestamp": fields.get("timestamp"),
+                        "help": fields.get("help", ""),
+                        "type": metric_type,
+                    }
+                )
 
             except Exception as e:
                 logger.error("Error grouping metric", msg_id=msg_id, error=str(e))
@@ -367,12 +393,15 @@ class PrometheusProcessor:
         except json.JSONDecodeError:
             return {}
 
-    def _push_metrics_group(self, group_key: str, metrics: List[Dict[str, Any]]) -> bool:
+    def _push_metrics_group(
+        self, group_key: str, metrics: List[Dict[str, Any]]
+    ) -> bool:
         """Push a group of metrics to Prometheus Gateway"""
         try:
             # For now, just log the metrics (Prometheus Gateway integration would go here)
-            logger.info("Would push metrics to Prometheus",
-                       group=group_key, count=len(metrics))
+            logger.info(
+                "Would push metrics to Prometheus", group=group_key, count=len(metrics)
+            )
             return True
 
         except Exception as e:
@@ -400,13 +429,13 @@ class RedisStreamsConsumer:
         """Ensure consumer group exists"""
         try:
             redis_client.xgroup_create(
-                self.stream_name,
-                self.consumer_group,
-                id="0",
-                mkstream=True
+                self.stream_name, self.consumer_group, id="0", mkstream=True
             )
-            logger.info("Created consumer group",
-                       stream=self.stream_name, group=self.consumer_group)
+            logger.info(
+                "Created consumer group",
+                stream=self.stream_name,
+                group=self.consumer_group,
+            )
         except redis.ResponseError as e:
             if "BUSYGROUP" not in str(e):
                 logger.error("Error creating consumer group", error=str(e))
@@ -421,7 +450,7 @@ class RedisStreamsConsumer:
                     self.consumer_name,
                     {self.stream_name: ">"},
                     count=BATCH_SIZE,
-                    block=1000  # Block for 1 second
+                    block=1000,  # Block for 1 second
                 )
 
                 if messages:
@@ -454,29 +483,40 @@ class RedisStreamsConsumer:
 
             for msg_id, fields in messages:
                 # Determine message type based on stream or content
-                if self.stream_name == 'logs:raw' or fields.get('message'):
+                if self.stream_name == "logs:raw" or fields.get("message"):
                     log_messages.append((msg_id, fields))
-                elif self.stream_name == 'metrics:raw' or fields.get('metric_name'):
+                elif self.stream_name == "metrics:raw" or fields.get("metric_name"):
                     metric_messages.append((msg_id, fields))
 
             # Process logs
             if log_messages:
                 processed_logs = self.log_processor.process_logs_batch(log_messages)
-                logger.debug("Processed logs batch",
-                           count=processed_logs, total=len(log_messages))
+                logger.debug(
+                    "Processed logs batch",
+                    count=processed_logs,
+                    total=len(log_messages),
+                )
 
             # Process metrics
             if metric_messages:
-                processed_metrics = self.metrics_processor.process_metrics_batch(metric_messages)
-                logger.debug("Processed metrics batch",
-                           count=processed_metrics, total=len(metric_messages))
+                processed_metrics = self.metrics_processor.process_metrics_batch(
+                    metric_messages
+                )
+                logger.debug(
+                    "Processed metrics batch",
+                    count=processed_metrics,
+                    total=len(metric_messages),
+                )
 
             # Acknowledge all messages (they've been processed)
             message_ids = [msg_id for msg_id, _ in messages]
             redis_client.xack(self.stream_name, self.consumer_group, *message_ids)
 
-            logger.info("Processed and acknowledged message batch",
-                       stream=self.stream_name, count=len(messages))
+            logger.info(
+                "Processed and acknowledged message batch",
+                stream=self.stream_name,
+                count=len(messages),
+            )
 
         except Exception as e:
             logger.error("Error processing message batch", error=str(e))
@@ -487,11 +527,7 @@ class RedisStreamsConsumer:
         try:
             # Get pending messages older than 60 seconds
             pending = redis_client.xpending_range(
-                self.stream_name,
-                self.consumer_group,
-                min="-",
-                max="+",
-                count=100
+                self.stream_name, self.consumer_group, min="-", max="+", count=100
             )
 
             if not pending:
@@ -502,8 +538,8 @@ class RedisStreamsConsumer:
             current_time = int(time.time() * 1000)
 
             for msg_info in pending:
-                msg_id = msg_info['message_id']
-                idle_time = msg_info['time_since_delivered']
+                msg_id = msg_info["message_id"]
+                idle_time = msg_info["time_since_delivered"]
 
                 # Claim messages idle for more than 60 seconds
                 if idle_time > 60000:
@@ -515,12 +551,15 @@ class RedisStreamsConsumer:
                     self.consumer_group,
                     self.consumer_name,
                     min_idle_time=60000,
-                    message_ids=old_messages
+                    message_ids=old_messages,
                 )
 
                 if claimed:
-                    logger.info("Claimed pending messages",
-                               stream=self.stream_name, count=len(claimed))
+                    logger.info(
+                        "Claimed pending messages",
+                        stream=self.stream_name,
+                        count=len(claimed),
+                    )
                     self._process_message_batch(claimed)
 
         except Exception as e:
@@ -531,13 +570,13 @@ class RedisStreamsConsumer:
         try:
             # Get stream info
             info = redis_client.xinfo_stream(self.stream_name)
-            stream_length = info.get('length', 0)
+            stream_length = info.get("length", 0)
 
             # Get consumer group info
             groups = redis_client.xinfo_groups(self.stream_name)
             for group in groups:
-                if group['name'] == self.consumer_group:
-                    last_delivered_id = group.get('last-delivered-id', '0-0')
+                if group["name"] == self.consumer_group:
+                    last_delivered_id = group.get("last-delivered-id", "0-0")
                     # Calculate approximate lag
                     queue_lag.labels(stream=self.stream_name).set(stream_length)
                     break
@@ -548,6 +587,7 @@ class RedisStreamsConsumer:
 
 def setup_signal_handlers():
     """Setup graceful shutdown signal handlers"""
+
     def signal_handler(signum, frame):
         global shutdown_requested
         logger.info("Shutdown signal received", signal=signum)
@@ -567,12 +607,11 @@ def start_consumer_workers():
     # Start workers for different streams and consumer groups
     workers = [
         # Logs to ELK
-        ('logs:raw', 'elk-writers', 'elk-worker-1'),
-        ('logs:raw', 'elk-writers', 'elk-worker-2'),
-
+        ("logs:raw", "elk-writers", "elk-worker-1"),
+        ("logs:raw", "elk-writers", "elk-worker-2"),
         # Metrics to Prometheus
-        ('metrics:raw', 'prometheus-writers', 'prometheus-worker-1'),
-        ('metrics:raw', 'prometheus-writers', 'prometheus-worker-2'),
+        ("metrics:raw", "prometheus-writers", "prometheus-worker-1"),
+        ("metrics:raw", "prometheus-writers", "prometheus-worker-2"),
     ]
 
     active_workers.set(len(workers))
@@ -589,14 +628,16 @@ def main():
     try:
         # Validate license on startup
         license_status = license_client.validate()
-        if not license_status.get('valid'):
+        if not license_status.get("valid"):
             logger.error("Invalid license", status=license_status)
             sys.exit(1)
 
-        logger.info("Starting KillKrill Log Processor",
-                    workers=PROCESSOR_WORKERS,
-                    batch_size=BATCH_SIZE,
-                    license_tier=license_status.get('tier'))
+        logger.info(
+            "Starting KillKrill Log Processor",
+            workers=PROCESSOR_WORKERS,
+            batch_size=BATCH_SIZE,
+            license_tier=license_status.get("tier"),
+        )
 
         # Setup signal handlers
         setup_signal_handlers()
@@ -618,9 +659,9 @@ def main():
             try:
                 # Send keepalive to license server
                 usage_data = {
-                    'messages_processed': logs_processed_counter._value.sum(),
-                    'metrics_forwarded': metrics_forwarded_counter._value.sum(),
-                    'active_workers': PROCESSOR_WORKERS
+                    "messages_processed": logs_processed_counter._value.sum(),
+                    "metrics_forwarded": metrics_forwarded_counter._value.sum(),
+                    "active_workers": PROCESSOR_WORKERS,
                 }
                 license_client.keepalive(usage_data)
 
@@ -644,5 +685,5 @@ def main():
         logger.info("Processor shutdown complete")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

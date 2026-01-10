@@ -3,29 +3,28 @@ WSGI/ASGI entry point for KillKrill API
 Used by Hypercorn to run the application
 """
 
-import sys
 import os
+import sys
 
 # Add the app directory to Python path
 app_dir = os.path.dirname(os.path.abspath(__file__))
 if app_dir not in sys.path:
     sys.path.insert(0, app_dir)
 
-# Import with absolute imports
-from config import QuartConfig, get_config
-from models.database import init_database, close_database, get_db
-from services.redis_service import init_redis, close_redis, get_redis
-from services.license_service import init_license, check_feature, get_license_info
-from middleware.auth import AuthMiddleware
-
 import asyncio
 from datetime import datetime
 from typing import Optional
 
-from quart import Quart, jsonify, g, request
-from quart_cors import cors
 import structlog
+from quart import Quart, g, jsonify, request
+from quart_cors import cors
 
+# Import with absolute imports
+from config import QuartConfig, get_config
+from middleware.auth import AuthMiddleware
+from models.database import close_database, get_db, init_database
+from services.license_service import check_feature, get_license_info, init_license
+from services.redis_service import close_redis, get_redis, init_redis
 
 # Configure structured logging
 structlog.configure(
@@ -38,7 +37,7 @@ structlog.configure(
         structlog.processors.StackInfoRenderer(),
         structlog.processors.format_exc_info,
         structlog.processors.UnicodeDecoder(),
-        structlog.processors.JSONRenderer()
+        structlog.processors.JSONRenderer(),
     ],
     wrapper_class=structlog.stdlib.BoundLogger,
     context_class=dict,
@@ -54,7 +53,7 @@ def create_app(config_name: str = None) -> Quart:
     app = Quart(__name__)
 
     # Load configuration
-    config_name = config_name or os.getenv('FLASK_ENV', 'development')
+    config_name = config_name or os.getenv("FLASK_ENV", "development")
     config = QuartConfig.get_config(config_name)
 
     # Apply configuration
@@ -68,9 +67,13 @@ def create_app(config_name: str = None) -> Quart:
     # Enable CORS
     app = cors(
         app,
-        allow_origin=config.CORS_ORIGINS.split(',') if ',' in config.CORS_ORIGINS else config.CORS_ORIGINS,
-        allow_methods=['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-        allow_headers=['Content-Type', 'Authorization', 'X-API-Key', 'X-Request-ID']
+        allow_origin=(
+            config.CORS_ORIGINS.split(",")
+            if "," in config.CORS_ORIGINS
+            else config.CORS_ORIGINS
+        ),
+        allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+        allow_headers=["Content-Type", "Authorization", "X-API-Key", "X-Request-ID"],
     )
 
     # Register error handlers
@@ -80,15 +83,15 @@ def create_app(config_name: str = None) -> Quart:
     @app.before_request
     async def before_request():
         g.request_start_time = datetime.utcnow()
-        g.request_id = request.headers.get('X-Request-ID', str(id(request)))
+        g.request_id = request.headers.get("X-Request-ID", str(id(request)))
         await AuthMiddleware.authenticate()
 
     @app.after_request
     async def after_request(response):
-        response.headers['X-Request-ID'] = g.get('request_id', 'unknown')
-        if hasattr(g, 'request_start_time'):
+        response.headers["X-Request-ID"] = g.get("request_id", "unknown")
+        if hasattr(g, "request_start_time"):
             duration = (datetime.utcnow() - g.request_start_time).total_seconds()
-            response.headers['X-Response-Time'] = f"{duration:.3f}s"
+            response.headers["X-Response-Time"] = f"{duration:.3f}s"
         return response
 
     # Register blueprints
@@ -111,28 +114,29 @@ def create_app(config_name: str = None) -> Quart:
         logger.info("application_stopped")
 
     # Core endpoints
-    @app.route('/healthz', methods=['GET'])
+    @app.route("/healthz", methods=["GET"])
     async def health():
-        return jsonify({
-            'status': 'healthy',
-            'timestamp': datetime.utcnow().isoformat(),
-            'service': 'killkrill-api',
-            'version': '2.0.0'
-        })
+        return jsonify(
+            {
+                "status": "healthy",
+                "timestamp": datetime.utcnow().isoformat(),
+                "service": "killkrill-api",
+                "version": "2.0.0",
+            }
+        )
 
-    @app.route('/metrics', methods=['GET'])
+    @app.route("/metrics", methods=["GET"])
     async def metrics():
-        from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+        from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
         from quart import Response
+
         return Response(generate_latest(), mimetype=CONTENT_TYPE_LATEST)
 
-    @app.route('/', methods=['GET'])
+    @app.route("/", methods=["GET"])
     async def index():
-        return jsonify({
-            'service': 'KillKrill API',
-            'version': '2.0.0',
-            'status': 'running'
-        })
+        return jsonify(
+            {"service": "KillKrill API", "version": "2.0.0", "status": "running"}
+        )
 
     logger.info("application_created", environment=config_name)
     return app
@@ -141,54 +145,54 @@ def create_app(config_name: str = None) -> Quart:
 def register_error_handlers(app: Quart) -> None:
     @app.errorhandler(400)
     async def bad_request(error):
-        return jsonify({'error': 'Bad Request', 'status_code': 400}), 400
+        return jsonify({"error": "Bad Request", "status_code": 400}), 400
 
     @app.errorhandler(401)
     async def unauthorized(error):
-        return jsonify({'error': 'Unauthorized', 'status_code': 401}), 401
+        return jsonify({"error": "Unauthorized", "status_code": 401}), 401
 
     @app.errorhandler(403)
     async def forbidden(error):
-        return jsonify({'error': 'Forbidden', 'status_code': 403}), 403
+        return jsonify({"error": "Forbidden", "status_code": 403}), 403
 
     @app.errorhandler(404)
     async def not_found(error):
-        return jsonify({'error': 'Not Found', 'status_code': 404}), 404
+        return jsonify({"error": "Not Found", "status_code": 404}), 404
 
     @app.errorhandler(500)
     async def internal_error(error):
-        return jsonify({'error': 'Internal Server Error', 'status_code': 500}), 500
+        return jsonify({"error": "Internal Server Error", "status_code": 500}), 500
 
 
 def register_blueprints(app: Quart) -> None:
+    from blueprints.ai_analysis import ai_analysis_bp
     from blueprints.auth import auth_bp
     from blueprints.dashboard import dashboard_bp
-    from blueprints.users import users_bp
-    from blueprints.sensors import sensors_bp
-    from blueprints.infrastructure import infrastructure_bp
     from blueprints.fleet import fleet_bp
-    from blueprints.ai_analysis import ai_analysis_bp
+    from blueprints.infrastructure import infrastructure_bp
     from blueprints.licensing import licensing_bp
+    from blueprints.sensors import sensors_bp
+    from blueprints.users import users_bp
     from blueprints.websocket import websocket_bp
 
-    app.register_blueprint(auth_bp, url_prefix='/api/v1/auth')
-    app.register_blueprint(dashboard_bp, url_prefix='/api/v1/dashboard')
-    app.register_blueprint(users_bp, url_prefix='/api/v1/users')
-    app.register_blueprint(sensors_bp, url_prefix='/api/v1/sensors')
-    app.register_blueprint(infrastructure_bp, url_prefix='/api/v1/infrastructure')
-    app.register_blueprint(fleet_bp, url_prefix='/api/v1/fleet')
-    app.register_blueprint(ai_analysis_bp, url_prefix='/api/v1/ai')
-    app.register_blueprint(licensing_bp, url_prefix='/api/v1/license')
-    app.register_blueprint(websocket_bp, url_prefix='/ws')
+    app.register_blueprint(auth_bp, url_prefix="/api/v1/auth")
+    app.register_blueprint(dashboard_bp, url_prefix="/api/v1/dashboard")
+    app.register_blueprint(users_bp, url_prefix="/api/v1/users")
+    app.register_blueprint(sensors_bp, url_prefix="/api/v1/sensors")
+    app.register_blueprint(infrastructure_bp, url_prefix="/api/v1/infrastructure")
+    app.register_blueprint(fleet_bp, url_prefix="/api/v1/fleet")
+    app.register_blueprint(ai_analysis_bp, url_prefix="/api/v1/ai")
+    app.register_blueprint(licensing_bp, url_prefix="/api/v1/license")
+    app.register_blueprint(websocket_bp, url_prefix="/ws")
 
 
 # Create app instance
 app = create_app()
 
 
-if __name__ == '__main__':
-    from hypercorn.config import Config
+if __name__ == "__main__":
     from hypercorn.asyncio import serve
+    from hypercorn.config import Config
 
     config = Config()
     config.bind = ["0.0.0.0:8080"]

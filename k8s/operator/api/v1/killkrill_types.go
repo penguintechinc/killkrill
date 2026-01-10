@@ -134,6 +134,21 @@ type PrometheusConfig struct {
 	ScrapeInterval string `json:"scrapeInterval,omitempty"`
 }
 
+// GrafanaConfig defines Grafana settings
+type GrafanaConfig struct {
+	// Enable Grafana
+	Enabled bool `json:"enabled,omitempty"`
+
+	// Grafana image
+	Image string `json:"image,omitempty"`
+
+	// Storage size
+	StorageSize string `json:"storageSize,omitempty"`
+
+	// Storage class
+	StorageClass string `json:"storageClass,omitempty"`
+}
+
 // ApplicationConfig defines the KillKrill application settings
 type ApplicationConfig struct {
 	// Log receiver configuration
@@ -423,5 +438,6 @@ type KillKrillList struct {
 }
 
 func init() {
-	SchemeBuilder.Register(&KillKrill{}, &KillKrillList{})
+	// TODO: Generate DeepCopy methods using controller-gen before uncommenting
+	// SchemeBuilder.Register(&KillKrill{}, &KillKrillList{})
 }

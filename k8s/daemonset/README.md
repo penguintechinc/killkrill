@@ -112,16 +112,16 @@ The KillKrill Agent consists of several components:
 
 The agent supports configuration via environment variables:
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `NODE_NAME` | Kubernetes node name | From fieldRef |
-| `NODE_IP` | Node IP address | From fieldRef |
-| `CLUSTER_NAME` | Cluster identifier | `default-cluster` |
-| `KILLKRILL_LOG_RECEIVER_URL` | Log receiver endpoint | Required |
-| `KILLKRILL_METRICS_RECEIVER_URL` | Metrics receiver endpoint | Required |
-| `KILLKRILL_LICENSE_KEY` | PenguinTech license key | Required |
-| `LOG_LEVEL` | Logging level | `info` |
-| `METRICS_INTERVAL` | Metrics collection interval | `30s` |
+| Variable                         | Description                 | Default           |
+| -------------------------------- | --------------------------- | ----------------- |
+| `NODE_NAME`                      | Kubernetes node name        | From fieldRef     |
+| `NODE_IP`                        | Node IP address             | From fieldRef     |
+| `CLUSTER_NAME`                   | Cluster identifier          | `default-cluster` |
+| `KILLKRILL_LOG_RECEIVER_URL`     | Log receiver endpoint       | Required          |
+| `KILLKRILL_METRICS_RECEIVER_URL` | Metrics receiver endpoint   | Required          |
+| `KILLKRILL_LICENSE_KEY`          | PenguinTech license key     | Required          |
+| `LOG_LEVEL`                      | Logging level               | `info`            |
+| `METRICS_INTERVAL`               | Metrics collection interval | `30s`             |
 
 ### ConfigMap Configuration
 
@@ -257,6 +257,7 @@ All communications use TLS encryption:
 ### Common Issues
 
 1. **Permission Denied Errors**
+
    ```bash
    # Check RBAC permissions
    kubectl auth can-i get pods --as=system:serviceaccount:killkrill-system:killkrill-agent
@@ -266,6 +267,7 @@ All communications use TLS encryption:
    ```
 
 2. **Connection Failures**
+
    ```bash
    # Test receiver connectivity
    kubectl exec -it -n killkrill-system deployment/killkrill-agent -- \
@@ -277,6 +279,7 @@ All communications use TLS encryption:
    ```
 
 3. **Log Collection Issues**
+
    ```bash
    # Check log directory permissions
    kubectl exec -it -n killkrill-system deployment/killkrill-agent -- \
@@ -326,11 +329,11 @@ Adjust resource requests and limits based on cluster size:
 ```yaml
 resources:
   requests:
-    memory: "128Mi"   # Small clusters
+    memory: "128Mi" # Small clusters
     cpu: "100m"
   limits:
-    memory: "512Mi"   # Large clusters: 1Gi+
-    cpu: "500m"       # Large clusters: 1000m+
+    memory: "512Mi" # Large clusters: 1Gi+
+    cpu: "500m" # Large clusters: 1000m+
 ```
 
 ### Batch Configuration

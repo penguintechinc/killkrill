@@ -12,21 +12,21 @@ Services included:
 """
 
 from .server import (
+    AuthServicer,
     DashboardServicer,
     SensorServicer,
     UserServicer,
-    AuthServicer,
     create_grpc_server,
-    serve
+    serve,
 )
 
 __all__ = [
-    'DashboardServicer',
-    'SensorServicer',
-    'UserServicer',
-    'AuthServicer',
-    'create_grpc_server',
-    'serve',
+    "DashboardServicer",
+    "SensorServicer",
+    "UserServicer",
+    "AuthServicer",
+    "create_grpc_server",
+    "serve",
 ]
 
-__version__ = '1.0.0'
+__version__ = "1.0.0"

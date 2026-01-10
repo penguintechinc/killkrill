@@ -1,0 +1,5 @@
+# Trivy ignore file for killkrill
+# Excludes incomplete K8s components from security scanning
+
+# K8s agent has incomplete implementation - exclude from scanning
+k8s/daemonset/agent/go.mod

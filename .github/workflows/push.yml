@@ -2,13 +2,13 @@ name: Publish on Push
 
 on:
   push:
-    branches: ['main']
+    branches: ["main"]
     paths:
-      - '.version'
-      - 'apps/**'
-      - 'Dockerfile'
-      - 'docker-compose.yml'
-      - '.github/workflows/push.yml'
+      - ".version"
+      - "apps/**"
+      - "Dockerfile"
+      - "docker-compose.yml"
+      - ".github/workflows/push.yml"
 
 env:
   REGISTRY: ghcr.io

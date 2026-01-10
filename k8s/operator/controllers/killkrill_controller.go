@@ -19,7 +19,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	killkrillv1 "github.com/penguintechinc/killkrill/api/v1"
+	killkrillv1 "github.com/penguintechinc/killkrill/k8s/operator/api/v1"
 )
 
 // KillKrillReconciler reconciles a KillKrill object

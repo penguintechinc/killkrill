@@ -2,11 +2,9 @@
 This file defines cache, session, and translator T object for the app
 These are fixtures that every app needs so probably you will not be editing this file
 """
+
 import os
 import sys
-
-from pydal.tools.scheduler import Scheduler
-from pydal.tools.tags import Tags
 
 from py4web import DAL, Cache, Field, Flash, Session, Translator, action
 from py4web.server_adapters.logging_utils import make_logger
@@ -14,6 +12,8 @@ from py4web.utils.auth import Auth
 from py4web.utils.downloader import downloader
 from py4web.utils.factories import ActionFactory
 from py4web.utils.mailer import Mailer
+from pydal.tools.scheduler import Scheduler
+from pydal.tools.tags import Tags
 
 from . import settings
 
@@ -51,10 +51,8 @@ elif settings.SESSION_TYPE == "redis":
     host, port = settings.REDIS_SERVER.split(":")
     # for more options: https://github.com/andymccurdy/redis-py/blob/master/redis/client.py
     conn = redis.Redis(host=host, port=int(port))
-    conn.set = (
-        lambda k, v, e, cs=conn.set, ct=conn.ttl: cs(k, v, ct(k))
-        if ct(k) >= 0
-        else cs(k, v, e)
+    conn.set = lambda k, v, e, cs=conn.set, ct=conn.ttl: (
+        cs(k, v, ct(k)) if ct(k) >= 0 else cs(k, v, e)
     )
     session = Session(secret=settings.SESSION_SECRET_KEY, storage=conn)
 
@@ -132,8 +130,9 @@ if settings.OAUTH2GOOGLE_CLIENT_ID:
     )
 
 if settings.OAUTH2GOOGLE_SCOPED_CREDENTIALS_FILE:
-    from py4web.utils.auth_plugins.oauth2google_scoped import \
-        OAuth2GoogleScoped  # TESTED
+    from py4web.utils.auth_plugins.oauth2google_scoped import (  # TESTED
+        OAuth2GoogleScoped,
+    )
 
     auth.register_plugin(
         OAuth2GoogleScoped(
@@ -155,8 +154,7 @@ if settings.OAUTH2GITHUB_CLIENT_ID:
     )
 
 if settings.OAUTH2FACEBOOK_CLIENT_ID:
-    from py4web.utils.auth_plugins.oauth2facebook import \
-        OAuth2Facebook  # UNTESTED
+    from py4web.utils.auth_plugins.oauth2facebook import OAuth2Facebook  # UNTESTED
 
     auth.register_plugin(
         OAuth2Facebook(

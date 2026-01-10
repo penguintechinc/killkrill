@@ -27,16 +27,19 @@ KillKrill provides multiple APIs for log and metrics ingestion, similar to AWS C
 All APIs support multiple authentication methods:
 
 ### 1. API Key Authentication
+
 ```bash
 curl -H "X-API-Key: YOUR_API_KEY" https://killkrill.local/api/v1/logs
 ```
 
 ### 2. JWT Token Authentication
+
 ```bash
 curl -H "Authorization: Bearer YOUR_JWT_TOKEN" https://killkrill.local/api/v1/logs
 ```
 
 ### 3. mTLS Authentication
+
 Configure client certificates for mutual TLS authentication.
 
 ## Logs API
@@ -46,10 +49,12 @@ Configure client certificates for mutual TLS authentication.
 **Endpoint:** `POST /api/v1/logs`
 
 **Headers:**
+
 - `Content-Type: application/json`
 - `X-API-Key: {api_key}` or `Authorization: Bearer {jwt_token}`
 
 **Request Body:**
+
 ```json
 {
   "source": "my-application",
@@ -78,6 +83,7 @@ Configure client certificates for mutual TLS authentication.
 ```
 
 **Response:**
+
 ```json
 {
   "status": "success",
@@ -104,10 +110,12 @@ Port assignments are managed through the Manager UI.
 **Endpoint:** `POST /api/v1/metrics`
 
 **Headers:**
+
 - `Content-Type: application/json`
 - `X-API-Key: {api_key}` or `Authorization: Bearer {jwt_token}`
 
 **Request Body:**
+
 ```json
 {
   "source": "monitoring-system",
@@ -140,6 +148,7 @@ Port assignments are managed through the Manager UI.
 ```
 
 **Response:**
+
 ```json
 {
   "status": "success",
@@ -155,6 +164,7 @@ Port assignments are managed through the Manager UI.
 **Endpoint:** `GET /api/v1/sources`
 
 **Response:**
+
 ```json
 {
   "sources": [
@@ -176,6 +186,7 @@ Port assignments are managed through the Manager UI.
 **Endpoint:** `GET /api/v1/sources/{source_id}/stats`
 
 **Response:**
+
 ```json
 {
   "source": {
@@ -197,6 +208,7 @@ Port assignments are managed through the Manager UI.
 **Endpoint:** `GET /healthz`
 
 **Response:**
+
 ```json
 {
   "status": "healthy",
@@ -236,11 +248,13 @@ All APIs return appropriate HTTP status codes:
 ## Rate Limiting
 
 APIs implement rate limiting based on:
+
 - API key/source
 - IP address
 - License tier
 
 Rate limits:
+
 - Community: 100 requests/minute
 - Professional: 1000 requests/minute
 - Enterprise: Unlimited
@@ -258,6 +272,7 @@ Configure allowed IP addresses or CIDR blocks for each source:
 All logs are processed according to ECS 8.0 specification for consistency with Elasticsearch and Kibana.
 
 Required fields:
+
 - `@timestamp`
 - `ecs.version`
 - `message`

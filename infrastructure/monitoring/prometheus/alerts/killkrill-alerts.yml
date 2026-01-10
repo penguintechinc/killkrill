@@ -105,7 +105,7 @@ groups:
 
       # License and Authentication Alerts
       - alert: KillKrillLicenseExpiringSoon
-        expr: killkrill_license_expires_in_seconds < 86400 * 7  # 7 days
+        expr: killkrill_license_expires_in_seconds < 86400 * 7 # 7 days
         for: 1m
         labels:
           severity: high
@@ -273,7 +273,7 @@ groups:
 
       # Certificate Expiration
       - alert: KillKrillCertificateExpiringSoon
-        expr: ssl_certificate_expiry_seconds < 86400 * 30  # 30 days
+        expr: ssl_certificate_expiry_seconds < 86400 * 30 # 30 days
         for: 1m
         labels:
           severity: warning

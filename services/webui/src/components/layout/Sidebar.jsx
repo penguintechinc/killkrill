@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import {
   Menu,
   X,
@@ -13,57 +13,59 @@ import {
   FileText,
   BarChart3,
   Radio,
-} from 'lucide-react';
+} from "lucide-react";
 
 const Sidebar = () => {
   const [isOpen, setIsOpen] = useState(true);
-  const [expandedCategory, setExpandedCategory] = useState('Dashboard');
+  const [expandedCategory, setExpandedCategory] = useState("Dashboard");
   const location = useLocation();
 
   const categories = [
     {
-      name: 'Dashboard',
+      name: "Dashboard",
       icon: LayoutDashboard,
-      path: '/',
+      path: "/",
       items: [],
     },
     {
-      name: 'Monitoring',
+      name: "Monitoring",
       icon: Activity,
       items: [
-        { name: 'Sensors', path: '/sensors', icon: Radio },
-        { name: 'Logs', path: '/logs', icon: FileText },
-        { name: 'Metrics', path: '/metrics', icon: BarChart3 },
+        { name: "Sensors", path: "/sensors", icon: Radio },
+        { name: "Logs", path: "/logs", icon: FileText },
+        { name: "Metrics", path: "/metrics", icon: BarChart3 },
       ],
     },
     {
-      name: 'Fleet',
+      name: "Fleet",
       icon: Network,
-      path: '/fleet',
+      path: "/fleet",
       items: [],
     },
     {
-      name: 'Infrastructure',
+      name: "Infrastructure",
       icon: Server,
-      path: '/infrastructure',
+      path: "/infrastructure",
       items: [],
     },
     {
-      name: 'AI Analysis',
+      name: "AI Analysis",
       icon: Zap,
-      path: '/ai-analysis',
+      path: "/ai-analysis",
       items: [],
     },
     {
-      name: 'Settings',
+      name: "Settings",
       icon: Settings,
-      path: '/settings',
+      path: "/settings",
       items: [],
     },
   ];
 
   const toggleCategory = (categoryName) => {
-    setExpandedCategory(expandedCategory === categoryName ? null : categoryName);
+    setExpandedCategory(
+      expandedCategory === categoryName ? null : categoryName,
+    );
   };
 
   const isActive = (path) => {
@@ -71,10 +73,14 @@ const Sidebar = () => {
   };
 
   return (
-    <div className={`h-screen bg-slate-900 text-slate-100 transition-all duration-300 ${isOpen ? 'w-64' : 'w-20'} flex flex-col border-r border-slate-700`}>
+    <div
+      className={`h-screen bg-slate-900 text-slate-100 transition-all duration-300 ${isOpen ? "w-64" : "w-20"} flex flex-col border-r border-slate-700`}
+    >
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-slate-700">
-        {isOpen && <h1 className="text-xl font-bold text-amber-500">Killkrill</h1>}
+        {isOpen && (
+          <h1 className="text-xl font-bold text-amber-500">Killkrill</h1>
+        )}
         <button
           onClick={() => setIsOpen(!isOpen)}
           className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
@@ -114,7 +120,7 @@ const Sidebar = () => {
                     <ChevronDown
                       size={16}
                       className={`flex-shrink-0 transition-transform ${
-                        isExpanded ? 'rotate-180' : ''
+                        isExpanded ? "rotate-180" : ""
                       }`}
                     />
                   )}
@@ -123,20 +129,26 @@ const Sidebar = () => {
                 <Link
                   to={category.path}
                   className={`w-full flex items-center justify-between p-3 rounded-lg hover:bg-slate-800 transition-colors group ${
-                    isCategoryActive ? 'bg-slate-800 border-l-2 border-amber-500' : ''
+                    isCategoryActive
+                      ? "bg-slate-800 border-l-2 border-amber-500"
+                      : ""
                   }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <IconComponent
                       size={20}
                       className={`flex-shrink-0 ${
-                        isCategoryActive ? 'text-amber-400' : 'text-amber-500 group-hover:text-amber-400'
+                        isCategoryActive
+                          ? "text-amber-400"
+                          : "text-amber-500 group-hover:text-amber-400"
                       }`}
                     />
                     {isOpen && (
-                      <span className={`text-sm font-medium truncate ${
-                        isCategoryActive ? 'text-amber-400' : ''
-                      }`}>
+                      <span
+                        className={`text-sm font-medium truncate ${
+                          isCategoryActive ? "text-amber-400" : ""
+                        }`}
+                      >
                         {category.name}
                       </span>
                     )}
@@ -157,8 +169,8 @@ const Sidebar = () => {
                         to={item.path}
                         className={`flex items-center gap-2 p-2 text-sm rounded hover:bg-slate-800 transition-colors ${
                           isItemActive
-                            ? 'text-amber-400 bg-slate-800 border-l-2 border-amber-500'
-                            : 'text-slate-300 hover:text-amber-400'
+                            ? "text-amber-400 bg-slate-800 border-l-2 border-amber-500"
+                            : "text-slate-300 hover:text-amber-400"
                         }`}
                       >
                         <ItemIcon size={16} />

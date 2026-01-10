@@ -1,0 +1,43 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: killkrill-ingress
+  namespace: killkrill
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - killkrill.penguintech.io
+    secretName: penguintech-wildcard-tls
+  rules:
+  - host: killkrill.penguintech.io
+    http:
+      paths:
+      # Manager UI (main interface)
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: manager
+            port:
+              number: 8080
+      # Log Receiver API
+      - path: /api/logs
+        pathType: Prefix
+        backend:
+          service:
+            name: log-receiver
+            port:
+              number: 8081
+      # Metrics Receiver API
+      - path: /api/metrics
+        pathType: Prefix
+        backend:
+          service:
+            name: metrics-receiver
+            port:
+              number: 8082

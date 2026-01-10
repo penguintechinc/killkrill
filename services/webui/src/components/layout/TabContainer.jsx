@@ -1,5 +1,5 @@
-import { Tab } from '@headlessui/react';
-import PropTypes from 'prop-types';
+import { Tab } from "@headlessui/react";
+import PropTypes from "prop-types";
 
 const TabContainer = ({ tabs, defaultIndex = 0 }) => {
   return (
@@ -12,8 +12,8 @@ const TabContainer = ({ tabs, defaultIndex = 0 }) => {
               className={({ selected }) =>
                 `px-6 py-3 text-sm font-medium focus:outline-none transition-colors ${
                   selected
-                    ? 'text-yellow-500 border-b-2 border-yellow-500'
-                    : 'text-gray-400 hover:text-gray-200'
+                    ? "text-yellow-500 border-b-2 border-yellow-500"
+                    : "text-gray-400 hover:text-gray-200"
                 }`
               }
             >
@@ -39,7 +39,7 @@ TabContainer.propTypes = {
       id: PropTypes.string.isRequired,
       label: PropTypes.string.isRequired,
       content: PropTypes.node.isRequired,
-    })
+    }),
   ).isRequired,
   defaultIndex: PropTypes.number,
 };

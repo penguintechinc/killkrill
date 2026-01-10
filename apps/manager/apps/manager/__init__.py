@@ -3,23 +3,26 @@ KillKrill Manager - py4web Application (Minimal Version)
 Enterprise observability management interface with Fleet integration
 """
 
-import os
 import json
+import os
 from datetime import datetime
-from py4web import action, request, response, DAL, Field, HTTP
-from py4web.utils.cors import CORS
-from prometheus_client import Counter, generate_latest
+
 import redis
+from prometheus_client import Counter, generate_latest
+from py4web import DAL, HTTP, Field, action, request, response
+from py4web.utils.cors import CORS
 
 # Application name
 __version__ = "1.0.0"
 
 # Configuration
-DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://killkrill:killkrill123@postgres:5432/killkrill')
-REDIS_URL = os.environ.get('REDIS_URL', 'redis://redis:6379')
+DATABASE_URL = os.environ.get(
+    "DATABASE_URL", "postgresql://killkrill:killkrill123@postgres:5432/killkrill"
+)
+REDIS_URL = os.environ.get("REDIS_URL", "redis://redis:6379")
 
 # Convert URL scheme for PyDAL compatibility
-pydal_database_url = DATABASE_URL.replace('postgresql://', 'postgres://')
+pydal_database_url = DATABASE_URL.replace("postgresql://", "postgres://")
 
 # Initialize components
 redis_client = redis.from_url(REDIS_URL, decode_responses=True)
@@ -27,11 +30,12 @@ db = DAL(pydal_database_url, migrate=True, fake_migrate=False)
 
 # Create basic tables
 try:
-    db.define_table('health_checks',
-        Field('timestamp', 'datetime', default=datetime.utcnow),
-        Field('status', 'string', default='ok'),
-        Field('component', 'string'),
-        migrate=True
+    db.define_table(
+        "health_checks",
+        Field("timestamp", "datetime", default=datetime.utcnow),
+        Field("status", "string", default="ok"),
+        Field("component", "string"),
+        migrate=True,
     )
     db.commit()
 except Exception as table_error:
@@ -40,10 +44,13 @@ except Exception as table_error:
 print(f"✓ KillKrill Manager py4web app initialized")
 
 # Metrics
-health_checks = Counter('killkrill_manager_health_checks_total', 'Health checks', ['status'])
+health_checks = Counter(
+    "killkrill_manager_health_checks_total", "Health checks", ["status"]
+)
+
 
 # Health check endpoint
-@action('healthz')
+@action("healthz")
 @action.uses(CORS())
 def healthz():
     """Health check endpoint"""
@@ -52,38 +59,37 @@ def healthz():
         redis_client.ping()
 
         # Test database
-        db.health_checks.insert(status='ok', component='manager')
+        db.health_checks.insert(status="ok", component="manager")
         db.commit()
 
-        health_checks.labels(status='ok').inc()
+        health_checks.labels(status="ok").inc()
 
         return {
-            'status': 'healthy',
-            'timestamp': datetime.utcnow().isoformat(),
-            'service': 'killkrill-manager',
-            'components': {
-                'database': 'ok',
-                'redis': 'ok'
-            }
+            "status": "healthy",
+            "timestamp": datetime.utcnow().isoformat(),
+            "service": "killkrill-manager",
+            "components": {"database": "ok", "redis": "ok"},
         }
     except Exception as e:
-        health_checks.labels(status='error').inc()
+        health_checks.labels(status="error").inc()
         response.status = 503
         return {
-            'status': 'unhealthy',
-            'error': str(e),
-            'timestamp': datetime.utcnow().isoformat()
+            "status": "unhealthy",
+            "error": str(e),
+            "timestamp": datetime.utcnow().isoformat(),
         }
 
+
 # Prometheus metrics endpoint
-@action('metrics')
+@action("metrics")
 def metrics():
     """Prometheus metrics endpoint"""
-    response.headers['Content-Type'] = 'text/plain; version=0.0.4; charset=utf-8'
+    response.headers["Content-Type"] = "text/plain; version=0.0.4; charset=utf-8"
     return generate_latest()
 
+
 # Embedded monitoring pages
-@action('prometheus')
+@action("prometheus")
 def prometheus_page():
     """Embedded Prometheus monitoring page"""
     return f"""
@@ -124,7 +130,8 @@ def prometheus_page():
     </html>
     """
 
-@action('fleet')
+
+@action("fleet")
 def fleet_page():
     """Embedded Fleet device management page"""
     return f"""
@@ -165,7 +172,8 @@ def fleet_page():
     </html>
     """
 
-@action('alertmanager')
+
+@action("alertmanager")
 def alertmanager_page():
     """Embedded AlertManager page"""
     return f"""
@@ -206,25 +214,26 @@ def alertmanager_page():
     </html>
     """
 
+
 # Service status checking functions
 def check_service_status():
     """Check status of all KillKrill services"""
-    import subprocess
     import socket
+    import subprocess
 
     services = {
-        'postgres': {'port': 5432, 'type': 'database'},
-        'redis': {'port': 6379, 'type': 'cache'},
-        'elasticsearch': {'port': 9200, 'type': 'search'},
-        'kibana': {'port': 5601, 'type': 'visualization'},
-        'logstash': {'port': 9600, 'type': 'processing'},
-        'prometheus': {'port': 9090, 'type': 'monitoring'},
-        'grafana': {'port': 3000, 'type': 'visualization'},
-        'alertmanager': {'port': 9093, 'type': 'alerting'},
-        'fleet-server': {'port': 8084, 'type': 'device_management'},
-        'fleet-mysql': {'port': 3307, 'type': 'database'},
-        'log-receiver': {'port': 8081, 'type': 'receiver'},
-        'metrics-receiver': {'port': 8082, 'type': 'receiver'}
+        "postgres": {"port": 5432, "type": "database"},
+        "redis": {"port": 6379, "type": "cache"},
+        "elasticsearch": {"port": 9200, "type": "search"},
+        "kibana": {"port": 5601, "type": "visualization"},
+        "logstash": {"port": 9600, "type": "processing"},
+        "prometheus": {"port": 9090, "type": "monitoring"},
+        "grafana": {"port": 3000, "type": "visualization"},
+        "alertmanager": {"port": 9093, "type": "alerting"},
+        "fleet-server": {"port": 8084, "type": "device_management"},
+        "fleet-mysql": {"port": 3307, "type": "database"},
+        "log-receiver": {"port": 8081, "type": "receiver"},
+        "metrics-receiver": {"port": 8082, "type": "receiver"},
     }
 
     status = {}
@@ -232,46 +241,44 @@ def check_service_status():
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.settimeout(2)
-            result = sock.connect_ex(('localhost', config['port']))
+            result = sock.connect_ex(("localhost", config["port"]))
             sock.close()
             status[service] = {
-                'status': 'healthy' if result == 0 else 'down',
-                'port': config['port'],
-                'type': config['type']
+                "status": "healthy" if result == 0 else "down",
+                "port": config["port"],
+                "type": config["type"],
             }
         except:
             status[service] = {
-                'status': 'error',
-                'port': config['port'],
-                'type': config['type']
+                "status": "error",
+                "port": config["port"],
+                "type": config["type"],
             }
 
     return status
 
+
 def get_system_metrics():
     """Get real system metrics"""
     import psutil
+
     try:
         return {
-            'cpu_percent': psutil.cpu_percent(interval=1),
-            'memory_percent': psutil.virtual_memory().percent,
-            'disk_percent': psutil.disk_usage('/').percent,
-            'uptime': psutil.boot_time()
+            "cpu_percent": psutil.cpu_percent(interval=1),
+            "memory_percent": psutil.virtual_memory().percent,
+            "disk_percent": psutil.disk_usage("/").percent,
+            "uptime": psutil.boot_time(),
         }
     except:
-        return {
-            'cpu_percent': 0,
-            'memory_percent': 0,
-            'disk_percent': 0,
-            'uptime': 0
-        }
+        return {"cpu_percent": 0, "memory_percent": 0, "disk_percent": 0, "uptime": 0}
+
 
 def generate_service_cards(services):
     """Generate HTML for service status cards"""
     cards_html = ""
     for service, info in services.items():
         status_class = f"status-{info['status']}"
-        service_display = service.replace('-', ' ').replace('_', ' ').title()
+        service_display = service.replace("-", " ").replace("_", " ").title()
 
         cards_html += f"""
         <div class="service-card">
@@ -283,20 +290,21 @@ def generate_service_cards(services):
         """
     return cards_html
 
+
 # Main application index
-@action('index')
-@action('index.html')
+@action("index")
+@action("index.html")
 def index():
     """KillKrill Management Portal Dashboard"""
-    license_key = os.environ.get('LICENSE_KEY', 'PENG-DEMO-DEMO-DEMO-DEMO-DEMO')
+    license_key = os.environ.get("LICENSE_KEY", "PENG-DEMO-DEMO-DEMO-DEMO-DEMO")
 
     # Determine license tier
-    if 'DEMO' in license_key:
-        license_tier = 'Demo'
-    elif license_key.startswith('PENG-'):
-        license_tier = 'Enterprise'
+    if "DEMO" in license_key:
+        license_tier = "Demo"
+    elif license_key.startswith("PENG-"):
+        license_tier = "Enterprise"
     else:
-        license_tier = 'Community'
+        license_tier = "Community"
 
     # Get real service status and system metrics
     services = check_service_status()
@@ -582,41 +590,53 @@ def index():
     </html>
     """
 
+
 # Add the embedded iframe pages for all sub-services
-@action('prometheus-ui')
+@action("prometheus-ui")
 def prometheus_ui():
     """Embedded Prometheus interface"""
-    return generate_iframe_page("Prometheus Metrics Dashboard", "http://localhost:9090", "📊")
+    return generate_iframe_page(
+        "Prometheus Metrics Dashboard", "http://localhost:9090", "📊"
+    )
 
-@action('grafana-ui')
+
+@action("grafana-ui")
 def grafana_ui():
     """Embedded Grafana interface"""
     return generate_iframe_page("Grafana Dashboards", "http://localhost:3000", "📈")
 
-@action('fleet-ui')
+
+@action("fleet-ui")
 def fleet_ui():
     """Embedded Fleet interface"""
-    return generate_iframe_page("Fleet Device Management", "http://localhost:8084", "🚀")
+    return generate_iframe_page(
+        "Fleet Device Management", "http://localhost:8084", "🚀"
+    )
 
-@action('kibana-ui')
+
+@action("kibana-ui")
 def kibana_ui():
     """Embedded Kibana interface"""
     return generate_iframe_page("Kibana Log Analysis", "http://localhost:5601", "📋")
 
-@action('alertmanager-ui')
+
+@action("alertmanager-ui")
 def alertmanager_ui():
     """Embedded AlertManager interface"""
     return generate_iframe_page("AlertManager", "http://localhost:9093", "🚨")
 
-@action('elasticsearch-ui')
+
+@action("elasticsearch-ui")
 def elasticsearch_ui():
     """Embedded Elasticsearch interface"""
     return generate_iframe_page("Elasticsearch Cluster", "http://localhost:9200", "🔍")
 
-@action('logstash-ui')
+
+@action("logstash-ui")
 def logstash_ui():
     """Embedded Logstash interface"""
     return generate_iframe_page("Logstash Monitoring", "http://localhost:9600", "📋")
+
 
 def generate_iframe_page(title, url, icon):
     """Generate a consistent iframe page for sub-services"""
@@ -670,8 +690,9 @@ def generate_iframe_page(title, url, icon):
     </html>
     """
 
+
 # Configuration Pages
-@action('databases')
+@action("databases")
 def databases_config():
     """Database configuration management page"""
     return f"""
@@ -1032,7 +1053,8 @@ def databases_config():
     </html>
     """
 
-@action('infrastructure')
+
+@action("infrastructure")
 def infrastructure_config():
     """Infrastructure configuration management page"""
     return f"""
@@ -1399,7 +1421,8 @@ volumes:
     </html>
     """
 
-@action('monitoring')
+
+@action("monitoring")
 def monitoring_config():
     """Monitoring configuration management page"""
     return f"""
@@ -1473,7 +1496,8 @@ def monitoring_config():
     </html>
     """
 
-@action('security')
+
+@action("security")
 def security_config():
     """Security and networking configuration page"""
     return f"""
@@ -1545,7 +1569,8 @@ def security_config():
     </html>
     """
 
-@action('fleet-config')
+
+@action("fleet-config")
 def fleet_config():
     """Fleet management configuration page"""
     return f"""
@@ -1618,39 +1643,38 @@ def fleet_config():
     </html>
     """
 
-@action('api/services/<service>', method=['POST'])
+
+@action("api/services/<service>", method=["POST"])
 @action.uses(CORS())
 def manage_service(service=None):
     """Service management endpoint"""
     try:
         data = request.json or {}
-        action_type = data.get('action', 'status')
+        action_type = data.get("action", "status")
 
         # Log the service action
-        db.health_checks.insert(
-            status='action',
-            component=f"{service}_{action_type}"
-        )
+        db.health_checks.insert(status="action", component=f"{service}_{action_type}")
         db.commit()
 
         # In a real implementation, you would interact with Docker/systemd here
         # For now, we'll just return success
         return {
-            'status': 'success',
-            'service': service,
-            'action': action_type,
-            'timestamp': datetime.utcnow().isoformat(),
-            'message': f'Service {service} {action_type} command executed'
+            "status": "success",
+            "service": service,
+            "action": action_type,
+            "timestamp": datetime.utcnow().isoformat(),
+            "message": f"Service {service} {action_type} command executed",
         }
     except Exception as e:
         response.status = 500
         return {
-            'status': 'error',
-            'error': str(e),
-            'timestamp': datetime.utcnow().isoformat()
+            "status": "error",
+            "error": str(e),
+            "timestamp": datetime.utcnow().isoformat(),
         }
 
-@action('api/config', method=['POST'])
+
+@action("api/config", method=["POST"])
 @action.uses(CORS())
 def update_configuration():
     """Configuration update endpoint"""
@@ -1659,59 +1683,58 @@ def update_configuration():
 
         # Store configuration in Redis for persistence
         for key, value in config_updates.items():
-            redis_client.hset('killkrill:config', key, json.dumps(value))
+            redis_client.hset("killkrill:config", key, json.dumps(value))
 
         # Log configuration change
         db.health_checks.insert(
-            status='config_update',
-            component=f"config_{list(config_updates.keys())[0] if config_updates else 'unknown'}"
+            status="config_update",
+            component=f"config_{list(config_updates.keys())[0] if config_updates else 'unknown'}",
         )
         db.commit()
 
         return {
-            'status': 'success',
-            'updated': config_updates,
-            'timestamp': datetime.utcnow().isoformat(),
-            'message': f'Updated {len(config_updates)} configuration(s)'
+            "status": "success",
+            "updated": config_updates,
+            "timestamp": datetime.utcnow().isoformat(),
+            "message": f"Updated {len(config_updates)} configuration(s)",
         }
     except Exception as e:
         response.status = 500
         return {
-            'status': 'error',
-            'error': str(e),
-            'timestamp': datetime.utcnow().isoformat()
+            "status": "error",
+            "error": str(e),
+            "timestamp": datetime.utcnow().isoformat(),
         }
 
-@action('api/restart', method=['POST'])
+
+@action("api/restart", method=["POST"])
 @action.uses(CORS())
 def restart_services():
     """Restart all services endpoint"""
     try:
         # Log restart request
-        db.health_checks.insert(
-            status='restart_requested',
-            component='all_services'
-        )
+        db.health_checks.insert(status="restart_requested", component="all_services")
         db.commit()
 
         # In a real implementation, you would restart Docker containers here
         # docker-compose restart or systemctl restart commands
 
         return {
-            'status': 'success',
-            'message': 'Service restart initiated',
-            'timestamp': datetime.utcnow().isoformat(),
-            'estimated_downtime': '30-60 seconds'
+            "status": "success",
+            "message": "Service restart initiated",
+            "timestamp": datetime.utcnow().isoformat(),
+            "estimated_downtime": "30-60 seconds",
         }
     except Exception as e:
         response.status = 500
         return {
-            'status': 'error',
-            'error': str(e),
-            'timestamp': datetime.utcnow().isoformat()
+            "status": "error",
+            "error": str(e),
+            "timestamp": datetime.utcnow().isoformat(),
         }
 
-@action('logs')
+
+@action("logs")
 def view_logs():
     """System logs viewer (placeholder)"""
     return """
@@ -1734,6 +1757,7 @@ def view_logs():
     </body>
     </html>
     """
+
 
 # Make sure the database connection is properly initialized when the module loads
 try:

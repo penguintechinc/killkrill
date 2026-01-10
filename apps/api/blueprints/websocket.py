@@ -6,29 +6,29 @@ Real-time updates via WebSocket
 import asyncio
 import json
 from datetime import datetime
-from typing import Set, Dict, Any
+from typing import Any, Dict, Set
 
-from quart import Blueprint, websocket
 import structlog
+from quart import Blueprint, websocket
 
 logger = structlog.get_logger(__name__)
 
-websocket_bp = Blueprint('websocket', __name__)
+websocket_bp = Blueprint("websocket", __name__)
 
 # Connected clients per channel
 _clients: Dict[str, Set] = {
-    'dashboard': set(),
-    'logs': set(),
-    'metrics': set(),
-    'sensors': set(),
-    'alerts': set(),
+    "dashboard": set(),
+    "logs": set(),
+    "metrics": set(),
+    "sensors": set(),
+    "alerts": set(),
 }
 
 # Lock for client management
 _lock = asyncio.Lock()
 
 
-@websocket_bp.websocket('/connect')
+@websocket_bp.websocket("/connect")
 async def ws_connect():
     """
     WebSocket connection handler
@@ -57,53 +57,57 @@ async def ws_connect():
             try:
                 message = json.loads(data)
             except json.JSONDecodeError:
-                await websocket.send(json.dumps({
-                    'type': 'error',
-                    'message': 'Invalid JSON'
-                }))
+                await websocket.send(
+                    json.dumps({"type": "error", "message": "Invalid JSON"})
+                )
                 continue
 
-            msg_type = message.get('type')
+            msg_type = message.get("type")
 
             # Handle subscription
-            if msg_type == 'subscribe':
-                channel = message.get('channel')
+            if msg_type == "subscribe":
+                channel = message.get("channel")
                 if channel in _clients:
                     async with _lock:
                         _clients[channel].add(client)
                         subscribed_channels.add(channel)
 
-                    await websocket.send(json.dumps({
-                        'type': 'subscribed',
-                        'channel': channel,
-                        'timestamp': datetime.utcnow().isoformat()
-                    }))
+                    await websocket.send(
+                        json.dumps(
+                            {
+                                "type": "subscribed",
+                                "channel": channel,
+                                "timestamp": datetime.utcnow().isoformat(),
+                            }
+                        )
+                    )
                     logger.debug("websocket_subscribed", channel=channel)
                 else:
-                    await websocket.send(json.dumps({
-                        'type': 'error',
-                        'message': f'Unknown channel: {channel}'
-                    }))
+                    await websocket.send(
+                        json.dumps(
+                            {"type": "error", "message": f"Unknown channel: {channel}"}
+                        )
+                    )
 
             # Handle unsubscription
-            elif msg_type == 'unsubscribe':
-                channel = message.get('channel')
+            elif msg_type == "unsubscribe":
+                channel = message.get("channel")
                 if channel in _clients:
                     async with _lock:
                         _clients[channel].discard(client)
                         subscribed_channels.discard(channel)
 
-                    await websocket.send(json.dumps({
-                        'type': 'unsubscribed',
-                        'channel': channel
-                    }))
+                    await websocket.send(
+                        json.dumps({"type": "unsubscribed", "channel": channel})
+                    )
 
             # Handle ping
-            elif msg_type == 'ping':
-                await websocket.send(json.dumps({
-                    'type': 'pong',
-                    'timestamp': datetime.utcnow().isoformat()
-                }))
+            elif msg_type == "ping":
+                await websocket.send(
+                    json.dumps(
+                        {"type": "pong", "timestamp": datetime.utcnow().isoformat()}
+                    )
+                )
 
     except asyncio.CancelledError:
         pass
@@ -132,12 +136,14 @@ async def broadcast(channel: str, data: Dict[str, Any]) -> int:
     if channel not in _clients:
         return 0
 
-    message = json.dumps({
-        'type': 'message',
-        'channel': channel,
-        'data': data,
-        'timestamp': datetime.utcnow().isoformat()
-    })
+    message = json.dumps(
+        {
+            "type": "message",
+            "channel": channel,
+            "data": data,
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+    )
 
     dead_clients = set()
     sent_count = 0
@@ -155,33 +161,26 @@ async def broadcast(channel: str, data: Dict[str, Any]) -> int:
             _clients[channel].discard(client)
 
     if dead_clients:
-        logger.debug("websocket_dead_clients_removed", channel=channel, count=len(dead_clients))
+        logger.debug(
+            "websocket_dead_clients_removed", channel=channel, count=len(dead_clients)
+        )
 
     return sent_count
 
 
 async def broadcast_service_status(status: Dict[str, Any]) -> None:
     """Broadcast service status update"""
-    await broadcast('dashboard', {
-        'type': 'service_status',
-        'services': status
-    })
+    await broadcast("dashboard", {"type": "service_status", "services": status})
 
 
 async def broadcast_sensor_result(result: Dict[str, Any]) -> None:
     """Broadcast sensor check result"""
-    await broadcast('sensors', {
-        'type': 'sensor_result',
-        'result': result
-    })
+    await broadcast("sensors", {"type": "sensor_result", "result": result})
 
 
 async def broadcast_alert(alert: Dict[str, Any]) -> None:
     """Broadcast alert notification"""
-    await broadcast('alerts', {
-        'type': 'alert',
-        'alert': alert
-    })
+    await broadcast("alerts", {"type": "alert", "alert": alert})
 
 
 def get_connected_clients() -> Dict[str, int]:

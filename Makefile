@@ -221,6 +221,22 @@ test-integration: ## Testing - Run integration tests
 	@docker-compose -f docker-compose.test.yml up --build --abort-on-container-exit
 	@docker-compose -f docker-compose.test.yml down
 
+test-redis: ## Testing - Run Redis streams integration tests
+	@echo "$(BLUE)Starting Redis container for testing...$(RESET)"
+	@docker run -d --rm --name redis-test -p 6379:6379 redis:7-alpine || true
+	@sleep 2
+	@echo "$(BLUE)Running Redis streams integration tests...$(RESET)"
+	@cd tests && TEST_REDIS_ENABLED=true REDIS_URL=redis://localhost:6379/0 \
+		python3 -m pytest integration/test_redis_streams.py -v --tb=short
+	@echo "$(BLUE)Stopping Redis container...$(RESET)"
+	@docker stop redis-test || true
+	@echo "$(GREEN)Redis tests completed!$(RESET)"
+
+test-redis-quick: ## Testing - Quick run Redis tests (skip container setup)
+	@echo "$(BLUE)Running Redis streams tests (expects Redis on localhost:6379)...$(RESET)"
+	@cd tests && TEST_REDIS_ENABLED=true REDIS_URL=redis://localhost:6379/0 \
+		python3 -m pytest integration/test_redis_streams.py -v --tb=short
+
 test-coverage: ## Testing - Generate coverage reports
 	@$(MAKE) test
 	@echo "$(GREEN)Coverage reports generated:$(RESET)"

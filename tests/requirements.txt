@@ -32,6 +32,9 @@ coverage==7.3.2
 sqlalchemy==2.0.23
 psycopg2-binary==2.9.9
 
+# Redis testing
+redis==5.0.1
+
 # Async utilities
 aiofiles==23.2.1
 
