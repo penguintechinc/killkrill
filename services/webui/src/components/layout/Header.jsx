@@ -30,7 +30,16 @@ const Header = () => {
     <header className="bg-slate-900 border-b border-amber-900/30 px-8 py-4 flex items-center justify-between">
       {/* Logo/Brand */}
       <div className="flex items-center gap-4">
-        <h1 className="text-xl font-bold text-amber-500">Killkrill</h1>
+        <button
+          onClick={() => navigate("/")}
+          className="flex items-center hover:opacity-80 transition-opacity"
+        >
+          <img
+            src="/logo.png"
+            alt="KillKrill"
+            className="h-10 w-auto"
+          />
+        </button>
       </div>
 
       {/* Search Bar */}

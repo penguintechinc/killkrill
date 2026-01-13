@@ -17,16 +17,16 @@ const Login = () => {
       const response = await fetch("/api/v1/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: email.split("@")[0], password }),
+        body: JSON.stringify({ email, password }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Login failed");
+        throw new Error(data.error || data.message || "Login failed");
       }
 
-      login(data.token, data.user);
+      login(data.data.access_token, data.data.user);
       navigate("/");
     } catch (err) {
       setError(err.message);
@@ -50,9 +50,21 @@ const Login = () => {
           borderRadius: "8px",
           padding: "3rem",
           width: "100%",
-          maxWidth: "400px",
+          maxWidth: "600px",
         }}
       >
+        <div style={{ textAlign: "center", marginBottom: "2rem" }}>
+          <img
+            src="/logo-banner.jpg"
+            alt="KillKrill"
+            style={{
+              height: "300px",
+              width: "auto",
+              marginBottom: "1rem",
+            }}
+          />
+        </div>
+
         <h1
           style={{
             color: "#d4af37",
@@ -93,7 +105,7 @@ const Login = () => {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="user@example.com"
+              placeholder="admin@penguintech.io"
               style={{
                 width: "100%",
                 padding: "0.75rem",
@@ -152,17 +164,6 @@ const Login = () => {
             Sign In
           </button>
         </form>
-
-        <p
-          style={{
-            color: "#999",
-            textAlign: "center",
-            marginTop: "1.5rem",
-            fontSize: "0.9rem",
-          }}
-        >
-          Enter any email and password to demo
-        </p>
       </div>
     </div>
   );

@@ -121,6 +121,18 @@ spec:
         env:
         - name: DATABASE_URL
           value: "postgresql://killkrill:killkrill123@postgresql:5432/killkrill"
+        - name: DB_TYPE
+          value: "postgres"
+        - name: DB_HOST
+          value: "postgresql"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_USER
+          value: "killkrill"
+        - name: DB_PASS
+          value: "killkrill123"
+        - name: DB_NAME
+          value: "killkrill"
         - name: REDIS_URL
           value: "redis://redis:6379"
         - name: FLASK_PORT

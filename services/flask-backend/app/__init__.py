@@ -662,9 +662,10 @@ def create_app(env: str = None) -> Flask:
     # Register endpoints
     register_health_endpoint(app, killkrill_config)
     register_metrics_endpoint(app, metrics_collector)
-    register_auth_endpoints(app, app_config)
+    # Note: Auth endpoints are now handled by the auth blueprint (registered below)
+    # register_auth_endpoints(app, app_config)  # REMOVED - using auth blueprint instead
 
-    # Register blueprints
+    # Register blueprints (includes auth blueprint with proper email-based login)
     try:
         register_blueprints(app)
     except ImportError as e:
@@ -678,6 +679,20 @@ def create_app(env: str = None) -> Flask:
         try:
             db.create_all()
             logger.info("database_initialized", environment=app_config.env)
+
+            # ALWAYS seed admin user (all environments) if it doesn't exist
+            try:
+                from app.models.db_init import seed_admin_user, seed_mock_users
+                seed_admin_user()
+            except Exception as e:
+                logger.warning("seed_admin_user_error", error=str(e))
+
+            # Seed mock users ONLY in development/alpha environment
+            if app_config.env in ("development", "testing"):
+                try:
+                    seed_mock_users()
+                except Exception as e:
+                    logger.warning("seed_mock_users_error", error=str(e))
         except Exception as e:
             logger.error(
                 "database_initialization_error",

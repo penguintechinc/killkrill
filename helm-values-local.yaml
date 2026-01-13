@@ -234,7 +234,7 @@ grafana:
       cpu: 500m
       memory: 1Gi
     requests:
-      cpu: 125m
+      cpu: 75m
       memory: 256Mi
 
   persistence:

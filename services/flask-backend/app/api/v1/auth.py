@@ -82,6 +82,29 @@ class APIKeyCreateRequest(BaseModel):
     )
 
 
+class ChangePasswordRequest(BaseModel):
+    """Change password request."""
+
+    current_password: str = Field(
+        min_length=8, max_length=256, description="Current password"
+    )
+    new_password: str = Field(
+        min_length=8, max_length=256, description="New password (minimum 8 chars)"
+    )
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_password_strength(cls, v: str) -> str:
+        """Validate password strength."""
+        if not any(c.isupper() for c in v):
+            raise ValueError("Password must contain at least one uppercase letter")
+        if not any(c.islower() for c in v):
+            raise ValueError("Password must contain at least one lowercase letter")
+        if not any(c.isdigit() for c in v):
+            raise ValueError("Password must contain at least one digit")
+        return v
+
+
 # ============================================================================
 # Decorators
 # ============================================================================
@@ -566,6 +589,85 @@ def delete_api_key(key_id: str):
             {
                 "success": True,
                 "message": "API key deleted successfully",
+                "correlation_id": g.get("correlation_id"),
+            }
+        ),
+        200,
+    )
+
+
+@auth_bp.route("/change-password", methods=["POST"])
+@auth_required
+def change_password():
+    """
+    Change user password.
+
+    Requires current password to verify identity, then updates to new password.
+    New password must meet strength requirements: 8+ chars, uppercase, lowercase, digit.
+    """
+    try:
+        data = request.get_json() or {}
+        req = ChangePasswordRequest(**data)
+    except ValidationError as e:
+        logger.warning("change_password_validation_error", errors=e.errors())
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "Invalid request data",
+                    "details": e.errors(),
+                    "correlation_id": g.get("correlation_id"),
+                }
+            ),
+            400,
+        )
+
+    user_id = get_jwt_identity()
+    db = get_engine()
+    user = get_user_by_id(db, user_id)
+
+    if not user:
+        logger.warning("change_password_user_not_found", user_id=user_id)
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "User not found",
+                    "correlation_id": g.get("correlation_id"),
+                }
+            ),
+            404,
+        )
+
+    # Verify current password
+    if not verify_password(req.current_password, user["password_hash"]):
+        logger.warning("change_password_invalid_current", user_id=user_id)
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "Current password is incorrect",
+                    "correlation_id": g.get("correlation_id"),
+                }
+            ),
+            401,
+        )
+
+    # Update password
+    new_password_hash = hash_password(req.new_password)
+    db(db.users.id == user_id).update(
+        password_hash=new_password_hash,
+        updated_at=datetime.utcnow(),
+    )
+    db.commit()
+
+    logger.info("password_changed", user_id=user_id, email=user["email"])
+
+    return (
+        jsonify(
+            {
+                "success": True,
+                "message": "Password changed successfully",
                 "correlation_id": g.get("correlation_id"),
             }
         ),

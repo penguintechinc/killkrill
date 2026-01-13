@@ -80,6 +80,13 @@ make test-e2e                # Run end-to-end workflow tests
 - **Kibana**: http://localhost:5601 (Log search and analysis)
 - **Prometheus**: http://localhost:9090 (Metrics collection)
 
+### Default Admin Login
+
+**Email**: `admin@penguintech.io`
+**Password**: `admin123`
+
+The admin user is automatically seeded in all environments. **Change the default password immediately after first login** using the `/api/v1/auth/change-password` endpoint or via the UI settings.
+
 ## 🏗️ Architecture
 
 ### Data Flow

@@ -42,19 +42,37 @@ curl http://localhost:5000/metrics
 
 ### Login (Get JWT Token)
 
+**Default credentials (automatically seeded in ALL environments):**
+- Email: `admin@penguintech.io`
+- Password: `admin123`
+
+**Additional test users (only in development/alpha):**
+- `maintainer@penguintech.io` / `admin123`
+- `viewer@penguintech.io` / `admin123`
+
 ```bash
 curl -X POST http://localhost:5000/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"password"}'
+  -d '{"email":"admin@penguintech.io","password":"admin123"}'
 ```
 
 Response:
 
 ```json
 {
-  "access_token": "eyJ0eXAiOiJKV1QiLCJhbGc...",
-  "token_type": "Bearer",
-  "expires_in": 86400
+  "success": true,
+  "data": {
+    "access_token": "eyJ0eXAiOiJKV1QiLCJhbGc...",
+    "refresh_token": "eyJ0eXAiOiJKV1QiLCJhbGc...",
+    "token_type": "Bearer",
+    "expires_in": 3600,
+    "user": {
+      "id": "uuid",
+      "email": "admin@penguintech.io",
+      "name": "Administrator",
+      "role": "admin"
+    }
+  }
 }
 ```
 
@@ -197,30 +215,55 @@ pip install -r requirements.txt --force-reinstall
 
 ### JWT Token Expired
 
-Tokens expire after 24 hours (default). Get a new token:
+Tokens expire after 1 hour (default). Get a new token:
 
 ```bash
 curl -X POST http://localhost:5000/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"password"}'
+  -d '{"email":"admin@penguintech.io","password":"admin123"}'
 ```
+
+### Change Password
+
+Change your password from the default or after initial login:
+
+```bash
+curl -X POST http://localhost:5000/api/v1/auth/change-password \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <TOKEN>" \
+  -d '{
+    "current_password":"admin123",
+    "new_password":"MyNewPassword123"
+  }'
+```
+
+Password requirements:
+- Minimum 8 characters
+- At least one uppercase letter
+- At least one lowercase letter
+- At least one digit
 
 ## API Endpoints Cheat Sheet
 
-| Method | Endpoint              | Description   | Auth Required |
-| ------ | --------------------- | ------------- | ------------- |
-| POST   | /api/v1/auth/login    | Get JWT token | No            |
-| GET    | /api/v1/auth/verify   | Verify token  | Yes           |
-| POST   | /api/v1/auth/logout   | Logout        | Yes           |
-| GET    | /api/v1/status        | API status    | No            |
-| GET    | /api/v1/sources       | List sources  | Yes           |
-| POST   | /api/v1/sources       | Create source | Yes           |
-| GET    | /api/v1/sources/{id}  | Get source    | Yes           |
-| PUT    | /api/v1/sources/{id}  | Update source | Yes           |
-| DELETE | /api/v1/sources/{id}  | Delete source | Yes           |
-| GET    | /api/v1/logs          | List logs     | Yes           |
-| GET    | /api/v1/metrics       | List metrics  | Yes           |
-| POST   | /api/v1/metrics/query | Query metrics | Yes           |
+| Method | Endpoint                  | Description           | Auth Required |
+| ------ | ------------------------- | --------------------- | ------------- |
+| POST   | /api/v1/auth/login        | Get JWT token         | No            |
+| GET    | /api/v1/auth/verify       | Verify token          | Yes           |
+| POST   | /api/v1/auth/logout       | Logout                | Yes           |
+| POST   | /api/v1/auth/change-password | Change password    | Yes           |
+| GET    | /api/v1/auth/me           | Get current user      | Yes           |
+| GET    | /api/v1/auth/api-keys     | List API keys         | Yes           |
+| POST   | /api/v1/auth/api-keys     | Create API key        | Yes           |
+| DELETE | /api/v1/auth/api-keys/{id}| Delete API key        | Yes           |
+| GET    | /api/v1/status            | API status            | No            |
+| GET    | /api/v1/sources           | List sources          | Yes           |
+| POST   | /api/v1/sources           | Create source         | Yes           |
+| GET    | /api/v1/sources/{id}      | Get source            | Yes           |
+| PUT    | /api/v1/sources/{id}      | Update source         | Yes           |
+| DELETE | /api/v1/sources/{id}      | Delete source         | Yes           |
+| GET    | /api/v1/logs              | List logs             | Yes           |
+| GET    | /api/v1/metrics           | List metrics          | Yes           |
+| POST   | /api/v1/metrics/query     | Query metrics         | Yes           |
 
 ## Docker Quick Start
 

@@ -29,8 +29,8 @@ killkrill:
         cpu: 2000m
         memory: 4Gi
       requests:
-        cpu: 500m
-        memory: 1Gi
+        cpu: 250m
+        memory: 512Mi
 
     # XDP configuration
     xdp:
@@ -229,7 +229,7 @@ redis:
         cpu: 1000m
         memory: 2Gi
       requests:
-        cpu: 250m
+        cpu: 125m
         memory: 512Mi
 
   replica:
@@ -407,7 +407,7 @@ grafana:
       cpu: 1000m
       memory: 2Gi
     requests:
-      cpu: 250m
+      cpu: 125m
       memory: 512Mi
 
   persistence:
@@ -463,7 +463,7 @@ elastalert:
       cpu: 500m
       memory: 1Gi
     requests:
-      cpu: 250m
+      cpu: 125m
       memory: 512Mi
 
   # ElastAlert configuration
