@@ -105,7 +105,7 @@ const Login = () => {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@penguintech.io"
+              placeholder="admin@localhost.local"
               style={{
                 width: "100%",
                 padding: "0.75rem",

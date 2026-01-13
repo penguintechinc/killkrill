@@ -43,17 +43,17 @@ curl http://localhost:5000/metrics
 ### Login (Get JWT Token)
 
 **Default credentials (automatically seeded in ALL environments):**
-- Email: `admin@penguintech.io`
+- Email: `admin@localhost.local`
 - Password: `admin123`
 
 **Additional test users (only in development/alpha):**
-- `maintainer@penguintech.io` / `admin123`
-- `viewer@penguintech.io` / `admin123`
+- `maintainer@localhost.local` / `admin123`
+- `viewer@localhost.local` / `admin123`
 
 ```bash
 curl -X POST http://localhost:5000/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@penguintech.io","password":"admin123"}'
+  -d '{"email":"admin@localhost.local","password":"admin123"}'
 ```
 
 Response:
@@ -68,7 +68,7 @@ Response:
     "expires_in": 3600,
     "user": {
       "id": "uuid",
-      "email": "admin@penguintech.io",
+      "email": "admin@localhost.local",
       "name": "Administrator",
       "role": "admin"
     }
@@ -220,7 +220,7 @@ Tokens expire after 1 hour (default). Get a new token:
 ```bash
 curl -X POST http://localhost:5000/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@penguintech.io","password":"admin123"}'
+  -d '{"email":"admin@localhost.local","password":"admin123"}'
 ```
 
 ### Change Password

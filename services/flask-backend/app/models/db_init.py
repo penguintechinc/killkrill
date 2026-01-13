@@ -793,7 +793,7 @@ def seed_admin_user(db=None):
         return
 
     admin_user = {
-        "email": "admin@penguintech.io",
+        "email": "admin@localhost.local",
         "name": "Administrator",
         "role": "admin",
         "password": "admin123",
@@ -850,13 +850,13 @@ def seed_mock_users(db=None):
 
     mock_users = [
         {
-            "email": "maintainer@penguintech.io",
+            "email": "maintainer@localhost.local",
             "name": "Maintainer User",
             "role": "maintainer",
             "password": "admin123",
         },
         {
-            "email": "viewer@penguintech.io",
+            "email": "viewer@localhost.local",
             "name": "Viewer User",
             "role": "viewer",
             "password": "admin123",

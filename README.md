@@ -82,7 +82,7 @@ make test-e2e                # Run end-to-end workflow tests
 
 ### Default Admin Login
 
-**Email**: `admin@penguintech.io`
+**Email**: `admin@localhost.local`
 **Password**: `admin123`
 
 The admin user is automatically seeded in all environments. **Change the default password immediately after first login** using the `/api/v1/auth/change-password` endpoint or via the UI settings.

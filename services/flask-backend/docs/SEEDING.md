@@ -10,12 +10,12 @@ The Flask backend automatically seeds default users on startup to ensure the sys
 
 The admin user is **ALWAYS** created if it doesn't exist, regardless of environment (development, testing, production):
 
-| Field    | Value              |
-|----------|--------------------|
-| Email    | admin@penguintech.io    |
-| Password | admin123           |
-| Role     | admin              |
-| Name     | Administrator      |
+| Field    | Value                   |
+|----------|-------------------------|
+| Email    | admin@localhost.local   |
+| Password | admin123                |
+| Role     | admin                   |
+| Name     | Administrator           |
 
 **Why Always Seed Admin?**
 - Ensures there's always a way to log into the system
@@ -27,10 +27,10 @@ The admin user is **ALWAYS** created if it doesn't exist, regardless of environm
 
 Additional test users are created **ONLY** in development and testing environments:
 
-| Email                  | Password  | Role       |
-|------------------------|-----------|------------|
-| maintainer@penguintech.io   | admin123  | maintainer |
-| viewer@penguintech.io       | admin123  | viewer     |
+| Email                        | Password  | Role       |
+|------------------------------|-----------|------------|
+| maintainer@localhost.local   | admin123  | maintainer |
+| viewer@localhost.local       | admin123  | viewer     |
 
 **Why Only in Alpha?**
 - Mock data should not exist in production
@@ -131,7 +131,7 @@ Seeding operations are logged for audit purposes:
 ```json
 {
   "event": "Created default admin user",
-  "email": "admin@penguintech.io",
+  "email": "admin@localhost.local",
   "role": "admin"
 }
 ```
@@ -141,7 +141,7 @@ Or if user already exists:
 ```json
 {
   "event": "Admin user already exists",
-  "email": "admin@penguintech.io"
+  "email": "admin@localhost.local"
 }
 ```
 
@@ -160,7 +160,7 @@ If admin user is not created automatically:
 
 If default password doesn't work:
 
-1. Verify you're using email format: `admin@penguintech.io`
+1. Verify you're using email format: `admin@localhost.local`
 2. Check password is exactly `admin123` (case-sensitive)
 3. Ensure no spaces in password
 4. Try password reset if user was previously created with different password
