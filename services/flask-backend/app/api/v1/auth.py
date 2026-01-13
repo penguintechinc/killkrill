@@ -20,7 +20,7 @@ from flask_jwt_extended import (
     jwt_required,
 )
 from passlib.hash import bcrypt
-from pydantic import BaseModel, EmailStr, Field, ValidationError, field_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from app.models.db_init import get_engine
 
@@ -41,11 +41,22 @@ revoked_tokens = set()
 class RegisterRequest(BaseModel):
     """User registration request."""
 
-    email: EmailStr = Field(description="User email address")
+    email: str = Field(description="User email address")
     password: str = Field(
         min_length=8, max_length=256, description="User password (minimum 8 chars)"
     )
     name: str = Field(min_length=1, max_length=255, description="User full name")
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        """Validate email format, allowing localhost domains for development."""
+        if not v or "@" not in v:
+            raise ValueError("Invalid email format")
+        local_parts, domain = v.rsplit("@", 1)
+        if not local_parts or not domain:
+            raise ValueError("Invalid email format")
+        return v.lower().strip()
 
     @field_validator("password")
     @classmethod
@@ -63,8 +74,19 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     """User login request."""
 
-    email: EmailStr = Field(description="User email address")
+    email: str = Field(description="User email address")
     password: str = Field(min_length=8, max_length=256, description="User password")
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        """Validate email format, allowing localhost domains for development."""
+        if not v or "@" not in v:
+            raise ValueError("Invalid email format")
+        local_parts, domain = v.rsplit("@", 1)
+        if not local_parts or not domain:
+            raise ValueError("Invalid email format")
+        return v.lower().strip()
 
 
 class RefreshRequest(BaseModel):

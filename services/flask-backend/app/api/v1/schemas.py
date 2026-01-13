@@ -6,7 +6,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Generic, Optional, TypeVar
 
-from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 # ============================================================================
 # Enums
@@ -70,8 +70,20 @@ class ErrorResponse(BaseModel):
 class LoginRequest(BaseModel):
     """User login request."""
 
-    email: EmailStr = Field(description="User email address")
+    email: str = Field(description="User email address")
     password: str = Field(min_length=8, max_length=256, description="User password")
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        """Validate email format, allowing localhost domains for development."""
+        if not v or "@" not in v:
+            raise ValueError("Invalid email format")
+        # Allow localhost.local and other development domains
+        local_parts, domain = v.rsplit("@", 1)
+        if not local_parts or not domain:
+            raise ValueError("Invalid email format")
+        return v.lower().strip()
 
 
 class TokenResponse(BaseModel):
@@ -105,12 +117,23 @@ class RefreshRequest(BaseModel):
 class UserCreate(BaseModel):
     """User creation request."""
 
-    email: EmailStr = Field(description="User email address")
+    email: str = Field(description="User email address")
     password: str = Field(
         min_length=8, max_length=256, description="User password (minimum 8 chars)"
     )
     name: str = Field(min_length=1, max_length=255, description="User full name")
     role: RoleEnum = Field(default=RoleEnum.VIEWER, description="User role")
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        """Validate email format, allowing localhost domains for development."""
+        if not v or "@" not in v:
+            raise ValueError("Invalid email format")
+        local_parts, domain = v.rsplit("@", 1)
+        if not local_parts or not domain:
+            raise ValueError("Invalid email format")
+        return v.lower().strip()
 
     @model_validator(mode="after")
     def validate_password_strength(self) -> "UserCreate":
@@ -128,7 +151,20 @@ class UserCreate(BaseModel):
 class UserUpdate(BaseModel):
     """User update request."""
 
-    email: Optional[EmailStr] = Field(default=None, description="User email address")
+    email: Optional[str] = Field(default=None, description="User email address")
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: Optional[str]) -> Optional[str]:
+        """Validate email format if provided, allowing localhost domains for development."""
+        if v is None:
+            return v
+        if not v or "@" not in v:
+            raise ValueError("Invalid email format")
+        local_parts, domain = v.rsplit("@", 1)
+        if not local_parts or not domain:
+            raise ValueError("Invalid email format")
+        return v.lower().strip()
     name: Optional[str] = Field(
         default=None, min_length=1, max_length=255, description="User full name"
     )
@@ -158,7 +194,7 @@ class UserResponse(BaseModel):
     """User response schema."""
 
     id: str = Field(description="User ID")
-    email: EmailStr = Field(description="User email address")
+    email: str = Field(description="User email address")
     name: str = Field(description="User full name")
     role: RoleEnum = Field(description="User role")
     created_at: datetime = Field(description="Creation timestamp")
