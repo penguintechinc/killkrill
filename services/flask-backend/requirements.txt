@@ -32,7 +32,7 @@ email-validator>=2.1.0
 # HTTP & Networking
 httpx>=0.27.0
 aiohttp>=3.9.0
-requests>=2.32.0
+requests>=2.32.3
 
 # gRPC
 grpcio>=1.60.0
@@ -51,7 +51,7 @@ pytz>=2024.2
 uuid6>=2024.1.12
 
 # License Server Integration
-requests>=2.32.0
+requests>=2.32.3
 
 # Production Server
 gunicorn>=22.0.0
