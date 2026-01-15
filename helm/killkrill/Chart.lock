@@ -1,0 +1,21 @@
+dependencies:
+- name: elasticsearch
+  repository: https://helm.elastic.co
+  version: 7.17.3
+- name: kibana
+  repository: https://helm.elastic.co
+  version: 7.17.3
+- name: prometheus
+  repository: https://prometheus-community.github.io/helm-charts
+  version: 25.8.0
+- name: grafana
+  repository: https://grafana.github.io/helm-charts
+  version: 7.0.8
+- name: redis
+  repository: https://charts.bitnami.com/bitnami
+  version: 18.4.0
+- name: postgresql
+  repository: https://charts.bitnami.com/bitnami
+  version: 13.2.24
+digest: sha256:cf4a14bdefff1846b397de44f3f2c30edee420756a5b7222e5e1e12087acfb22
+generated: "2026-01-08T20:19:34.713961488-06:00"

@@ -7,12 +7,12 @@ import hashlib
 import secrets
 from datetime import datetime, timedelta
 from functools import wraps
-from typing import Optional, Dict, Any, Callable, List
+from typing import Any, Callable, Dict, List, Optional
 
 import jwt
-from quart import request, g, jsonify
-from passlib.hash import bcrypt
 import structlog
+from passlib.hash import bcrypt
+from quart import g, jsonify, request
 
 from config import get_config
 
@@ -27,13 +27,13 @@ class AuthMiddleware:
 
     # Endpoints that don't require authentication
     PUBLIC_ENDPOINTS = [
-        '/healthz',
-        '/metrics',
-        '/',
-        '/api/v1/auth/login',
-        '/api/v1/auth/register',
-        '/api/v1/auth/refresh',
-        '/api/v1/sensors/results',  # Sensors submit results with API key
+        "/healthz",
+        "/metrics",
+        "/",
+        "/api/v1/auth/login",
+        "/api/v1/auth/register",
+        "/api/v1/auth/refresh",
+        "/api/v1/sensors/results",  # Sensors submit results with API key
     ]
 
     @staticmethod
@@ -46,7 +46,7 @@ class AuthMiddleware:
             return
 
         # Skip OPTIONS requests (CORS preflight)
-        if request.method == 'OPTIONS':
+        if request.method == "OPTIONS":
             g.authenticated = False
             g.auth = None
             return
@@ -55,26 +55,26 @@ class AuthMiddleware:
         config = get_config()
 
         # Try API Key authentication first
-        api_key = request.headers.get('X-API-Key')
+        api_key = request.headers.get("X-API-Key")
         if api_key:
             auth_result = await AuthMiddleware._authenticate_api_key(api_key)
 
         # Try JWT Bearer token
         if not auth_result:
-            auth_header = request.headers.get('Authorization', '')
-            if auth_header.startswith('Bearer '):
+            auth_header = request.headers.get("Authorization", "")
+            if auth_header.startswith("Bearer "):
                 token = auth_header[7:]
                 # Check if it's a license key (PENG- prefix)
-                if token.startswith('PENG-'):
+                if token.startswith("PENG-"):
                     auth_result = await AuthMiddleware._authenticate_license(token)
                 else:
                     auth_result = await AuthMiddleware._authenticate_jwt(token)
 
         # Store auth result
-        if auth_result and auth_result.get('authenticated'):
+        if auth_result and auth_result.get("authenticated"):
             g.authenticated = True
             g.auth = auth_result
-            g.user_id = auth_result.get('user_id')
+            g.user_id = auth_result.get("user_id")
         else:
             g.authenticated = False
             g.auth = None
@@ -92,17 +92,21 @@ class AuthMiddleware:
 
             key_hash = hashlib.sha256(api_key.encode()).hexdigest()
 
-            api_key_record = db(
-                (db.api_keys.key_hash == key_hash) &
-                (db.api_keys.is_active == True)
-            ).select().first()
+            api_key_record = (
+                db((db.api_keys.key_hash == key_hash) & (db.api_keys.is_active == True))
+                .select()
+                .first()
+            )
 
             if not api_key_record:
                 logger.warning("api_key_not_found")
                 return None
 
             # Check expiration
-            if api_key_record.expires_at and api_key_record.expires_at < datetime.utcnow():
+            if (
+                api_key_record.expires_at
+                and api_key_record.expires_at < datetime.utcnow()
+            ):
                 logger.warning("api_key_expired", key_name=api_key_record.name)
                 return None
 
@@ -114,19 +118,20 @@ class AuthMiddleware:
             permissions = []
             if api_key_record.permissions:
                 import json
+
                 try:
                     permissions = json.loads(api_key_record.permissions)
                 except json.JSONDecodeError:
-                    permissions = api_key_record.permissions.split(',')
+                    permissions = api_key_record.permissions.split(",")
 
             logger.info("api_key_authenticated", key_name=api_key_record.name)
 
             return {
-                'method': 'api_key',
-                'authenticated': True,
-                'user_id': api_key_record.user_id,
-                'api_key_id': api_key_record.id,
-                'permissions': permissions,
+                "method": "api_key",
+                "authenticated": True,
+                "user_id": api_key_record.user_id,
+                "api_key_id": api_key_record.id,
+                "permissions": permissions,
             }
 
         except Exception as e:
@@ -139,22 +144,18 @@ class AuthMiddleware:
         config = get_config()
 
         try:
-            payload = jwt.decode(
-                token,
-                config.JWT_SECRET,
-                algorithms=['HS256']
-            )
+            payload = jwt.decode(token, config.JWT_SECRET, algorithms=["HS256"])
 
-            logger.debug("jwt_authenticated", user_id=payload.get('user_id'))
+            logger.debug("jwt_authenticated", user_id=payload.get("user_id"))
 
             return {
-                'method': 'jwt',
-                'authenticated': True,
-                'user_id': payload.get('user_id'),
-                'username': payload.get('username'),
-                'role': payload.get('role', 'user'),
-                'permissions': payload.get('permissions', []),
-                'exp': payload.get('exp'),
+                "method": "jwt",
+                "authenticated": True,
+                "user_id": payload.get("user_id"),
+                "username": payload.get("username"),
+                "role": payload.get("role", "user"),
+                "permissions": payload.get("permissions", []),
+                "exp": payload.get("exp"),
             }
 
         except jwt.ExpiredSignatureError:
@@ -175,34 +176,40 @@ class AuthMiddleware:
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     f"{config.LICENSE_SERVER_URL}/api/v2/validate",
-                    headers={'Authorization': f'Bearer {license_key}'},
-                    json={'product': config.PRODUCT_NAME},
-                    timeout=10.0
+                    headers={"Authorization": f"Bearer {license_key}"},
+                    json={"product": config.PRODUCT_NAME},
+                    timeout=10.0,
                 )
 
                 if response.status_code != 200:
-                    logger.warning("license_validation_failed", status=response.status_code)
+                    logger.warning(
+                        "license_validation_failed", status=response.status_code
+                    )
                     return None
 
                 data = response.json()
 
-                if not data.get('valid', False):
-                    logger.warning("license_invalid", message=data.get('message'))
+                if not data.get("valid", False):
+                    logger.warning("license_invalid", message=data.get("message"))
                     return None
 
                 # Extract feature entitlements
-                features = {f['name']: f['entitled'] for f in data.get('features', [])}
+                features = {f["name"]: f["entitled"] for f in data.get("features", [])}
 
-                logger.info("license_authenticated", customer=data.get('customer'), tier=data.get('tier'))
+                logger.info(
+                    "license_authenticated",
+                    customer=data.get("customer"),
+                    tier=data.get("tier"),
+                )
 
                 return {
-                    'method': 'license',
-                    'authenticated': True,
-                    'customer': data.get('customer'),
-                    'tier': data.get('tier'),
-                    'features': features,
-                    'limits': data.get('limits', {}),
-                    'expires_at': data.get('expires_at'),
+                    "method": "license",
+                    "authenticated": True,
+                    "customer": data.get("customer"),
+                    "tier": data.get("tier"),
+                    "features": features,
+                    "limits": data.get("limits", {}),
+                    "expires_at": data.get("expires_at"),
                 }
 
         except Exception as e:
@@ -217,26 +224,34 @@ def require_auth(permissions: List[str] = None):
     Args:
         permissions: Optional list of required permissions
     """
+
     def decorator(func: Callable):
         @wraps(func)
         async def wrapper(*args, **kwargs):
-            if not g.get('authenticated'):
-                return jsonify({
-                    'error': 'Authentication required',
-                    'status_code': 401
-                }), 401
+            if not g.get("authenticated"):
+                return (
+                    jsonify({"error": "Authentication required", "status_code": 401}),
+                    401,
+                )
 
             if permissions:
-                user_permissions = g.auth.get('permissions', [])
+                user_permissions = g.auth.get("permissions", [])
                 if not any(p in user_permissions for p in permissions):
-                    return jsonify({
-                        'error': 'Insufficient permissions',
-                        'required': permissions,
-                        'status_code': 403
-                    }), 403
+                    return (
+                        jsonify(
+                            {
+                                "error": "Insufficient permissions",
+                                "required": permissions,
+                                "status_code": 403,
+                            }
+                        ),
+                        403,
+                    )
 
             return await func(*args, **kwargs)
+
         return wrapper
+
     return decorator
 
 
@@ -247,25 +262,33 @@ def require_role(roles: List[str]):
     Args:
         roles: List of allowed roles
     """
+
     def decorator(func: Callable):
         @wraps(func)
         async def wrapper(*args, **kwargs):
-            if not g.get('authenticated'):
-                return jsonify({
-                    'error': 'Authentication required',
-                    'status_code': 401
-                }), 401
+            if not g.get("authenticated"):
+                return (
+                    jsonify({"error": "Authentication required", "status_code": 401}),
+                    401,
+                )
 
-            user_role = g.auth.get('role', 'user')
+            user_role = g.auth.get("role", "user")
             if user_role not in roles:
-                return jsonify({
-                    'error': 'Access denied',
-                    'message': f'Required role: {roles}',
-                    'status_code': 403
-                }), 403
+                return (
+                    jsonify(
+                        {
+                            "error": "Access denied",
+                            "message": f"Required role: {roles}",
+                            "status_code": 403,
+                        }
+                    ),
+                    403,
+                )
 
             return await func(*args, **kwargs)
+
         return wrapper
+
     return decorator
 
 
@@ -276,36 +299,51 @@ def require_feature(feature_name: str):
     Args:
         feature_name: Name of required feature
     """
+
     def decorator(func: Callable):
         @wraps(func)
         async def wrapper(*args, **kwargs):
             # Check if feature is available via license
-            if g.get('auth') and g.auth.get('method') == 'license':
-                features = g.auth.get('features', {})
+            if g.get("auth") and g.auth.get("method") == "license":
+                features = g.auth.get("features", {})
                 if not features.get(feature_name, False):
-                    return jsonify({
-                        'error': 'Feature not available',
-                        'feature': feature_name,
-                        'message': f'Feature "{feature_name}" requires license upgrade',
-                        'status_code': 403
-                    }), 403
+                    return (
+                        jsonify(
+                            {
+                                "error": "Feature not available",
+                                "feature": feature_name,
+                                "message": f'Feature "{feature_name}" requires license upgrade',
+                                "status_code": 403,
+                            }
+                        ),
+                        403,
+                    )
             else:
                 # For non-license auth, check via license service
                 from services.license_service import check_feature
+
                 if not await check_feature(feature_name):
-                    return jsonify({
-                        'error': 'Feature not available',
-                        'feature': feature_name,
-                        'message': f'Feature "{feature_name}" requires license upgrade',
-                        'status_code': 403
-                    }), 403
+                    return (
+                        jsonify(
+                            {
+                                "error": "Feature not available",
+                                "feature": feature_name,
+                                "message": f'Feature "{feature_name}" requires license upgrade',
+                                "status_code": 403,
+                            }
+                        ),
+                        403,
+                    )
 
             return await func(*args, **kwargs)
+
         return wrapper
+
     return decorator
 
 
 # Utility functions
+
 
 def generate_api_key(length: int = 64) -> str:
     """Generate a secure random API key"""
@@ -330,24 +368,24 @@ def verify_password(password: str, password_hash: str) -> bool:
 def generate_jwt_token(
     user_id: int,
     username: str,
-    role: str = 'user',
+    role: str = "user",
     permissions: List[str] = None,
-    expires_hours: int = None
+    expires_hours: int = None,
 ) -> str:
     """Generate a JWT access token"""
     config = get_config()
     expires_hours = expires_hours or (config.JWT_ACCESS_TOKEN_EXPIRES // 3600)
 
     payload = {
-        'user_id': user_id,
-        'username': username,
-        'role': role,
-        'permissions': permissions or [],
-        'iat': datetime.utcnow(),
-        'exp': datetime.utcnow() + timedelta(hours=expires_hours),
+        "user_id": user_id,
+        "username": username,
+        "role": role,
+        "permissions": permissions or [],
+        "iat": datetime.utcnow(),
+        "exp": datetime.utcnow() + timedelta(hours=expires_hours),
     }
 
-    return jwt.encode(payload, config.JWT_SECRET, algorithm='HS256')
+    return jwt.encode(payload, config.JWT_SECRET, algorithm="HS256")
 
 
 def generate_refresh_token() -> str:

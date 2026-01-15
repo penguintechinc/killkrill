@@ -9,7 +9,7 @@ hypervisors:
       ansible_user: root
       fleet_enroll_secret: "{{ fleet_enroll_secret }}"
       host_type: hypervisor
-      hypervisor_platform: proxmox  # or vmware, kvm, etc.
+      hypervisor_platform: proxmox # or vmware, kvm, etc.
 
     hypervisor-02:
       ansible_host: 192.168.1.11

@@ -1,0 +1,335 @@
+---
+# KillKrill Enterprise Three-Container Architecture Deployment
+# Architecture: webui (React) + flask-backend (API) + receivers/workers
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: killkrill
+
+---
+# PostgreSQL Database
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgresql
+  namespace: killkrill
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgresql
+  template:
+    metadata:
+      labels:
+        app: postgresql
+    spec:
+      containers:
+      - name: postgresql
+        image: postgres:15
+        env:
+        - name: POSTGRES_USER
+          value: "killkrill"
+        - name: POSTGRES_PASSWORD
+          value: "killkrill123"
+        - name: POSTGRES_DB
+          value: "killkrill"
+        ports:
+        - containerPort: 5432
+        volumeMounts:
+        - name: postgres-data
+          mountPath: /var/lib/postgresql/data
+      volumes:
+      - name: postgres-data
+        emptyDir: {}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgresql
+  namespace: killkrill
+spec:
+  selector:
+    app: postgresql
+  ports:
+  - port: 5432
+    targetPort: 5432
+
+---
+# Redis Cache
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: killkrill
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:7
+        ports:
+        - containerPort: 6379
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: killkrill
+spec:
+  selector:
+    app: redis
+  ports:
+  - port: 6379
+    targetPort: 6379
+
+---
+# Flask Backend (API with Flask-Security-Too)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flask-backend
+  namespace: killkrill
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: flask-backend
+  template:
+    metadata:
+      labels:
+        app: flask-backend
+    spec:
+      containers:
+      - name: flask-backend
+        image: registry-dal2.penguintech.io/killkrill/flask-backend:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 5000
+          name: http
+        - containerPort: 50051
+          name: grpc
+        env:
+        - name: DATABASE_URL
+          value: "postgresql://killkrill:killkrill123@postgresql:5432/killkrill"
+        - name: DB_TYPE
+          value: "postgres"
+        - name: DB_HOST
+          value: "postgresql"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_USER
+          value: "killkrill"
+        - name: DB_PASS
+          value: "killkrill123"
+        - name: DB_NAME
+          value: "killkrill"
+        - name: REDIS_URL
+          value: "redis://redis:6379"
+        - name: FLASK_PORT
+          value: "5000"
+        - name: GRPC_PORT
+          value: "50051"
+        - name: LICENSE_KEY
+          value: "PENG-DEMO-DEMO-DEMO-DEMO-DEMO"
+        - name: RELEASE_MODE
+          value: "false"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: flask-backend
+  namespace: killkrill
+spec:
+  selector:
+    app: flask-backend
+  ports:
+  - port: 5000
+    targetPort: 5000
+    name: http
+  - port: 50051
+    targetPort: 50051
+    name: grpc
+
+---
+# React WebUI (Frontend)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webui
+  namespace: killkrill
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: webui
+  template:
+    metadata:
+      labels:
+        app: webui
+    spec:
+      containers:
+      - name: webui
+        image: registry-dal2.penguintech.io/killkrill/webui:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3000
+          name: http
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: API_URL
+          value: "http://flask-backend:5000"
+        - name: PORT
+          value: "3000"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: webui
+  namespace: killkrill
+spec:
+  selector:
+    app: webui
+  ports:
+  - port: 3000
+    targetPort: 3000
+
+---
+# Log Receiver Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: log-receiver
+  namespace: killkrill
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: log-receiver
+  template:
+    metadata:
+      labels:
+        app: log-receiver
+    spec:
+      containers:
+      - name: log-receiver
+        image: registry-dal2.penguintech.io/killkrill/log-receiver:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8081
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: log-receiver
+  namespace: killkrill
+spec:
+  selector:
+    app: log-receiver
+  type: NodePort
+  ports:
+  - port: 8081
+    targetPort: 8081
+    nodePort: 30081
+
+---
+# Metrics Receiver Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metrics-receiver
+  namespace: killkrill
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: metrics-receiver
+  template:
+    metadata:
+      labels:
+        app: metrics-receiver
+    spec:
+      containers:
+      - name: metrics-receiver
+        image: registry-dal2.penguintech.io/killkrill/metrics-receiver:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8082
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: metrics-receiver
+  namespace: killkrill
+spec:
+  selector:
+    app: metrics-receiver
+  type: NodePort
+  ports:
+  - port: 8082
+    targetPort: 8082
+    nodePort: 30082
+
+---
+# Log Worker Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: log-worker
+  namespace: killkrill
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: log-worker
+  template:
+    metadata:
+      labels:
+        app: log-worker
+    spec:
+      containers:
+      - name: log-worker
+        image: registry-dal2.penguintech.io/killkrill/log-worker:latest
+        imagePullPolicy: Always
+        env:
+        - name: RELEASE_MODE
+          value: "false"
+
+---
+# Metrics Worker Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metrics-worker
+  namespace: killkrill
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: metrics-worker
+  template:
+    metadata:
+      labels:
+        app: metrics-worker
+    spec:
+      containers:
+      - name: metrics-worker
+        image: registry-dal2.penguintech.io/killkrill/metrics-worker:latest
+        imagePullPolicy: Always
+        env:
+        - name: RELEASE_MODE
+          value: "false"

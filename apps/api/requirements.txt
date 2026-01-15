@@ -40,7 +40,7 @@ pytz>=2024.2
 uuid6>=2024.1.12
 
 # License Integration
-requests>=2.32.4
+requests>=2.32.3
 
 # WebSocket
 websockets>=12.0

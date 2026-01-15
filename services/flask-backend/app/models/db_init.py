@@ -9,25 +9,23 @@ Handles database initialization with support for multiple database backends:
 Note: This module handles ONLY initialization. PyDAL handles day-to-day operations.
 """
 
-import os
-from typing import Optional, Tuple
-from urllib.parse import urlparse, urlunparse, parse_qs
 import logging
+import os
+from datetime import datetime
+from typing import Optional, Tuple
+from urllib.parse import parse_qs, urlparse, urlunparse
+from uuid import uuid4
 
-from sqlalchemy import (
-    create_engine,
-    Engine,
-    event,
-    text,
-)
-from sqlalchemy.pool import NullPool, QueuePool
+from sqlalchemy import Engine, create_engine, event, text
 from sqlalchemy.exc import OperationalError, ProgrammingError
+from sqlalchemy.pool import NullPool, QueuePool
 
 logger = logging.getLogger(__name__)
 
 
 class DatabaseInitializationError(Exception):
     """Raised when database initialization fails"""
+
     pass
 
 
@@ -38,30 +36,32 @@ class DatabaseConfig:
 
     def __init__(self) -> None:
         """Initialize database configuration from environment"""
-        self.db_type: str = os.getenv('DB_TYPE', 'postgres').lower()
-        self.database_url: str = os.getenv('DATABASE_URL', '')
-        self.galera_mode: bool = os.getenv('GALERA_MODE', 'false').lower() == 'true'
-        self.pool_size: int = int(os.getenv('DB_POOL_SIZE', '20'))
-        self.max_overflow: int = int(os.getenv('DB_MAX_OVERFLOW', '10'))
-        self.pool_pre_ping: bool = os.getenv('DB_POOL_PRE_PING', 'true').lower() == 'true'
-        self.pool_recycle: int = int(os.getenv('DB_POOL_RECYCLE', '3600'))
-        self.connect_timeout: int = int(os.getenv('DB_CONNECT_TIMEOUT', '10'))
+        self.db_type: str = os.getenv("DB_TYPE", "postgres").lower()
+        self.database_url: str = os.getenv("DATABASE_URL", "")
+        self.galera_mode: bool = os.getenv("GALERA_MODE", "false").lower() == "true"
+        self.pool_size: int = int(os.getenv("DB_POOL_SIZE", "20"))
+        self.max_overflow: int = int(os.getenv("DB_MAX_OVERFLOW", "10"))
+        self.pool_pre_ping: bool = (
+            os.getenv("DB_POOL_PRE_PING", "true").lower() == "true"
+        )
+        self.pool_recycle: int = int(os.getenv("DB_POOL_RECYCLE", "3600"))
+        self.connect_timeout: int = int(os.getenv("DB_CONNECT_TIMEOUT", "10"))
 
         # Validate configuration
         self._validate()
 
     def _validate(self) -> None:
         """Validate database configuration"""
-        if self.db_type not in ('postgres', 'postgresql', 'mysql', 'mariadb', 'sqlite'):
+        if self.db_type not in ("postgres", "postgresql", "mysql", "mariadb", "sqlite"):
             raise DatabaseInitializationError(
                 f"Unsupported DB_TYPE: {self.db_type}. "
                 "Must be one of: postgres, mysql, mariadb, sqlite"
             )
 
         # SQLite doesn't need connection string
-        if self.db_type == 'sqlite':
+        if self.db_type == "sqlite":
             if not self.database_url:
-                self.database_url = 'sqlite:///killkrill.db'
+                self.database_url = "sqlite:///killkrill.db"
         else:
             if not self.database_url:
                 raise DatabaseInitializationError(
@@ -69,7 +69,7 @@ class DatabaseConfig:
                 )
 
         # Validate Galera mode is only for MySQL/MariaDB
-        if self.galera_mode and self.db_type not in ('mysql', 'mariadb'):
+        if self.galera_mode and self.db_type not in ("mysql", "mariadb"):
             logger.warning(
                 "GALERA_MODE=true is only applicable for MySQL/MariaDB, ignoring"
             )
@@ -87,8 +87,8 @@ class DatabaseConfig:
 def _normalize_db_type(db_type: str) -> str:
     """Normalize database type string"""
     db_type = db_type.lower()
-    if db_type == 'postgresql':
-        return 'postgres'
+    if db_type == "postgresql":
+        return "postgres"
     return db_type
 
 
@@ -107,19 +107,19 @@ def _apply_mysql_galera_settings(url: str) -> str:
 
     # Add Galera-specific parameters
     # wsrep_sync_wait=15 enables full synchronous replication
-    if 'init_command' not in query_params:
-        query_params['init_command'] = ['SET SESSION wsrep_sync_wait=15']
+    if "init_command" not in query_params:
+        query_params["init_command"] = ["SET SESSION wsrep_sync_wait=15"]
     else:
         # Append if init_command already exists
-        existing = query_params['init_command'][0]
-        query_params['init_command'] = [f"{existing}; SET SESSION wsrep_sync_wait=15"]
+        existing = query_params["init_command"][0]
+        query_params["init_command"] = [f"{existing}; SET SESSION wsrep_sync_wait=15"]
 
     # Rebuild query string
     query_parts = []
     for key, values in query_params.items():
         for value in values:
             query_parts.append(f"{key}={value}")
-    new_query = '&'.join(query_parts)
+    new_query = "&".join(query_parts)
 
     # Rebuild URL
     new_parsed = parsed._replace(query=new_query)
@@ -134,22 +134,22 @@ def _build_connection_string(config: DatabaseConfig) -> str:
     """
     db_url = config.database_url
 
-    if config.db_type in ('postgres', 'postgresql'):
+    if config.db_type in ("postgres", "postgresql"):
         # Normalize postgresql:// to postgres://
-        if db_url.startswith('postgresql://'):
-            db_url = db_url.replace('postgresql://', 'postgres://', 1)
+        if db_url.startswith("postgresql://"):
+            db_url = db_url.replace("postgresql://", "postgres://", 1)
         logger.info("Using PostgreSQL database", url=_mask_url(db_url))
 
-    elif config.db_type in ('mysql', 'mariadb'):
+    elif config.db_type in ("mysql", "mariadb"):
         # Ensure proper MySQL dialect
-        if db_url.startswith('mysql://'):
-            db_url = db_url.replace('mysql://', 'mysql+pymysql://', 1)
-        elif db_url.startswith('mariadb://'):
-            db_url = db_url.replace('mariadb://', 'mysql+pymysql://', 1)
-        elif not db_url.startswith('mysql+pymysql://'):
+        if db_url.startswith("mysql://"):
+            db_url = db_url.replace("mysql://", "mysql+pymysql://", 1)
+        elif db_url.startswith("mariadb://"):
+            db_url = db_url.replace("mariadb://", "mysql+pymysql://", 1)
+        elif not db_url.startswith("mysql+pymysql://"):
             # Try to detect and add pymysql
-            if db_url.startswith('mysql'):
-                db_url = db_url.replace('mysql://', 'mysql+pymysql://', 1)
+            if db_url.startswith("mysql"):
+                db_url = db_url.replace("mysql://", "mysql+pymysql://", 1)
 
         # Apply Galera settings if enabled
         if config.galera_mode:
@@ -158,7 +158,7 @@ def _build_connection_string(config: DatabaseConfig) -> str:
 
         logger.info("Using MySQL/MariaDB database", url=_mask_url(db_url))
 
-    elif config.db_type == 'sqlite':
+    elif config.db_type == "sqlite":
         logger.info("Using SQLite database", path=config.database_url)
 
     return db_url
@@ -176,9 +176,7 @@ def _mask_url(url: str, hide_password: bool = True) -> str:
     parsed = urlparse(url)
     if parsed.password:
         # Replace password with masked version
-        masked = parsed._replace(
-            password='*' * 8 if parsed.password else None
-        )
+        masked = parsed._replace(password="*" * 8 if parsed.password else None)
         return urlunparse(masked)
     return url
 
@@ -195,30 +193,32 @@ def _configure_pool(engine: Engine, config: DatabaseConfig) -> None:
         return
 
     # Pool pre-ping for PostgreSQL and MySQL/MariaDB
-    if config.pool_pre_ping and config.db_type != 'sqlite':
+    if config.pool_pre_ping and config.db_type != "sqlite":
+
         @event.listens_for(engine, "connect")
         def receive_connect(dbapi_conn, connection_record):
             """Listener to test connection on checkout"""
-            connection_record.info['fresh'] = True
+            connection_record.info["fresh"] = True
 
         @event.listens_for(engine, "pre_execute")
-        def receive_pre_execute(conn, clauseelement, multiparams, params, execution_options):
+        def receive_pre_execute(
+            conn, clauseelement, multiparams, params, execution_options
+        ):
             """Verify connection is alive before executing"""
-            if not hasattr(conn, 'info') or not conn.info.get('fresh'):
+            if not hasattr(conn, "info") or not conn.info.get("fresh"):
                 try:
                     conn.connection.ping(False)
                 except Exception:
                     conn.connection.ping(True)
-                if hasattr(conn.info, 'fresh'):
-                    conn.info['fresh'] = True
+                if hasattr(conn.info, "fresh"):
+                    conn.info["fresh"] = True
 
         logger.info("Connection pool pre-ping enabled")
 
     # Pool recycle for long-lived connections
     if config.pool_recycle > 0:
         logger.info(
-            "Connection pool recycle enabled",
-            recycle_seconds=config.pool_recycle
+            "Connection pool recycle enabled", recycle_seconds=config.pool_recycle
         )
 
 
@@ -230,11 +230,11 @@ def _verify_database_connection(engine: Engine, config: DatabaseConfig) -> bool:
     """
     try:
         with engine.connect() as conn:
-            if config.db_type in ('postgres', 'postgresql'):
+            if config.db_type in ("postgres", "postgresql"):
                 result = conn.execute(text("SELECT 1 as connection_test"))
-            elif config.db_type in ('mysql', 'mariadb'):
+            elif config.db_type in ("mysql", "mariadb"):
                 result = conn.execute(text("SELECT 1 as connection_test"))
-            elif config.db_type == 'sqlite':
+            elif config.db_type == "sqlite":
                 result = conn.execute(text("SELECT 1 as connection_test"))
 
             conn.commit()
@@ -243,16 +243,14 @@ def _verify_database_connection(engine: Engine, config: DatabaseConfig) -> bool:
 
     except OperationalError as e:
         logger.error(
-            "Failed to connect to database",
-            error=str(e),
-            db_type=config.db_type
+            "Failed to connect to database", error=str(e), db_type=config.db_type
         )
         return False
     except Exception as e:
         logger.error(
             "Unexpected error during database verification",
             error=str(e),
-            db_type=config.db_type
+            db_type=config.db_type,
         )
         return False
 
@@ -264,25 +262,25 @@ def _create_database_if_needed(engine: Engine, config: DatabaseConfig) -> bool:
     Only applicable for PostgreSQL and MySQL/MariaDB.
     SQLite creates the database file automatically.
     """
-    if config.db_type == 'sqlite':
+    if config.db_type == "sqlite":
         logger.info("SQLite database will be created automatically on first use")
         return True
 
     try:
         # Parse connection string to get database name
         parsed = urlparse(config.database_url)
-        db_name = parsed.path.lstrip('/')
+        db_name = parsed.path.lstrip("/")
 
         if not db_name:
             logger.warning("Could not determine database name from connection string")
             return True
 
-        if config.db_type in ('postgres', 'postgresql'):
+        if config.db_type in ("postgres", "postgresql"):
             # PostgreSQL: connect to default 'postgres' database to create target database
-            default_url = config.database_url.rsplit('/', 1)[0] + '/postgres'
+            default_url = config.database_url.rsplit("/", 1)[0] + "/postgres"
             admin_engine = create_engine(
-                default_url.replace('postgresql://', 'postgres://'),
-                isolation_level='AUTOCOMMIT'
+                default_url.replace("postgresql://", "postgres://"),
+                isolation_level="AUTOCOMMIT",
             )
 
             try:
@@ -304,17 +302,17 @@ def _create_database_if_needed(engine: Engine, config: DatabaseConfig) -> bool:
             finally:
                 admin_engine.dispose()
 
-        elif config.db_type in ('mysql', 'mariadb'):
+        elif config.db_type in ("mysql", "mariadb"):
             # MySQL/MariaDB: connect without database to create it
-            base_url = config.database_url.rsplit('/', 1)[0]
-            admin_engine = create_engine(base_url.replace('mysql://', 'mysql+pymysql://'))
+            base_url = config.database_url.rsplit("/", 1)[0]
+            admin_engine = create_engine(
+                base_url.replace("mysql://", "mysql+pymysql://")
+            )
 
             try:
                 with admin_engine.connect() as conn:
                     # Check if database exists
-                    result = conn.execute(
-                        text(f"SHOW DATABASES LIKE '{db_name}'")
-                    )
+                    result = conn.execute(text(f"SHOW DATABASES LIKE '{db_name}'"))
                     db_exists = result.fetchone() is not None
 
                     if not db_exists:
@@ -331,14 +329,14 @@ def _create_database_if_needed(engine: Engine, config: DatabaseConfig) -> bool:
         logger.warning(
             "Could not create database (may not have permissions)",
             error=str(e),
-            db_type=config.db_type
+            db_type=config.db_type,
         )
         return True  # Don't fail if we can't create, might have existing database
     except Exception as e:
         logger.error(
             "Unexpected error during database creation",
             error=str(e),
-            db_type=config.db_type
+            db_type=config.db_type,
         )
         return False
 
@@ -376,7 +374,7 @@ def init_database() -> Tuple[Engine, DatabaseConfig]:
         connection_string = _build_connection_string(config)
 
         # Determine pool configuration
-        if config.db_type == 'sqlite':
+        if config.db_type == "sqlite":
             # SQLite uses NullPool (no connection pooling)
             poolclass = NullPool
             pool_size = 0
@@ -387,14 +385,14 @@ def init_database() -> Tuple[Engine, DatabaseConfig]:
             poolclass = QueuePool
             pool_size = config.pool_size
             max_overflow = config.max_overflow
-            echo_pool = os.getenv('SQLALCHEMY_ECHO_POOL', 'false').lower() == 'true'
+            echo_pool = os.getenv("SQLALCHEMY_ECHO_POOL", "false").lower() == "true"
 
         logger.info(
             "Creating SQLAlchemy engine",
             db_type=config.db_type,
             pool_size=pool_size,
             max_overflow=max_overflow,
-            poolclass=poolclass.__name__
+            poolclass=poolclass.__name__,
         )
 
         # Create engine
@@ -405,14 +403,18 @@ def init_database() -> Tuple[Engine, DatabaseConfig]:
             max_overflow=max_overflow,
             pool_pre_ping=config.pool_pre_ping,
             pool_recycle=config.pool_recycle,
-            echo=os.getenv('SQLALCHEMY_ECHO', 'false').lower() == 'true',
+            echo=os.getenv("SQLALCHEMY_ECHO", "false").lower() == "true",
             echo_pool=echo_pool,
-            connect_args={
-                'connect_timeout': config.connect_timeout,
-                'check_same_thread': False,  # Required for SQLite in some contexts
-            } if config.db_type == 'sqlite' else {
-                'connect_timeout': config.connect_timeout,
-            }
+            connect_args=(
+                {
+                    "connect_timeout": config.connect_timeout,
+                    "check_same_thread": False,  # Required for SQLite in some contexts
+                }
+                if config.db_type == "sqlite"
+                else {
+                    "connect_timeout": config.connect_timeout,
+                }
+            ),
         )
 
         logger.info("SQLAlchemy engine created successfully")
@@ -435,7 +437,7 @@ def init_database() -> Tuple[Engine, DatabaseConfig]:
         logger.info(
             "Database initialization completed successfully",
             db_type=config.db_type,
-            connection=_mask_url(config.database_url)
+            connection=_mask_url(config.database_url),
         )
 
         return engine, config
@@ -446,7 +448,7 @@ def init_database() -> Tuple[Engine, DatabaseConfig]:
         logger.error(
             "Database initialization failed with unexpected error",
             error=str(e),
-            error_type=type(e).__name__
+            error_type=type(e).__name__,
         )
         raise DatabaseInitializationError(
             f"Failed to initialize database: {str(e)}"
@@ -492,38 +494,38 @@ def get_pydal_connection():
 
     try:
         from pydal import DAL, Field
-        from pydal.validators import IS_NOT_EMPTY, IS_EMAIL, IS_IN_SET, IS_DATETIME
+        from pydal.validators import IS_DATETIME, IS_EMAIL, IS_IN_SET, IS_NOT_EMPTY
     except ImportError:
         logger.error("PyDAL not installed. Install with: pip install pydal")
         raise
 
-    db_type = os.getenv('DB_TYPE', 'postgres').lower()
+    db_type = os.getenv("DB_TYPE", "postgres").lower()
 
     # Build PyDAL connection URI
-    if db_type in ('postgres', 'postgresql'):
-        db_host = os.getenv('DB_HOST', 'localhost')
-        db_port = os.getenv('DB_PORT', '5432')
-        db_user = os.getenv('DB_USER', 'killkrill')
-        db_pass = os.getenv('DB_PASS', 'killkrill123')
-        db_name = os.getenv('DB_NAME', 'killkrill')
+    if db_type in ("postgres", "postgresql"):
+        db_host = os.getenv("DB_HOST", "localhost")
+        db_port = os.getenv("DB_PORT", "5432")
+        db_user = os.getenv("DB_USER", "killkrill")
+        db_pass = os.getenv("DB_PASS", "killkrill123")
+        db_name = os.getenv("DB_NAME", "killkrill")
         uri = f"postgres://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
-        folder = '/tmp/pydal_migrations'
-    elif db_type in ('mysql', 'mariadb'):
-        db_host = os.getenv('DB_HOST', 'localhost')
-        db_port = os.getenv('DB_PORT', '3306')
-        db_user = os.getenv('DB_USER', 'killkrill')
-        db_pass = os.getenv('DB_PASS', 'killkrill123')
-        db_name = os.getenv('DB_NAME', 'killkrill')
+        folder = "/tmp/pydal_migrations"
+    elif db_type in ("mysql", "mariadb"):
+        db_host = os.getenv("DB_HOST", "localhost")
+        db_port = os.getenv("DB_PORT", "3306")
+        db_user = os.getenv("DB_USER", "killkrill")
+        db_pass = os.getenv("DB_PASS", "killkrill123")
+        db_name = os.getenv("DB_NAME", "killkrill")
         uri = f"mysql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
-        folder = '/tmp/pydal_migrations'
-    elif db_type == 'sqlite':
-        db_path = os.getenv('DB_PATH', '/tmp/killkrill.db')
+        folder = "/tmp/pydal_migrations"
+    elif db_type == "sqlite":
+        db_path = os.getenv("DB_PATH", "/tmp/killkrill.db")
         uri = f"sqlite://{db_path}"
-        folder = '/tmp/pydal_migrations'
+        folder = "/tmp/pydal_migrations"
     else:
         # Default to SQLite for safety
         uri = "sqlite:///tmp/killkrill.db"
-        folder = '/tmp/pydal_migrations'
+        folder = "/tmp/pydal_migrations"
 
     # Ensure migrations folder exists
     os.makedirs(folder, exist_ok=True)
@@ -532,219 +534,234 @@ def get_pydal_connection():
 
     # Create PyDAL DAL instance
     # Note: check_reserved disabled as we control table/column naming internally
+    # fake_migrate=True: Track migrations without executing DDL (tables already exist from SQLAlchemy)
     db = DAL(
         uri,
         folder=folder,
-        pool_size=int(os.getenv('DB_POOL_SIZE', '10')),
+        pool_size=int(os.getenv("DB_POOL_SIZE", "10")),
         migrate=True,
-        fake_migrate=False,
+        fake_migrate=True,
         check_reserved=[],  # Disable reserved keyword checks for internal tables
     )
 
     # Define all tables needed by API blueprints
 
     # Users table
-    db.define_table('users',
-        Field('id', 'string', length=64),
-        Field('email', 'string', length=255, unique=True),
-        Field('password_hash', 'string', length=255),
-        Field('name', 'string', length=255),
-        Field('role', 'string', length=32, default='viewer'),
-        Field('is_active', 'boolean', default=True),
-        Field('fs_uniquifier', 'string', length=64, unique=True),
-        Field('created_at', 'datetime'),
-        Field('updated_at', 'datetime'),
-        migrate=True
+    db.define_table(
+        "users",
+        Field("id", "string", length=64),
+        Field("email", "string", length=255, unique=True),
+        Field("password_hash", "string", length=255),
+        Field("name", "string", length=255),
+        Field("role", "string", length=32, default="viewer"),
+        Field("is_active", "boolean", default=True),
+        Field("fs_uniquifier", "string", length=64, unique=True),
+        Field("created_at", "datetime"),
+        Field("updated_at", "datetime"),
+        migrate=True,
     )
 
     # API Keys table
-    db.define_table('api_keys',
-        Field('id', 'string', length=64),
-        Field('user_id', 'string', length=64),
-        Field('name', 'string', length=128),
-        Field('key_hash', 'string', length=64),
-        Field('permissions', 'json'),
-        Field('expires_at', 'datetime'),
-        Field('last_used_at', 'datetime'),
-        Field('is_active', 'boolean', default=True),
-        Field('created_at', 'datetime'),
-        migrate=True
+    db.define_table(
+        "api_keys",
+        Field("id", "string", length=64),
+        Field("user_id", "string", length=64),
+        Field("name", "string", length=128),
+        Field("key_hash", "string", length=64),
+        Field("permissions", "json"),
+        Field("expires_at", "datetime"),
+        Field("last_used_at", "datetime"),
+        Field("is_active", "boolean", default=True),
+        Field("created_at", "datetime"),
+        migrate=True,
     )
 
     # Audit Log table (note: 'action' renamed to 'audit_action' to avoid reserved keyword)
-    db.define_table('audit_log',
-        Field('id', 'string', length=64),
-        Field('user_id', 'string', length=64),
-        Field('audit_action', 'string', length=128),
-        Field('resource_type', 'string', length=64),
-        Field('resource_id', 'string', length=64),
-        Field('details', 'json'),
-        Field('ip_address', 'string', length=45),
-        Field('user_agent', 'string', length=512),
-        Field('created_at', 'datetime'),
-        migrate=True
+    db.define_table(
+        "audit_log",
+        Field("id", "string", length=64),
+        Field("user_id", "string", length=64),
+        Field("audit_action", "string", length=128),
+        Field("resource_type", "string", length=64),
+        Field("resource_id", "string", length=64),
+        Field("details", "json"),
+        Field("ip_address", "string", length=45),
+        Field("user_agent", "string", length=512),
+        Field("created_at", "datetime"),
+        migrate=True,
     )
 
     # Sensor Agents table (note: 'version' renamed to 'agent_version' to avoid reserved keyword)
-    db.define_table('sensor_agents',
-        Field('id', 'string', length=64),
-        Field('agent_id', 'string', length=64, unique=True),
-        Field('name', 'string', length=128),
-        Field('hostname', 'string', length=255),
-        Field('ip_address', 'string', length=45),
-        Field('api_key_hash', 'string', length=64),
-        Field('agent_version', 'string', length=32),
-        Field('is_active', 'boolean', default=True),
-        Field('last_heartbeat', 'datetime'),
-        Field('created_at', 'datetime'),
-        Field('updated_at', 'datetime'),
-        migrate=True
+    db.define_table(
+        "sensor_agents",
+        Field("id", "string", length=64),
+        Field("agent_id", "string", length=64, unique=True),
+        Field("name", "string", length=128),
+        Field("hostname", "string", length=255),
+        Field("ip_address", "string", length=45),
+        Field("api_key_hash", "string", length=64),
+        Field("agent_version", "string", length=32),
+        Field("is_active", "boolean", default=True),
+        Field("last_heartbeat", "datetime"),
+        Field("created_at", "datetime"),
+        Field("updated_at", "datetime"),
+        migrate=True,
     )
 
     # Sensor Checks table
-    db.define_table('sensor_checks',
-        Field('id', 'string', length=64),
-        Field('name', 'string', length=128),
-        Field('check_type', 'string', length=16),
-        Field('target', 'string', length=255),
-        Field('port', 'integer'),
-        Field('interval_seconds', 'integer', default=60),
-        Field('timeout_seconds', 'integer', default=30),
-        Field('is_active', 'boolean', default=True),
-        Field('created_at', 'datetime'),
-        Field('updated_at', 'datetime'),
-        migrate=True
+    db.define_table(
+        "sensor_checks",
+        Field("id", "string", length=64),
+        Field("name", "string", length=128),
+        Field("check_type", "string", length=16),
+        Field("target", "string", length=255),
+        Field("port", "integer"),
+        Field("interval_seconds", "integer", default=60),
+        Field("timeout_seconds", "integer", default=30),
+        Field("is_active", "boolean", default=True),
+        Field("created_at", "datetime"),
+        Field("updated_at", "datetime"),
+        migrate=True,
     )
 
     # Sensor Results table
-    db.define_table('sensor_results',
-        Field('id', 'string', length=64),
-        Field('check_id', 'string', length=64),
-        Field('agent_id', 'string', length=64),
-        Field('status', 'string', length=16),
-        Field('response_time_ms', 'integer'),
-        Field('status_code', 'integer'),
-        Field('error_message', 'string', length=1000),
-        Field('ssl_valid', 'boolean'),
-        Field('ssl_expiry', 'datetime'),
-        Field('created_at', 'datetime'),
-        migrate=True
+    db.define_table(
+        "sensor_results",
+        Field("id", "string", length=64),
+        Field("check_id", "string", length=64),
+        Field("agent_id", "string", length=64),
+        Field("status", "string", length=16),
+        Field("response_time_ms", "integer"),
+        Field("status_code", "integer"),
+        Field("error_message", "string", length=1000),
+        Field("ssl_valid", "boolean"),
+        Field("ssl_expiry", "datetime"),
+        Field("created_at", "datetime"),
+        migrate=True,
     )
 
     # Fleet Hosts table
-    db.define_table('fleet_hosts',
-        Field('id', 'string', length=64),
-        Field('hostname', 'string', length=255),
-        Field('platform', 'string', length=64),
-        Field('os_version', 'string', length=64),
-        Field('agent_version', 'string', length=32),
-        Field('enrolled_at', 'datetime'),
-        Field('last_seen', 'datetime'),
-        Field('status', 'string', length=16, default='online'),
-        Field('labels', 'json'),
-        Field('created_at', 'datetime'),
-        Field('updated_at', 'datetime'),
-        migrate=True
+    db.define_table(
+        "fleet_hosts",
+        Field("id", "string", length=64),
+        Field("hostname", "string", length=255),
+        Field("platform", "string", length=64),
+        Field("os_version", "string", length=64),
+        Field("agent_version", "string", length=32),
+        Field("enrolled_at", "datetime"),
+        Field("last_seen", "datetime"),
+        Field("status", "string", length=16, default="online"),
+        Field("labels", "json"),
+        Field("created_at", "datetime"),
+        Field("updated_at", "datetime"),
+        migrate=True,
     )
 
     # Fleet Queries table
-    db.define_table('fleet_queries',
-        Field('id', 'string', length=64),
-        Field('name', 'string', length=128),
-        Field('query', 'text'),
-        Field('description', 'text'),
-        Field('schedule', 'string', length=64),
-        Field('is_active', 'boolean', default=True),
-        Field('created_by', 'string', length=64),
-        Field('created_at', 'datetime'),
-        Field('updated_at', 'datetime'),
-        migrate=True
+    db.define_table(
+        "fleet_queries",
+        Field("id", "string", length=64),
+        Field("name", "string", length=128),
+        Field("query", "text"),
+        Field("description", "text"),
+        Field("schedule", "string", length=64),
+        Field("is_active", "boolean", default=True),
+        Field("created_by", "string", length=64),
+        Field("created_at", "datetime"),
+        Field("updated_at", "datetime"),
+        migrate=True,
     )
 
     # Fleet Policies table
-    db.define_table('fleet_policies',
-        Field('id', 'string', length=64),
-        Field('name', 'string', length=128),
-        Field('description', 'text'),
-        Field('queries', 'json'),
-        Field('target_labels', 'json'),
-        Field('is_active', 'boolean', default=True),
-        Field('created_by', 'string', length=64),
-        Field('created_at', 'datetime'),
-        Field('updated_at', 'datetime'),
-        migrate=True
+    db.define_table(
+        "fleet_policies",
+        Field("id", "string", length=64),
+        Field("name", "string", length=128),
+        Field("description", "text"),
+        Field("queries", "json"),
+        Field("target_labels", "json"),
+        Field("is_active", "boolean", default=True),
+        Field("created_by", "string", length=64),
+        Field("created_at", "datetime"),
+        Field("updated_at", "datetime"),
+        migrate=True,
     )
 
     # AI Analyses table
-    db.define_table('ai_analyses',
-        Field('id', 'string', length=64),
-        Field('analysis_type', 'string', length=32),
-        Field('input_data', 'json'),
-        Field('result', 'json'),
-        Field('status', 'string', length=16, default='pending'),
-        Field('error_message', 'text'),
-        Field('created_by', 'string', length=64),
-        Field('created_at', 'datetime'),
-        Field('completed_at', 'datetime'),
-        migrate=True
+    db.define_table(
+        "ai_analyses",
+        Field("id", "string", length=64),
+        Field("analysis_type", "string", length=32),
+        Field("input_data", "json"),
+        Field("result", "json"),
+        Field("status", "string", length=16, default="pending"),
+        Field("error_message", "text"),
+        Field("created_by", "string", length=64),
+        Field("created_at", "datetime"),
+        Field("completed_at", "datetime"),
+        migrate=True,
     )
 
     # AI Insights table
-    db.define_table('ai_insights',
-        Field('id', 'string', length=64),
-        Field('analysis_id', 'string', length=64),
-        Field('insight_type', 'string', length=32),
-        Field('title', 'string', length=255),
-        Field('description', 'text'),
-        Field('priority', 'string', length=16, default='medium'),
-        Field('confidence', 'double'),
-        Field('metadata', 'json'),
-        Field('created_at', 'datetime'),
-        migrate=True
+    db.define_table(
+        "ai_insights",
+        Field("id", "string", length=64),
+        Field("analysis_id", "string", length=64),
+        Field("insight_type", "string", length=32),
+        Field("title", "string", length=255),
+        Field("description", "text"),
+        Field("priority", "string", length=16, default="medium"),
+        Field("confidence", "double"),
+        Field("metadata", "json"),
+        Field("created_at", "datetime"),
+        migrate=True,
     )
 
     # AI Anomalies table
-    db.define_table('ai_anomalies',
-        Field('id', 'string', length=64),
-        Field('analysis_id', 'string', length=64),
-        Field('anomaly_type', 'string', length=32),
-        Field('description', 'text'),
-        Field('severity', 'string', length=16, default='medium'),
-        Field('score', 'double'),
-        Field('source', 'string', length=128),
-        Field('metadata', 'json'),
-        Field('created_at', 'datetime'),
-        migrate=True
+    db.define_table(
+        "ai_anomalies",
+        Field("id", "string", length=64),
+        Field("analysis_id", "string", length=64),
+        Field("anomaly_type", "string", length=32),
+        Field("description", "text"),
+        Field("severity", "string", length=16, default="medium"),
+        Field("score", "double"),
+        Field("source", "string", length=128),
+        Field("metadata", "json"),
+        Field("created_at", "datetime"),
+        migrate=True,
     )
 
     # AI Recommendations table
-    db.define_table('ai_recommendations',
-        Field('id', 'string', length=64),
-        Field('analysis_id', 'string', length=64),
-        Field('title', 'string', length=255),
-        Field('description', 'text'),
-        Field('impact', 'string', length=16, default='medium'),
-        Field('actions', 'json'),
-        Field('metadata', 'json'),
-        Field('created_at', 'datetime'),
-        migrate=True
+    db.define_table(
+        "ai_recommendations",
+        Field("id", "string", length=64),
+        Field("analysis_id", "string", length=64),
+        Field("title", "string", length=255),
+        Field("description", "text"),
+        Field("impact", "string", length=16, default="medium"),
+        Field("actions", "json"),
+        Field("metadata", "json"),
+        Field("created_at", "datetime"),
+        migrate=True,
     )
 
     # AI Providers table (configured AI endpoints for chat/analysis)
     # Free tier: 1 Ollama endpoint with tinyllama model only
     # Licensed tier: Multiple endpoints, OpenAI, Claude, custom models
-    db.define_table('ai_providers',
-        Field('id', 'string', length=64),
-        Field('name', 'string', length=128),
-        Field('provider_type', 'string', length=32),  # ollama, openai, claude
-        Field('endpoint_url', 'string', length=512),
-        Field('api_key', 'string', length=256),  # Encrypted/hashed in production
-        Field('model', 'string', length=128, default='tinyllama'),
-        Field('is_default', 'boolean', default=False),
-        Field('is_active', 'boolean', default=True),
-        Field('created_at', 'datetime'),
-        Field('updated_at', 'datetime'),
-        migrate=True
+    db.define_table(
+        "ai_providers",
+        Field("id", "string", length=64),
+        Field("name", "string", length=128),
+        Field("provider_type", "string", length=32),  # ollama, openai, claude
+        Field("endpoint_url", "string", length=512),
+        Field("api_key", "string", length=256),  # Encrypted/hashed in production
+        Field("model", "string", length=128, default="tinyllama"),
+        Field("is_default", "boolean", default=False),
+        Field("is_active", "boolean", default=True),
+        Field("created_at", "datetime"),
+        Field("updated_at", "datetime"),
+        migrate=True,
     )
 
     logger.info("PyDAL tables defined successfully")
@@ -755,3 +772,123 @@ def get_pydal_connection():
 
 # Alias for compatibility with blueprint imports
 get_pydal_db = get_pydal_connection
+
+
+def seed_admin_user(db=None):
+    """
+    Seed database with default admin user if it doesn't exist.
+
+    ALWAYS creates admin@localhost (in all environments) if it doesn't exist.
+    This ensures there's always a way to log in to the system.
+
+    This function is idempotent - safe to call multiple times.
+    """
+    if db is None:
+        db = get_pydal_connection()
+
+    try:
+        from app.api.v1.auth import hash_password
+    except ImportError:
+        logger.error("Could not import hash_password from auth module")
+        return
+
+    admin_user = {
+        "email": "admin@localhost.local",
+        "name": "Administrator",
+        "role": "admin",
+        "password": "admin123",
+    }
+
+    try:
+        # Check if admin user already exists
+        existing = db(db.users.email == admin_user["email"]).select().first()
+        if existing:
+            logger.info(f"Admin user already exists: {admin_user['email']}")
+            return
+
+        # Create admin user
+        # Note: ID is auto-generated by database (Integer primary key)
+        hashed_password = hash_password(admin_user["password"])
+
+        db.users.insert(
+            email=admin_user["email"],
+            password_hash=hashed_password,
+            name=admin_user["name"],
+            role=admin_user["role"],
+            is_active=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+        db.commit()
+        logger.info(
+            f"Created default admin user: {admin_user['email']} (role: {admin_user['role']})"
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to create admin user {admin_user['email']}: {e}")
+
+
+def seed_mock_users(db=None):
+    """
+    Seed database with mock test users for development (alpha only).
+
+    Creates:
+    - maintainer@localhost (role: maintainer)
+    - viewer@localhost (role: viewer)
+
+    This function is idempotent - safe to call multiple times.
+    Should ONLY be called in development/alpha environments.
+    """
+    if db is None:
+        db = get_pydal_connection()
+
+    try:
+        from app.api.v1.auth import hash_password
+    except ImportError:
+        logger.error("Could not import hash_password from auth module")
+        return
+
+    mock_users = [
+        {
+            "email": "maintainer@localhost.local",
+            "name": "Maintainer User",
+            "role": "maintainer",
+            "password": "admin123",
+        },
+        {
+            "email": "viewer@localhost.local",
+            "name": "Viewer User",
+            "role": "viewer",
+            "password": "admin123",
+        },
+    ]
+
+    for user_data in mock_users:
+        try:
+            # Check if user already exists
+            existing = db(db.users.email == user_data["email"]).select().first()
+            if existing:
+                logger.info(f"Mock user already exists: {user_data['email']}")
+                continue
+
+            # Create mock user
+            # Note: ID is auto-generated by database (Integer primary key)
+            hashed_password = hash_password(user_data["password"])
+
+            db.users.insert(
+                email=user_data["email"],
+                password_hash=hashed_password,
+                name=user_data["name"],
+                role=user_data["role"],
+                is_active=True,
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow(),
+            )
+            db.commit()
+            logger.info(
+                f"Created mock user: {user_data['email']} (role: {user_data['role']})"
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to create mock user {user_data['email']}: {e}")
+            # Don't raise - continue with other users

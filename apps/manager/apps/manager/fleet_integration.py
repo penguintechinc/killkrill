@@ -3,22 +3,24 @@ Fleet Integration Module for KillKrill Manager
 Provides Fleet UI embedding, SSO integration, and Fleet API management
 """
 
-import os
-import jwt
-import requests
 import hashlib
+import os
 import secrets
 from datetime import datetime, timedelta
-from py4web import action, request, response, redirect, URL
-from py4web.utils.cors import CORS
+from typing import Any, Dict, Optional
+
+import jwt
+import requests
+from py4web import URL, action, redirect, request, response
 from py4web.utils.auth import Auth
+from py4web.utils.cors import CORS
 from pydal import Field
-from typing import Dict, Any, Optional
 
 # Fleet server configuration
-FLEET_SERVER_URL = os.environ.get('FLEET_SERVER_URL', 'http://fleet-server:8080')
-FLEET_API_TOKEN = os.environ.get('FLEET_API_TOKEN', '')
-JWT_SECRET = os.environ.get('FLEET_JWT_KEY', 'supersecretfleetjwtkey123456')
+FLEET_SERVER_URL = os.environ.get("FLEET_SERVER_URL", "http://fleet-server:8080")
+FLEET_API_TOKEN = os.environ.get("FLEET_API_TOKEN", "")
+JWT_SECRET = os.environ.get("FLEET_JWT_KEY", "supersecretfleetjwtkey123456")
+
 
 class FleetSSO:
     """Fleet Single Sign-On integration"""
@@ -31,58 +33,62 @@ class FleetSSO:
         """Setup Fleet SSO tables"""
         try:
             # Fleet users mapping table
-            self.db.define_table('fleet_users',
-                Field('killkrill_user_id', 'integer'),
-                Field('fleet_user_id', 'integer'),
-                Field('fleet_api_token', 'string'),
-                Field('created_at', 'datetime', default=datetime.utcnow),
-                Field('last_sync', 'datetime', default=datetime.utcnow),
-                Field('is_active', 'boolean', default=True),
-                migrate=True
+            self.db.define_table(
+                "fleet_users",
+                Field("killkrill_user_id", "integer"),
+                Field("fleet_user_id", "integer"),
+                Field("fleet_api_token", "string"),
+                Field("created_at", "datetime", default=datetime.utcnow),
+                Field("last_sync", "datetime", default=datetime.utcnow),
+                Field("is_active", "boolean", default=True),
+                migrate=True,
             )
 
             # Fleet session tokens
-            self.db.define_table('fleet_sessions',
-                Field('killkrill_user_id', 'integer'),
-                Field('session_token', 'string'),
-                Field('fleet_jwt', 'text'),
-                Field('expires_at', 'datetime'),
-                Field('created_at', 'datetime', default=datetime.utcnow),
-                migrate=True
+            self.db.define_table(
+                "fleet_sessions",
+                Field("killkrill_user_id", "integer"),
+                Field("session_token", "string"),
+                Field("fleet_jwt", "text"),
+                Field("expires_at", "datetime"),
+                Field("created_at", "datetime", default=datetime.utcnow),
+                migrate=True,
             )
 
             self.db.commit()
         except Exception as e:
             print(f"Fleet SSO table setup: {e}")
 
-    def create_fleet_user(self, killkrill_user: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def create_fleet_user(
+        self, killkrill_user: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
         """Create a Fleet user for KillKrill user"""
         try:
             fleet_user_data = {
-                'name': killkrill_user.get('first_name', 'User'),
-                'email': killkrill_user['email'],
-                'password': secrets.token_urlsafe(32),  # Random password
-                'global_role': 'observer',  # Default role
-                'admin_forced_password_reset': False
+                "name": killkrill_user.get("first_name", "User"),
+                "email": killkrill_user["email"],
+                "password": secrets.token_urlsafe(32),  # Random password
+                "global_role": "observer",  # Default role
+                "admin_forced_password_reset": False,
             }
 
-            headers = {'Authorization': f'Bearer {FLEET_API_TOKEN}'}
+            headers = {"Authorization": f"Bearer {FLEET_API_TOKEN}"}
             response = requests.post(
                 f"{FLEET_SERVER_URL}/api/v1/fleet/users",
                 json=fleet_user_data,
                 headers=headers,
-                timeout=30
+                timeout=30,
             )
 
             if response.status_code == 201:
-                fleet_user = response.json()['user']
+                fleet_user = response.json()["user"]
 
                 # Store mapping
                 self.db.fleet_users.insert(
-                    killkrill_user_id=killkrill_user['id'],
-                    fleet_user_id=fleet_user['id'],
-                    fleet_api_token='',  # Will be updated on login
-                    is_active=True
+                    killkrill_user_id=killkrill_user["id"],
+                    fleet_user_id=fleet_user["id"],
+                    fleet_api_token="",  # Will be updated on login
+                    is_active=True,
                 )
                 self.db.commit()
 
@@ -99,25 +105,27 @@ class FleetSSO:
         """Generate JWT for Fleet authentication"""
         try:
             # Get or create Fleet user
-            fleet_user_row = self.db(
-                self.db.fleet_users.killkrill_user_id == killkrill_user_id
-            ).select().first()
+            fleet_user_row = (
+                self.db(self.db.fleet_users.killkrill_user_id == killkrill_user_id)
+                .select()
+                .first()
+            )
 
             if not fleet_user_row:
                 return None
 
             # Create JWT payload
             payload = {
-                'user_id': fleet_user_row.fleet_user_id,
-                'email': '',  # Will be populated by Fleet
-                'iat': datetime.utcnow(),
-                'exp': datetime.utcnow() + timedelta(hours=8),
-                'iss': 'killkrill-manager',
-                'aud': 'fleet-server'
+                "user_id": fleet_user_row.fleet_user_id,
+                "email": "",  # Will be populated by Fleet
+                "iat": datetime.utcnow(),
+                "exp": datetime.utcnow() + timedelta(hours=8),
+                "iss": "killkrill-manager",
+                "aud": "fleet-server",
             }
 
             # Generate JWT
-            fleet_jwt = jwt.encode(payload, JWT_SECRET, algorithm='HS256')
+            fleet_jwt = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
 
             # Store session
             session_token = secrets.token_urlsafe(32)
@@ -125,7 +133,7 @@ class FleetSSO:
                 killkrill_user_id=killkrill_user_id,
                 session_token=session_token,
                 fleet_jwt=fleet_jwt,
-                expires_at=payload['exp']
+                expires_at=payload["exp"],
             )
             self.db.commit()
 
@@ -135,8 +143,10 @@ class FleetSSO:
             print(f"Error generating Fleet JWT: {e}")
             return None
 
+
 # Initialize Fleet SSO (will be done in main app)
 fleet_sso = None
+
 
 def get_fleet_sso(db):
     """Get Fleet SSO instance"""
@@ -145,8 +155,9 @@ def get_fleet_sso(db):
         fleet_sso = FleetSSO(db)
     return fleet_sso
 
-@action('fleet')
-@action('fleet/<path:path>')
+
+@action("fleet")
+@action("fleet/<path:path>")
 def fleet_dashboard(path=None):
     """Embed Fleet dashboard with SSO"""
     # TODO: Implement proper authentication check
@@ -211,7 +222,8 @@ def fleet_dashboard(path=None):
     </html>
     """
 
-@action('fleet/api/<path:path>', method=['GET', 'POST', 'PUT', 'DELETE'])
+
+@action("fleet/api/<path:path>", method=["GET", "POST", "PUT", "DELETE"])
 @action.uses(CORS())
 def fleet_api_proxy(path=None):
     """Proxy Fleet API requests with authentication"""
@@ -222,37 +234,44 @@ def fleet_api_proxy(path=None):
         url = f"{FLEET_SERVER_URL}/api/v1/fleet/{path}"
 
         headers = {
-            'Authorization': f'Bearer {FLEET_API_TOKEN}',
-            'Content-Type': 'application/json'
+            "Authorization": f"Bearer {FLEET_API_TOKEN}",
+            "Content-Type": "application/json",
         }
 
         # Forward request to Fleet API
-        if method == 'GET':
-            fleet_response = requests.get(url, headers=headers, params=request.query, timeout=30)
-        elif method == 'POST':
-            fleet_response = requests.post(url, headers=headers, json=request.json, timeout=30)
-        elif method == 'PUT':
-            fleet_response = requests.put(url, headers=headers, json=request.json, timeout=30)
-        elif method == 'DELETE':
+        if method == "GET":
+            fleet_response = requests.get(
+                url, headers=headers, params=request.query, timeout=30
+            )
+        elif method == "POST":
+            fleet_response = requests.post(
+                url, headers=headers, json=request.json, timeout=30
+            )
+        elif method == "PUT":
+            fleet_response = requests.put(
+                url, headers=headers, json=request.json, timeout=30
+            )
+        elif method == "DELETE":
             fleet_response = requests.delete(url, headers=headers, timeout=30)
         else:
             response.status = 405
-            return {'error': 'Method not allowed'}
+            return {"error": "Method not allowed"}
 
         # Return Fleet API response
         response.status = fleet_response.status_code
-        response.headers['Content-Type'] = 'application/json'
+        response.headers["Content-Type"] = "application/json"
 
         try:
             return fleet_response.json()
         except:
-            return {'data': fleet_response.text}
+            return {"data": fleet_response.text}
 
     except Exception as e:
         response.status = 500
-        return {'error': f'Fleet API proxy error: {str(e)}'}
+        return {"error": f"Fleet API proxy error: {str(e)}"}
 
-@action('fleet/hosts')
+
+@action("fleet/hosts")
 def fleet_hosts():
     """Fleet hosts management page"""
     return """

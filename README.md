@@ -20,32 +20,38 @@ High-Performance • Zero Duplication • Enterprise Ready
 **Enterprise-Grade Centralized Logging and Metrics Collection**
 
 KillKrill is a comprehensive centralized platform for ingesting logs and metrics from all PenguinTech applications. It provides high-performance HTTP3/QUIC and UDP Syslog receivers with Redis Streams queuing, ensuring zero duplication while delivering to ELK stack for logs and Prometheus for metrics.
+
 ## ✨ Key Features
 
 ### 🏭 Centralized Collection
+
 - **Single Platform**: Unified ingestion for all PenguinTech application logs and metrics
 - **Zero Duplication**: Redis Streams consumer groups guarantee single processing
 - **High Throughput**: Designed for enterprise-scale log and metrics volume
 
 ### 🔒 Security & Authentication
+
 - **Multi-Protocol Security**: API key, JWT, mTLS authentication
 - **IP/CIDR Filtering**: Support for single IPs and subnet notation (192.168.1.0/24)
 - **TLS 1.2+ Enforcement**: Secure transport with HTTP3/QUIC support
 - **XDP Packet Validation**: High-performance packet filtering at kernel level
 
 ### 🚀 Performance Optimized
+
 - **XDP Integration**: Kernel-level packet processing for minimal latency
 - **Redis Streams**: High-performance queuing with guaranteed delivery
 - **HTTP3/QUIC**: Modern transport protocols for optimal performance
 - **Zero-Copy Processing**: Optimized data paths for maximum throughput
 
 ### 🏢 Enterprise Integration
+
 - **PenguinTech Licensing**: Integrated with `https://license.penguintech.io`
 - **ELK Stack**: Pre-configured Elasticsearch, Logstash, and Kibana
 - **Prometheus Stack**: Metrics collection with Grafana dashboards
 - **Real-time Monitoring**: Comprehensive metrics and alerting
 
 ### 🔄 Reliable Processing
+
 - **Consumer Groups**: Guaranteed single processing per destination
 - **Message ACK**: Required acknowledgment prevents data loss
 - **Failure Recovery**: Automatic handling of failed workers
@@ -58,31 +64,48 @@ KillKrill is a comprehensive centralized platform for ingesting logs and metrics
 git clone https://github.com/penguintechinc/killkrill.git
 cd killkrill
 make setup                    # Install dependencies and setup environment
-make dev                      # Start development environment
+make dev                      # Start development environment with Quart services
+
+# Testing
+make test                     # Run all tests (unit, integration, e2e)
+make test-unit               # Run unit tests only
+make test-integration        # Run integration tests with Docker
+make test-e2e                # Run end-to-end workflow tests
 ```
 
 ### Access Services
+
 - **Manager UI**: http://localhost:8080 (Source management and configuration)
 - **Grafana**: http://localhost:3000 (Metrics dashboards and monitoring)
 - **Kibana**: http://localhost:5601 (Log search and analysis)
 - **Prometheus**: http://localhost:9090 (Metrics collection)
 
+### Default Admin Login
+
+**Email**: `admin@localhost.local`
+**Password**: `admin123`
+
+The admin user is automatically seeded in all environments. **Change the default password immediately after first login** using the `/api/v1/auth/change-password` endpoint or via the UI settings.
+
 ## 🏗️ Architecture
 
 ### Data Flow
+
 ```
 Logs: Applications → killkrill-receiver → Redis Streams → killkrill-processor → Elasticsearch API
 Metrics: Applications → killkrill-metrics → Redis Streams → killkrill-processor → Prometheus API
 ```
 
 ### Core Components
-- **killkrill-receiver**: Log ingestion with HTTP3/QUIC + UDP Syslog, XDP validation
-- **killkrill-metrics**: Centralized metrics collection API (HTTP3/QUIC)
+
+- **killkrill-receiver**: Log ingestion with async Quart API + UDP Syslog support
+- **killkrill-metrics**: Centralized metrics collection API (Quart + Hypercorn)
 - **killkrill-processor**: Redis Streams consumer, outputs to Elasticsearch and Prometheus APIs
-- **killkrill-manager**: py4web WebUI for management and configuration
+- **killkrill-manager**: Quart WebUI for management and configuration
 - **Infrastructure**: ELK Stack + Prometheus + Redis Streams + PostgreSQL + ElastAlert
 
 ### Processing Guarantee
+
 - Redis Streams consumer groups ensure zero duplication
 - Message acknowledgment prevents data loss
 - Failed worker recovery maintains processing continuity
@@ -100,12 +123,14 @@ Metrics: Applications → killkrill-metrics → Redis Streams → killkrill-proc
 We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ### Maintainers
+
 - **Primary**: creatorsemailhere@penguintech.group
 - **General**: info@penguintech.group
 - **Company**: [www.penguintech.io](https://www.penguintech.io)
 
 ### Community Contributors
-- *Your name could be here! Submit a PR to get started.*
+
+- _Your name could be here! Submit a PR to get started._
 
 ## 📞 Support & Resources
 
@@ -119,6 +144,7 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 This project is licensed under the Limited AGPL3 with preamble for fair use - see [LICENSE.md](docs/LICENSE.md) for details.
 
 **License Highlights:**
+
 - **Personal & Internal Use**: Free under AGPL-3.0
 - **Commercial Use**: Requires commercial license
 - **SaaS Deployment**: Requires commercial license if providing as a service

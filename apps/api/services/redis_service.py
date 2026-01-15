@@ -3,19 +3,19 @@ KillKrill API - Redis Service
 Async Redis client management
 """
 
-from typing import Optional
 from contextvars import ContextVar
+from typing import Optional
 
 import redis.asyncio as redis
-from quart import Quart
 import structlog
+from quart import Quart
 
 from config import get_config
 
 logger = structlog.get_logger(__name__)
 
 # Context variable for Redis client
-_redis_context: ContextVar[Optional[redis.Redis]] = ContextVar('redis', default=None)
+_redis_context: ContextVar[Optional[redis.Redis]] = ContextVar("redis", default=None)
 
 # Global Redis client
 _redis_client: Optional[redis.Redis] = None
@@ -30,7 +30,7 @@ async def init_redis(app: Quart) -> None:
     try:
         _redis_client = redis.from_url(
             config.REDIS_URL,
-            encoding='utf-8',
+            encoding="utf-8",
             decode_responses=True,
             max_connections=config.REDIS_MAX_CONNECTIONS,
         )
@@ -39,7 +39,7 @@ async def init_redis(app: Quart) -> None:
         await _redis_client.ping()
 
         app.redis = _redis_client
-        logger.info("redis_initialized", url=config.REDIS_URL.split('@')[-1])
+        logger.info("redis_initialized", url=config.REDIS_URL.split("@")[-1])
 
     except Exception as e:
         logger.error("redis_init_failed", error=str(e))
@@ -66,7 +66,7 @@ class RedisCache:
     Redis caching utilities
     """
 
-    def __init__(self, prefix: str = 'killkrill'):
+    def __init__(self, prefix: str = "killkrill"):
         self.prefix = prefix
 
     def _key(self, key: str) -> str:
@@ -116,6 +116,7 @@ class RedisCache:
     async def get_json(self, key: str) -> Optional[dict]:
         """Get cached JSON value"""
         import json
+
         value = await self.get(key)
         if value:
             try:
@@ -127,6 +128,7 @@ class RedisCache:
     async def set_json(self, key: str, value: dict, ttl: int = 300) -> bool:
         """Set cached JSON value"""
         import json
+
         return await self.set(key, json.dumps(value), ttl)
 
 

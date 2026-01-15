@@ -22,11 +22,12 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy Python packages from builder
-COPY --from=builder /root/.local /root/.local
-
-# Create app user and directory
+# Create app user and directory first
 RUN useradd -m -u 1000 killkrill
+
+# Copy Python packages from builder to killkrill's home
+COPY --from=builder /root/.local /home/killkrill/.local
+
 WORKDIR /app
 
 # Copy application code
@@ -34,13 +35,13 @@ COPY apps/log-worker/ /app/
 COPY shared/ /app/shared/
 
 # Set ownership
-RUN chown -R killkrill:killkrill /app
+RUN chown -R killkrill:killkrill /app /home/killkrill/.local
 
 # Switch to non-root user
 USER killkrill
 
 # Add Python packages to PATH
-ENV PATH=/root/.local/bin:$PATH
+ENV PATH=/home/killkrill/.local/bin:$PATH
 ENV PYTHONPATH=/app
 
 # Health check (check if main process is running)

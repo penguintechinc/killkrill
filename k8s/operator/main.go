@@ -16,8 +16,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	killkrillv1 "github.com/penguintechinc/killkrill/api/v1"
-	"github.com/penguintechinc/killkrill/controllers"
+	killkrillv1 "github.com/penguintechinc/killkrill/k8s/operator/api/v1"
+	"github.com/penguintechinc/killkrill/k8s/operator/controllers"
 	//+kubebuilder:scaffold:imports
 )
 

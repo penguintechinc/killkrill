@@ -4,26 +4,33 @@ KillKrill Metrics Worker
 Processes metrics from Redis Streams and forwards to Prometheus, HDFS, SPARC, or GCP Bigtable
 """
 
-import os
-import sys
 import json
-import time
 import logging
-import structlog
+import os
 import signal
+import sys
 import threading
+import time
 from datetime import datetime
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
+
+import pydantic
 import redis
 import requests
-import pydantic
-from prometheus_client import CollectorRegistry, Counter, Histogram, Gauge, push_to_gateway
+import structlog
+from prometheus_client import (
+    CollectorRegistry,
+    Counter,
+    Gauge,
+    Histogram,
+    push_to_gateway,
+)
 
 # Add project root to path
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../'))
+sys.path.append(os.path.join(os.path.dirname(__file__), "../../"))
 
-from shared.licensing.client import PenguinTechLicenseClient
 from shared.config.settings import get_config
+from shared.licensing.client import PenguinTechLicenseClient
 
 # Configure structured logging
 structlog.configure(
@@ -36,7 +43,7 @@ structlog.configure(
         structlog.processors.StackInfoRenderer(),
         structlog.processors.format_exc_info,
         structlog.processors.UnicodeDecoder(),
-        structlog.processors.JSONRenderer()
+        structlog.processors.JSONRenderer(),
     ],
     context_class=dict,
     logger_factory=structlog.stdlib.LoggerFactory(),
@@ -63,33 +70,34 @@ license_client = PenguinTechLicenseClient(LICENSE_KEY, PRODUCT_NAME)
 # Processing metrics
 processing_registry = CollectorRegistry()
 metrics_processed_counter = Counter(
-    'killkrill_metrics_processed_total',
-    'Total metrics processed',
-    ['source', 'destination', 'metric_type'],
-    registry=processing_registry
+    "killkrill_metrics_processed_total",
+    "Total metrics processed",
+    ["source", "destination", "metric_type"],
+    registry=processing_registry,
 )
 processing_errors_counter = Counter(
-    'killkrill_metrics_processing_errors_total',
-    'Total metrics processing errors',
-    ['source', 'destination', 'error_type'],
-    registry=processing_registry
+    "killkrill_metrics_processing_errors_total",
+    "Total metrics processing errors",
+    ["source", "destination", "error_type"],
+    registry=processing_registry,
 )
 processing_time = Histogram(
-    'killkrill_metrics_processing_duration_seconds',
-    'Time spent processing metrics',
-    ['source', 'destination'],
-    registry=processing_registry
+    "killkrill_metrics_processing_duration_seconds",
+    "Time spent processing metrics",
+    ["source", "destination"],
+    registry=processing_registry,
 )
 queue_size_gauge = Gauge(
-    'killkrill_metrics_queue_size',
-    'Current metrics queue size',
-    ['stream'],
-    registry=processing_registry
+    "killkrill_metrics_queue_size",
+    "Current metrics queue size",
+    ["stream"],
+    registry=processing_registry,
 )
 
 
 class MetricEntry(pydantic.BaseModel):
     """Prometheus-compatible metric entry"""
+
     name: str
     type: str  # counter, gauge, histogram, summary
     value: float
@@ -114,19 +122,23 @@ class PrometheusDestination:
             metric = MetricEntry.parse_obj(metric_data)
 
             with self.buffer_lock:
-                self.metrics_buffer.append({
-                    'name': metric.name,
-                    'type': metric.type,
-                    'value': metric.value,
-                    'labels': metric.labels or {},
-                    'timestamp': metric.timestamp or datetime.utcnow().isoformat(),
-                    'help': metric.help or f"Metric {metric.name}"
-                })
+                self.metrics_buffer.append(
+                    {
+                        "name": metric.name,
+                        "type": metric.type,
+                        "value": metric.value,
+                        "labels": metric.labels or {},
+                        "timestamp": metric.timestamp or datetime.utcnow().isoformat(),
+                        "help": metric.help or f"Metric {metric.name}",
+                    }
+                )
 
                 # Push if buffer is full or interval elapsed
                 current_time = time.time()
-                if (len(self.metrics_buffer) >= 100 or
-                    current_time - self.last_push >= self.push_interval):
+                if (
+                    len(self.metrics_buffer) >= 100
+                    or current_time - self.last_push >= self.push_interval
+                ):
                     self._push_metrics()
 
             return True
@@ -144,7 +156,7 @@ class PrometheusDestination:
             # Group metrics by name and type
             metric_groups = {}
             for metric in self.metrics_buffer:
-                key = (metric['name'], metric['type'])
+                key = (metric["name"], metric["type"])
                 if key not in metric_groups:
                     metric_groups[key] = []
                 metric_groups[key].append(metric)
@@ -159,8 +171,10 @@ class PrometheusDestination:
 
                     for metric in metrics:
                         labels_str = ""
-                        if metric['labels']:
-                            label_pairs = [f'{k}="{v}"' for k, v in metric['labels'].items()]
+                        if metric["labels"]:
+                            label_pairs = [
+                                f'{k}="{v}"' for k, v in metric["labels"].items()
+                            ]
                             labels_str = "{" + ",".join(label_pairs) + "}"
 
                         prometheus_data.append(f"{name}{labels_str} {metric['value']}")
@@ -170,18 +184,22 @@ class PrometheusDestination:
             response = requests.post(
                 f"{self.gateway_url}/metrics/job/killkrill-metrics",
                 data=payload,
-                headers={'Content-Type': 'text/plain'},
-                timeout=30
+                headers={"Content-Type": "text/plain"},
+                timeout=30,
             )
 
             if response.status_code == 200:
-                logger.info("Pushed metrics to Prometheus", count=len(self.metrics_buffer))
+                logger.info(
+                    "Pushed metrics to Prometheus", count=len(self.metrics_buffer)
+                )
                 self.metrics_buffer.clear()
                 self.last_push = time.time()
             else:
-                logger.error("Failed to push metrics to Prometheus",
-                           status_code=response.status_code,
-                           response=response.text)
+                logger.error(
+                    "Failed to push metrics to Prometheus",
+                    status_code=response.status_code,
+                    response=response.text,
+                )
 
         except Exception as e:
             logger.error("Error pushing metrics to Prometheus", error=str(e))
@@ -224,8 +242,11 @@ class GCPBigtableDestination:
         self.project_id = project_id
         self.instance_id = instance_id
         self.enabled = False
-        logger.info("GCP Bigtable destination initialized (placeholder)",
-                   project=project_id, instance=instance_id)
+        logger.info(
+            "GCP Bigtable destination initialized (placeholder)",
+            project=project_id,
+            instance=instance_id,
+        )
 
     def add_metric(self, metric_data: Dict[str, Any]) -> bool:
         """Add metric to Bigtable (placeholder implementation)"""
@@ -246,23 +267,21 @@ class MetricsWorker:
 
         # Initialize destinations
         self.destinations = {
-            'prometheus': PrometheusDestination(
-                PROMETHEUS_GATEWAY,
-                PROMETHEUS_PUSH_INTERVAL
+            "prometheus": PrometheusDestination(
+                PROMETHEUS_GATEWAY, PROMETHEUS_PUSH_INTERVAL
             )
         }
 
         # Add additional destinations based on configuration
-        if hasattr(config, 'hdfs_url') and config.hdfs_url:
-            self.destinations['hdfs'] = HDFSDestination(config.hdfs_url)
+        if hasattr(config, "hdfs_url") and config.hdfs_url:
+            self.destinations["hdfs"] = HDFSDestination(config.hdfs_url)
 
-        if hasattr(config, 'spark_url') and config.spark_url:
-            self.destinations['spark'] = SPARCDestination(config.spark_url)
+        if hasattr(config, "spark_url") and config.spark_url:
+            self.destinations["spark"] = SPARCDestination(config.spark_url)
 
-        if hasattr(config, 'gcp_project_id') and config.gcp_project_id:
-            self.destinations['bigtable'] = GCPBigtableDestination(
-                config.gcp_project_id,
-                config.gcp_instance_id
+        if hasattr(config, "gcp_project_id") and config.gcp_project_id:
+            self.destinations["bigtable"] = GCPBigtableDestination(
+                config.gcp_project_id, config.gcp_instance_id
             )
 
         self._create_consumer_group()
@@ -271,10 +290,7 @@ class MetricsWorker:
         """Create Redis Streams consumer group"""
         try:
             redis_client.xgroup_create(
-                self.stream_name,
-                self.consumer_group,
-                id='0',
-                mkstream=True
+                self.stream_name, self.consumer_group, id="0", mkstream=True
             )
             logger.info("Created consumer group", group=self.consumer_group)
         except redis.exceptions.ResponseError as e:
@@ -292,7 +308,9 @@ class MetricsWorker:
             try:
                 self.consume_messages()
             except Exception as e:
-                logger.error("Error in metrics worker", worker_id=self.worker_id, error=str(e))
+                logger.error(
+                    "Error in metrics worker", worker_id=self.worker_id, error=str(e)
+                )
                 time.sleep(5)  # Brief pause before retrying
 
     def stop(self):
@@ -309,13 +327,15 @@ class MetricsWorker:
                 self.consumer_name,
                 {self.stream_name: ">"},
                 count=BATCH_SIZE,
-                block=1000  # 1 second timeout
+                block=1000,  # 1 second timeout
             )
 
             if not messages:
                 # Update queue size metric
                 stream_info = redis_client.xinfo_stream(self.stream_name)
-                queue_size_gauge.labels(stream=self.stream_name).set(stream_info.get('length', 0))
+                queue_size_gauge.labels(stream=self.stream_name).set(
+                    stream_info.get("length", 0)
+                )
                 return
 
             # Process messages
@@ -337,8 +357,7 @@ class MetricsWorker:
         for message_id, fields in messages:
             try:
                 with processing_time.labels(
-                    source=fields.get(b'source', b'unknown').decode(),
-                    destination='all'
+                    source=fields.get(b"source", b"unknown").decode(), destination="all"
                 ).time():
 
                     # Decode message fields
@@ -354,9 +373,11 @@ class MetricsWorker:
                     message_ids.append(message_id)
 
             except Exception as e:
-                logger.error("Error processing metric message",
-                           message_id=message_id.decode(),
-                           error=str(e))
+                logger.error(
+                    "Error processing metric message",
+                    message_id=message_id.decode(),
+                    error=str(e),
+                )
                 # Still acknowledge to prevent infinite retries
                 message_ids.append(message_id)
 
@@ -364,16 +385,18 @@ class MetricsWorker:
         if message_ids:
             try:
                 redis_client.xack(self.stream_name, self.consumer_group, *message_ids)
-                logger.debug("Acknowledged messages",
-                           count=len(message_ids),
-                           processed=processed_count)
+                logger.debug(
+                    "Acknowledged messages",
+                    count=len(message_ids),
+                    processed=processed_count,
+                )
             except Exception as e:
                 logger.error("Error acknowledging messages", error=str(e))
 
     def process_metric(self, metric_data: Dict[str, Any]) -> bool:
         """Process a single metric and send to destinations"""
         try:
-            source = metric_data.get('source', 'unknown')
+            source = metric_data.get("source", "unknown")
 
             # Send to all configured destinations
             success_count = 0
@@ -384,22 +407,24 @@ class MetricsWorker:
                         metrics_processed_counter.labels(
                             source=source,
                             destination=dest_name,
-                            metric_type=metric_data.get('type', 'unknown')
+                            metric_type=metric_data.get("type", "unknown"),
                         ).inc()
                     else:
                         processing_errors_counter.labels(
                             source=source,
                             destination=dest_name,
-                            error_type='destination_error'
+                            error_type="destination_error",
                         ).inc()
                 except Exception as e:
-                    logger.error("Error sending to destination",
-                               destination=dest_name,
-                               error=str(e))
+                    logger.error(
+                        "Error sending to destination",
+                        destination=dest_name,
+                        error=str(e),
+                    )
                     processing_errors_counter.labels(
                         source=source,
                         destination=dest_name,
-                        error_type='destination_exception'
+                        error_type="destination_exception",
                     ).inc()
 
             return success_count > 0
@@ -407,9 +432,9 @@ class MetricsWorker:
         except Exception as e:
             logger.error("Error processing metric", error=str(e))
             processing_errors_counter.labels(
-                source=metric_data.get('source', 'unknown'),
-                destination='all',
-                error_type='processing_error'
+                source=metric_data.get("source", "unknown"),
+                destination="all",
+                error_type="processing_error",
             ).inc()
             return False
 
@@ -430,9 +455,7 @@ class MetricsProcessor:
         for i in range(self.num_workers):
             worker = MetricsWorker(i)
             thread = threading.Thread(
-                target=worker.start,
-                name=f"metrics-worker-{i}",
-                daemon=True
+                target=worker.start, name=f"metrics-worker-{i}", daemon=True
             )
             thread.start()
             self.workers.append((worker, thread))
@@ -468,13 +491,15 @@ def main():
     """Main entry point"""
     # Validate license
     license_status = license_client.validate()
-    if not license_status.get('valid'):
+    if not license_status.get("valid"):
         logger.error("Invalid license", status=license_status)
         sys.exit(1)
 
-    logger.info("Starting KillKrill Metrics Worker",
-                workers=PROCESSOR_WORKERS,
-                license_tier=license_status.get('tier'))
+    logger.info(
+        "Starting KillKrill Metrics Worker",
+        workers=PROCESSOR_WORKERS,
+        license_tier=license_status.get("tier"),
+    )
 
     # Start processor
     processor = MetricsProcessor()
@@ -486,5 +511,5 @@ def main():
         processor.stop()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

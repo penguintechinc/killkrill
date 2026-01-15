@@ -1,10 +1,13 @@
 # KillKrill Log Receiver Requirements
-# Minimal version for testing core functionality
+# Quart-based async web framework
 
 # Core web framework
-py4web>=1.20230501.1
+quart>=0.19.0
+quart-cors>=0.7.0
+hypercorn>=0.16.0
 
 # Database
+pydal>=20231114.1
 psycopg2-binary>=2.9.5
 
 # Redis
@@ -14,7 +17,7 @@ redis>=4.5.0
 prometheus-client>=0.16.0
 
 # HTTP/HTTPS clients
-requests>=2.28.0
+requests>=2.32.3
 httpx>=0.24.0
 
 # Network utilities
@@ -28,3 +31,7 @@ python-decouple>=3.8
 
 # Structured logging
 structlog>=22.3.0
+
+# gRPC support (for ReceiverClient)
+grpcio>=1.51.0
+protobuf>=4.21.0

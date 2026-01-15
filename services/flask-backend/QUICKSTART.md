@@ -3,12 +3,14 @@
 ## 5-Minute Setup
 
 ### 1. Install Dependencies
+
 ```bash
 cd /home/penguin/code/killkrill/services/flask-backend
 pip install -r requirements.txt
 ```
 
 ### 2. Set Environment Variables
+
 ```bash
 export FLASK_ENV=development
 export DATABASE_URL=postgresql://user:pass@localhost:5432/killkrill
@@ -17,6 +19,7 @@ export FLASK_PORT=5000
 ```
 
 ### 3. Run Development Server
+
 ```bash
 python main.py --debug
 ```
@@ -26,32 +29,55 @@ Server will start on `http://localhost:5000`
 ## Testing the API
 
 ### Health Check
+
 ```bash
 curl http://localhost:5000/healthz
 ```
 
 ### Get Metrics
+
 ```bash
 curl http://localhost:5000/metrics
 ```
 
 ### Login (Get JWT Token)
+
+**Default credentials (automatically seeded in ALL environments):**
+- Email: `admin@localhost.local`
+- Password: `admin123`
+
+**Additional test users (only in development/alpha):**
+- `maintainer@localhost.local` / `admin123`
+- `viewer@localhost.local` / `admin123`
+
 ```bash
 curl -X POST http://localhost:5000/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"password"}'
+  -d '{"email":"admin@localhost.local","password":"admin123"}'
 ```
 
 Response:
+
 ```json
 {
-  "access_token": "eyJ0eXAiOiJKV1QiLCJhbGc...",
-  "token_type": "Bearer",
-  "expires_in": 86400
+  "success": true,
+  "data": {
+    "access_token": "eyJ0eXAiOiJKV1QiLCJhbGc...",
+    "refresh_token": "eyJ0eXAiOiJKV1QiLCJhbGc...",
+    "token_type": "Bearer",
+    "expires_in": 3600,
+    "user": {
+      "id": "uuid",
+      "email": "admin@localhost.local",
+      "name": "Administrator",
+      "role": "admin"
+    }
+  }
 }
 ```
 
 ### Use Token to Call Protected Endpoint
+
 ```bash
 curl -X GET http://localhost:5000/api/v1/status \
   -H "Authorization: Bearer <TOKEN_FROM_ABOVE>"
@@ -80,17 +106,20 @@ flask-backend/
 ## Key Features
 
 ### Authentication
+
 - JWT tokens with automatic expiration
 - API keys for programmatic access
 - Role-based access control (admin, maintainer, viewer)
 
 ### Monitoring
+
 - Health check endpoint: `/healthz`
 - Prometheus metrics: `/metrics`
 - Request tracing with correlation IDs
 - Structured JSON logging
 
 ### Database Support
+
 - PostgreSQL (default)
 - MySQL/MariaDB
 - SQLite (development)
@@ -98,6 +127,7 @@ flask-backend/
 ## Common Commands
 
 ### Development
+
 ```bash
 # Run with debug
 python main.py --debug
@@ -110,6 +140,7 @@ python main.py --workers 8
 ```
 
 ### Production
+
 ```bash
 # HTTP only
 python main.py --env=production --no-grpc
@@ -122,6 +153,7 @@ python main.py --env=production --grpc-only
 ```
 
 ### Testing
+
 ```bash
 # Run tests
 pytest tests/
@@ -135,22 +167,23 @@ pytest tests/test_api.py::test_login
 
 ## Environment Variables Reference
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| FLASK_ENV | development | Environment: development, testing, production |
-| FLASK_HOST | 0.0.0.0 | HTTP server host |
-| FLASK_PORT | 5000 | HTTP server port |
-| GRPC_PORT | 50051 | gRPC server port |
-| DATABASE_URL | - | Database connection string |
-| JWT_SECRET | - | JWT signing secret |
-| JWT_EXPIRY_HOURS | 24 | JWT token expiration |
-| WORKERS | 4 | Number of Gunicorn workers (0 = auto) |
-| LOG_LEVEL | INFO | Logging level |
-| CORS_ORIGINS | * | Comma-separated allowed origins |
+| Variable         | Default     | Description                                   |
+| ---------------- | ----------- | --------------------------------------------- |
+| FLASK_ENV        | development | Environment: development, testing, production |
+| FLASK_HOST       | 0.0.0.0     | HTTP server host                              |
+| FLASK_PORT       | 5000        | HTTP server port                              |
+| GRPC_PORT        | 50051       | gRPC server port                              |
+| DATABASE_URL     | -           | Database connection string                    |
+| JWT_SECRET       | -           | JWT signing secret                            |
+| JWT_EXPIRY_HOURS | 24          | JWT token expiration                          |
+| WORKERS          | 4           | Number of Gunicorn workers (0 = auto)         |
+| LOG_LEVEL        | INFO        | Logging level                                 |
+| CORS_ORIGINS     | \*          | Comma-separated allowed origins               |
 
 ## Troubleshooting
 
 ### Database Connection Error
+
 ```bash
 # Check DATABASE_URL is set correctly
 echo $DATABASE_URL
@@ -160,6 +193,7 @@ psql $DATABASE_URL -c "SELECT 1"
 ```
 
 ### Port Already in Use
+
 ```bash
 # Use different port
 python main.py --port 8001
@@ -170,6 +204,7 @@ kill -9 <PID>
 ```
 
 ### Import Errors
+
 ```bash
 # Ensure we're in correct directory
 cd /home/penguin/code/killkrill/services/flask-backend
@@ -179,38 +214,67 @@ pip install -r requirements.txt --force-reinstall
 ```
 
 ### JWT Token Expired
-Tokens expire after 24 hours (default). Get a new token:
+
+Tokens expire after 1 hour (default). Get a new token:
+
 ```bash
 curl -X POST http://localhost:5000/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"password"}'
+  -d '{"email":"admin@localhost.local","password":"admin123"}'
 ```
+
+### Change Password
+
+Change your password from the default or after initial login:
+
+```bash
+curl -X POST http://localhost:5000/api/v1/auth/change-password \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <TOKEN>" \
+  -d '{
+    "current_password":"admin123",
+    "new_password":"MyNewPassword123"
+  }'
+```
+
+Password requirements:
+- Minimum 8 characters
+- At least one uppercase letter
+- At least one lowercase letter
+- At least one digit
 
 ## API Endpoints Cheat Sheet
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---|
-| POST | /api/v1/auth/login | Get JWT token | No |
-| GET | /api/v1/auth/verify | Verify token | Yes |
-| POST | /api/v1/auth/logout | Logout | Yes |
-| GET | /api/v1/status | API status | No |
-| GET | /api/v1/sources | List sources | Yes |
-| POST | /api/v1/sources | Create source | Yes |
-| GET | /api/v1/sources/{id} | Get source | Yes |
-| PUT | /api/v1/sources/{id} | Update source | Yes |
-| DELETE | /api/v1/sources/{id} | Delete source | Yes |
-| GET | /api/v1/logs | List logs | Yes |
-| GET | /api/v1/metrics | List metrics | Yes |
-| POST | /api/v1/metrics/query | Query metrics | Yes |
+| Method | Endpoint                  | Description           | Auth Required |
+| ------ | ------------------------- | --------------------- | ------------- |
+| POST   | /api/v1/auth/login        | Get JWT token         | No            |
+| GET    | /api/v1/auth/verify       | Verify token          | Yes           |
+| POST   | /api/v1/auth/logout       | Logout                | Yes           |
+| POST   | /api/v1/auth/change-password | Change password    | Yes           |
+| GET    | /api/v1/auth/me           | Get current user      | Yes           |
+| GET    | /api/v1/auth/api-keys     | List API keys         | Yes           |
+| POST   | /api/v1/auth/api-keys     | Create API key        | Yes           |
+| DELETE | /api/v1/auth/api-keys/{id}| Delete API key        | Yes           |
+| GET    | /api/v1/status            | API status            | No            |
+| GET    | /api/v1/sources           | List sources          | Yes           |
+| POST   | /api/v1/sources           | Create source         | Yes           |
+| GET    | /api/v1/sources/{id}      | Get source            | Yes           |
+| PUT    | /api/v1/sources/{id}      | Update source         | Yes           |
+| DELETE | /api/v1/sources/{id}      | Delete source         | Yes           |
+| GET    | /api/v1/logs              | List logs             | Yes           |
+| GET    | /api/v1/metrics           | List metrics          | Yes           |
+| POST   | /api/v1/metrics/query     | Query metrics         | Yes           |
 
 ## Docker Quick Start
 
 ### Build Image
+
 ```bash
 docker build -t killkrill-backend:latest .
 ```
 
 ### Run Container
+
 ```bash
 docker run -p 5000:5000 -p 50051:50051 \
   -e DATABASE_URL=postgresql://user:pass@db:5432/killkrill \

@@ -55,5 +55,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
 EXPOSE 8082
 EXPOSE 8444
 
-# Start application with py4web in correct apps structure
-CMD ["py4web", "run", "apps", "--host", "0.0.0.0", "--port", "8082", "--app_names", "metricsreceiver"]
+# Start application with Hypercorn ASGI server
+CMD ["hypercorn", "app:create_app()", "--bind", "0.0.0.0:8082"]

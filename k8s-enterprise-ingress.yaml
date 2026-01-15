@@ -1,0 +1,65 @@
+---
+# KillKrill Enterprise Ingress Configuration
+# Routes:
+#   / → webui (React frontend)
+#   /api/* → flask-backend (REST API)
+#   /api/logs → log-receiver
+#   /api/metrics → metrics-receiver
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: killkrill-ingress
+  namespace: killkrill
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - killkrill.penguintech.io
+    secretName: penguintech-wildcard-tls
+  rules:
+  - host: killkrill.penguintech.io
+    http:
+      paths:
+      # WebUI - React frontend (root path)
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: webui
+            port:
+              number: 3000
+
+      # Flask Backend API
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: flask-backend
+            port:
+              number: 5000
+
+      # Log Receiver API (specific paths)
+      - path: /api/logs
+        pathType: Prefix
+        backend:
+          service:
+            name: log-receiver
+            port:
+              number: 8081
+
+      # Metrics Receiver API
+      - path: /api/metrics
+        pathType: Prefix
+        backend:
+          service:
+            name: metrics-receiver
+            port:
+              number: 8082

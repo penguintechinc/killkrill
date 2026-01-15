@@ -6,30 +6,30 @@ Comprehensive documentation for all killkrill GitHub Actions workflows with .WOR
 
 Killkrill is a data processing system with 7 containerized services optimized for Kubernetes deployment:
 
-| Service | Type | Language | Purpose |
-|---------|------|----------|---------|
-| **API** | REST Service | Go | Main API gateway for data submission and queries |
-| **Log-Worker** | Worker | Python | Processes log data from message queue |
-| **Metrics-Worker** | Worker | Python | Processes metrics data and aggregations |
-| **Log-Receiver** | Receiver | Python | Ingests log entries via syslog/HTTP |
-| **Metrics-Receiver** | Receiver | Python | Ingests metrics via HTTP/Prometheus format |
-| **K8s-Operator** | Operator | Go | Kubernetes operator for killkrill management |
-| **K8s-Agent** | Sidecar | Go | Per-pod agent for data collection |
+| Service              | Type         | Language | Purpose                                          |
+| -------------------- | ------------ | -------- | ------------------------------------------------ |
+| **API**              | REST Service | Go       | Main API gateway for data submission and queries |
+| **Log-Worker**       | Worker       | Python   | Processes log data from message queue            |
+| **Metrics-Worker**   | Worker       | Python   | Processes metrics data and aggregations          |
+| **Log-Receiver**     | Receiver     | Python   | Ingests log entries via syslog/HTTP              |
+| **Metrics-Receiver** | Receiver     | Python   | Ingests metrics via HTTP/Prometheus format       |
+| **K8s-Operator**     | Operator     | Go       | Kubernetes operator for killkrill management     |
+| **K8s-Agent**        | Sidecar      | Go       | Per-pod agent for data collection                |
 
 ## Workflow Files
 
 ### Core Workflows
 
-| Workflow | Trigger | Purpose |
-|----------|---------|---------|
-| `ci.yml` | Push/PR to main/develop, daily schedule | Unit tests, security scanning, linting |
-| `docker-build.yml` | Push to main/develop, version tags | Multi-arch container builds |
-| `version-release.yml` | Push to `.version` file | Automatic pre-release creation |
-| `push.yml` | Push to main | Publish images to registry |
-| `release.yml` | GitHub release published | Publish release-tagged images |
-| `deploy.yml` | Push to main, workflow_dispatch | Deploy to staging/production |
-| `cron.yml` | Daily schedule | Automated maintenance tasks |
-| `gitstream.yml` | All events | PR automation and management |
+| Workflow              | Trigger                                 | Purpose                                |
+| --------------------- | --------------------------------------- | -------------------------------------- |
+| `ci.yml`              | Push/PR to main/develop, daily schedule | Unit tests, security scanning, linting |
+| `docker-build.yml`    | Push to main/develop, version tags      | Multi-arch container builds            |
+| `version-release.yml` | Push to `.version` file                 | Automatic pre-release creation         |
+| `push.yml`            | Push to main                            | Publish images to registry             |
+| `release.yml`         | GitHub release published                | Publish release-tagged images          |
+| `deploy.yml`          | Push to main, workflow_dispatch         | Deploy to staging/production           |
+| `cron.yml`            | Daily schedule                          | Automated maintenance tasks            |
+| `gitstream.yml`       | All events                              | PR automation and management           |
 
 ---
 
@@ -58,16 +58,19 @@ on:
 ### Features
 
 #### Version Detection
+
 - Reads `.version` file to determine current version
 - Falls back to `0.0.0` if file missing
 - Used for tagging and metadata generation
 
 #### Epoch64 Timestamp Generation
+
 - Generates millisecond-precision timestamp: `date +%s%N | cut -b1-13`
 - Used for chronological ordering between releases
 - Enables unique build identification
 
 #### Changes Detection
+
 - Skips jobs when unrelated files change
 - Separate triggers for Go, Python, Node.js, web, and docs changes
 - Accelerates CI/CD pipeline for focused changes
@@ -79,6 +82,7 @@ on:
 **Conditions**: When Go files modified
 
 **Actions**:
+
 - Tests against Go 1.23.5 and 1.24.0
 - `go mod download` - Download dependencies
 - `go mod verify` - Verify dependency checksums
@@ -91,6 +95,7 @@ on:
 - Coverage reporting to Codecov
 
 **Services Covered**:
+
 - `apps/api` (Go REST API)
 - `apps/k8s-operator` (Kubernetes operator)
 - `apps/k8s-agent` (Pod-level agent)
@@ -100,6 +105,7 @@ on:
 **Conditions**: When Python files modified
 
 **Actions**:
+
 - Tests against Python 3.12 and 3.13
 - Spins up PostgreSQL 15 and Redis 7 services
 - Dependency installation with `pip install -r requirements.txt`
@@ -116,6 +122,7 @@ on:
 - Codecov upload
 
 **Services Covered**:
+
 - `apps/log-worker` (Python worker)
 - `apps/metrics-worker` (Python worker)
 - `apps/log-receiver` (Python receiver)
@@ -127,6 +134,7 @@ on:
 **Conditions**: When JavaScript/TypeScript/web files modified
 
 **Actions**:
+
 - Tests against Node.js 18, 20, 22
 - `npm ci` - Clean dependency installation
 - ESLint - JavaScript linting
@@ -141,6 +149,7 @@ on:
 **Conditions**: All language tests pass
 
 **Actions**:
+
 - Sets up PostgreSQL 15 and Redis 7
 - Builds all service types
 - Verifies API health endpoints: `/health`, `/metrics`
@@ -151,6 +160,7 @@ on:
 #### 5. Security Scanning (security)
 
 **Actions**:
+
 - Trivy filesystem vulnerability scan
 - CodeQL analysis for Go, Python, JavaScript
 - Semgrep static analysis with OWASP rules
@@ -159,6 +169,7 @@ on:
 #### 6. License Validation (license-check)
 
 **Actions**:
+
 - Verifies license client integration
 - Checks for license server references
 - Validates client library presence
@@ -166,6 +177,7 @@ on:
 #### 7. Test Summary (test-summary)
 
 **Actions**:
+
 - Aggregates all test results
 - Comments on PR with summary
 - Uploads test artifacts
@@ -180,16 +192,16 @@ on:
 ```yaml
 on:
   push:
-    branches: [ main, develop ]
-    tags: [ 'v*' ]
+    branches: [main, develop]
+    tags: ["v*"]
     paths:
-      - '.version'
-      - 'apps/**'
-      - 'Dockerfile'
-      - 'docker-compose.yml'
-      - '.github/workflows/docker-build.yml'
+      - ".version"
+      - "apps/**"
+      - "Dockerfile"
+      - "docker-compose.yml"
+      - ".github/workflows/docker-build.yml"
   pull_request:
-    branches: [ main ]
+    branches: [main]
 ```
 
 ### Build Strategy
@@ -228,6 +240,7 @@ strategy:
 ### Version and Timestamp Detection
 
 All builds include:
+
 - **Version string**: From `.version` file
 - **Epoch64 timestamp**: Current millisecond timestamp
 - **Metadata labels**: Container labels with version info
@@ -257,7 +270,7 @@ on:
     branches:
       - main
     paths:
-      - '.version'
+      - ".version"
 ```
 
 ### Process
@@ -302,13 +315,13 @@ git push origin main
 ```yaml
 on:
   push:
-    branches: ['main']
+    branches: ["main"]
     paths:
-      - '.version'
-      - 'apps/**'
-      - 'Dockerfile'
-      - 'docker-compose.yml'
-      - '.github/workflows/push.yml'
+      - ".version"
+      - "apps/**"
+      - "Dockerfile"
+      - "docker-compose.yml"
+      - ".github/workflows/push.yml"
 ```
 
 ### Actions
@@ -352,32 +365,34 @@ on:
 ```yaml
 on:
   push:
-    branches: [ main ]
-    tags: [ 'v*' ]
+    branches: [main]
+    tags: ["v*"]
     paths:
-      - '.version'
-      - 'apps/**'
-      - 'k8s/**'
-      - '.github/workflows/deploy.yml'
+      - ".version"
+      - "apps/**"
+      - "k8s/**"
+      - ".github/workflows/deploy.yml"
   workflow_dispatch:
     inputs:
       environment:
         type: choice
         options: [staging, production]
       version:
-        description: 'Version/tag to deploy'
-        default: 'main'
+        description: "Version/tag to deploy"
+        default: "main"
 ```
 
 ### Deployment Strategy
 
 #### Staging Deployment
+
 - **Trigger**: Every push to main
 - **Target**: Staging environment
 - **Process**: ECS task update with new image
 - **Health checks**: Waits for service stabilization
 
 #### Production Deployment
+
 - **Trigger**: Manual workflow_dispatch or version tags
 - **Target**: Production environment (k8s-ready)
 - **Process**: Blue-green deployment with rollback capability
@@ -399,9 +414,10 @@ Killkrill is Kubernetes-ready with:
 
 ## Scheduled Tasks (cron.yml)
 
-### Daily Maintenance (0 2 * * * UTC)
+### Daily Maintenance (0 2 \* \* \* UTC)
 
 Runs scheduled maintenance tasks:
+
 - Dependency vulnerability checks
 - Container image scanning
 - Log rotation and cleanup
@@ -427,6 +443,7 @@ Runs scheduled maintenance tasks:
 ### Gosec (Go Security Scanner)
 
 **Configuration**:
+
 ```
 -no-fail: Continue on findings
 -fmt json: JSON output
@@ -434,6 +451,7 @@ Runs scheduled maintenance tasks:
 ```
 
 **Issues Detected**:
+
 - SQL injection vulnerabilities
 - Hardcoded credentials
 - Weak cryptography
@@ -446,12 +464,14 @@ Runs scheduled maintenance tasks:
 ### Bandit (Python Security Scanner)
 
 **Configuration**:
+
 ```
 Skip B101: assert_used (OK in tests)
 Skip B601: paramiko_calls (false positives)
 ```
 
 **Issues Detected**:
+
 - Hardcoded passwords/tokens
 - Insecure deserialization
 - Unsafe YAML parsing
@@ -482,13 +502,13 @@ org.opencontainers.image.title       → Service name
 
 ### CI/CD Environment Variables
 
-| Variable | Source | Usage |
-|----------|--------|-------|
-| `GITHUB_TOKEN` | Secrets | Registry authentication |
-| `REGISTRY` | Env | Container registry (ghcr.io) |
-| `GO_VERSION` | Env | Go testing version |
-| `PYTHON_VERSION` | Env | Python testing version |
-| `NODE_VERSION` | Env | Node.js testing version |
+| Variable         | Source  | Usage                        |
+| ---------------- | ------- | ---------------------------- |
+| `GITHUB_TOKEN`   | Secrets | Registry authentication      |
+| `REGISTRY`       | Env     | Container registry (ghcr.io) |
+| `GO_VERSION`     | Env     | Go testing version           |
+| `PYTHON_VERSION` | Env     | Python testing version       |
+| `NODE_VERSION`   | Env     | Node.js testing version      |
 
 ### Service-specific Variables (Runtime)
 
@@ -508,16 +528,19 @@ See individual service documentation for runtime environment configuration.
 ### Build Failures
 
 **Go builds fail**:
+
 - Check `go.mod` and `go.sum` are in sync
 - Verify `go.version` file exists and is readable
 - Run `go mod tidy` locally before push
 
 **Python builds fail**:
+
 - Verify `requirements.txt` is present
 - Check for Python version compatibility
 - Run `pip install -r requirements.txt` locally
 
 **Docker builds fail**:
+
 - Verify Dockerfile base images exist
 - Check for missing COPY/ADD files
 - Confirm build context is correct
@@ -525,10 +548,12 @@ See individual service documentation for runtime environment configuration.
 ### Security Scan False Positives
 
 **Gosec**:
+
 - Add `// #nosec` comments for intentional vulnerabilities
 - Use `gosec` config file for baseline suppression
 
 **Bandit**:
+
 - Add `# nosec` to skip individual lines
 - Use `.bandit` file for project-wide configuration
 

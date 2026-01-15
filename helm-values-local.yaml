@@ -1,0 +1,267 @@
+# KillKrill Local K8s Deployment Values
+# Optimized for local 4-node cluster
+
+# Global configuration
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+  storageClass: "local-path"  # Adjust based on your storage class
+
+# License configuration
+license:
+  key: "PENG-TEST-TEST-TEST-TEST-ABCD"  # Test license key
+  product: "killkrill"
+  server: "https://license.penguintech.io"
+
+# KillKrill application components (reduced resources for local deployment)
+killkrill:
+  # Log Receiver
+  logReceiver:
+    enabled: true
+    replicaCount: 1  # Reduced for local
+    image:
+      repository: killkrill/log-receiver
+      tag: "latest"
+      pullPolicy: IfNotPresent  # Use local images
+
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
+
+    xdp:
+      enabled: false  # Disable XDP for local testing
+
+    service:
+      type: NodePort  # Changed to NodePort for local access
+      httpPort: 8081
+      nodePort: 30081
+
+  # Metrics Receiver
+  metricsReceiver:
+    enabled: true
+    replicaCount: 1
+    image:
+      repository: killkrill/metrics-receiver
+      tag: "latest"
+      pullPolicy: IfNotPresent
+
+    resources:
+      limits:
+        cpu: 500m
+        memory: 1Gi
+      requests:
+        cpu: 125m
+        memory: 256Mi
+
+    service:
+      type: NodePort
+      port: 8082
+      nodePort: 30082
+
+  # Log Worker
+  logWorker:
+    enabled: true
+    replicaCount: 2  # Reduced for local
+    image:
+      repository: killkrill/log-worker
+      tag: "latest"
+      pullPolicy: IfNotPresent
+
+    resources:
+      limits:
+        cpu: 500m
+        memory: 1Gi
+      requests:
+        cpu: 125m
+        memory: 256Mi
+
+    workers: 2
+    batchSize: 500
+
+  # Metrics Worker
+  metricsWorker:
+    enabled: true
+    replicaCount: 1
+    image:
+      repository: killkrill/metrics-worker
+      tag: "latest"
+      pullPolicy: IfNotPresent
+
+    resources:
+      limits:
+        cpu: 500m
+        memory: 1Gi
+      requests:
+        cpu: 125m
+        memory: 256Mi
+
+    workers: 2
+    batchSize: 500
+
+  # Manager (WebUI)
+  manager:
+    enabled: true
+    replicaCount: 1
+    image:
+      repository: killkrill/manager
+      tag: "latest"
+      pullPolicy: IfNotPresent
+
+    resources:
+      limits:
+        cpu: 500m
+        memory: 1Gi
+      requests:
+        cpu: 125m
+        memory: 256Mi
+
+    service:
+      type: NodePort
+      port: 8080
+      nodePort: 30080
+
+# Infrastructure Dependencies (reduced resources)
+postgresql:
+  enabled: true
+  auth:
+    postgresPassword: "killkrill123"
+    username: "killkrill"
+    password: "killkrill123"
+    database: "killkrill"
+
+  primary:
+    persistence:
+      enabled: true
+      size: 10Gi
+      storageClass: "local-path"
+
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
+
+redis:
+  enabled: true
+  auth:
+    enabled: true
+    password: "killkrill123"
+
+  master:
+    persistence:
+      enabled: true
+      size: 5Gi
+      storageClass: "local-path"
+
+    resources:
+      limits:
+        cpu: 500m
+        memory: 1Gi
+      requests:
+        cpu: 125m
+        memory: 256Mi
+
+# Elasticsearch (single node for local)
+elasticsearch:
+  enabled: true
+  clusterName: "killkrill-elasticsearch"
+
+  master:
+    replicas: 1  # Single node for local
+    heapSize: 2g  # Reduced for local
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 4Gi
+      requests:
+        cpu: 500m
+        memory: 2Gi
+
+    persistence:
+      enabled: true
+      size: 20Gi
+      storageClass: "local-path"
+
+# Kibana
+kibana:
+  enabled: true
+  replicas: 1
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1Gi
+    requests:
+      cpu: 250m
+      memory: 512Mi
+
+# Prometheus (reduced retention and storage)
+prometheus:
+  enabled: true
+
+  server:
+    retention: "7d"  # Reduced for local
+
+    persistentVolume:
+      enabled: true
+      size: 10Gi
+      storageClass: "local-path"
+
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
+
+  alertmanager:
+    enabled: false  # Disabled for local
+
+# Grafana
+grafana:
+  enabled: true
+  adminPassword: "killkrill123"
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1Gi
+    requests:
+      cpu: 75m
+      memory: 256Mi
+
+  persistence:
+    enabled: true
+    size: 2Gi
+    storageClassName: "local-path"
+
+  service:
+    type: NodePort
+    nodePort: 30300
+
+# ElastAlert (disabled for local)
+elastalert:
+  enabled: false
+
+# Ingress (disabled for local, using NodePort instead)
+ingress:
+  enabled: false
+
+# Network policies (disabled for local)
+networkPolicy:
+  enabled: false
+
+# Service monitor (disabled for local)
+serviceMonitor:
+  enabled: false
+
+# Backup (disabled for local)
+backup:
+  enabled: false

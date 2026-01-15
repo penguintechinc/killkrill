@@ -3,6 +3,7 @@
 ## v1.0.0.1737727200 - 2025-01-24 17:20:00 UTC
 
 ### Initial Release
+
 - Complete project template with multi-language support
 - Comprehensive license server integration
 - Docker and Kubernetes deployment configurations
@@ -52,29 +53,34 @@ Versions are automatically embedded in:
 ## Release Process
 
 ### Development Builds
+
 - Build number automatically updated with epoch timestamp
 - Tagged as `project-name:v1.0.0.1737727200`
 - Includes full version for traceability
 
 ### Production Releases
+
 - Semantic versioning for public releases
 - Tagged as `project-name:v1.0.0` and `project-name:latest`
 - Git tags created for release versions
 - Changelog automatically generated
 
 ### Breaking Changes (Major)
+
 - API changes that break backward compatibility
 - Removed features or endpoints
 - Database schema changes requiring migration
 - Configuration format changes
 
 ### New Features (Minor)
+
 - New API endpoints or features
 - Enhanced functionality
 - New configuration options
 - Performance improvements
 
 ### Bug Fixes (Patch)
+
 - Security patches
 - Bug fixes
 - Minor documentation updates

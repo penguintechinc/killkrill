@@ -9,8 +9,8 @@ from .client import ReceiverClient
 from .exceptions import (
     AuthenticationError,
     ConnectionError,
-    SubmissionError,
     ReceiverClientError,
+    SubmissionError,
     TokenExpiredError,
 )
 

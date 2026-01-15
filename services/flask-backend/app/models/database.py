@@ -14,10 +14,6 @@ db = SQLAlchemy()
 
 # Re-export PyDAL functions from db_init for convenience
 # This allows blueprints to import from either location
-from app.models.db_init import (
-    get_engine,
-    get_pydal_connection,
-    get_pydal_db,
-)
+from app.models.db_init import get_engine, get_pydal_connection, get_pydal_db
 
-__all__ = ['db', 'get_engine', 'get_pydal_connection', 'get_pydal_db']
+__all__ = ["db", "get_engine", "get_pydal_connection", "get_pydal_db"]

@@ -1,11 +1,13 @@
 # Project Template - Claude Code Context
 
+**⚠️ Important**: Application-specific context should be added to `docs/APP_STANDARDS.md` instead of this file. This allows the template CLAUDE.md to be updated across all projects without losing app-specific information. See `docs/APP_STANDARDS.md` for app-specific architecture, requirements, and context.
+
 ## Project Overview
 
 This is a comprehensive project template incorporating best practices and patterns from Penguin Tech Inc projects. It provides a standardized foundation for multi-language projects with enterprise-grade infrastructure and integrated licensing.
 
 **Template Features:**
-- Multi-language support (Go 1.23.x, Python 3.12/3.13, Node.js 18+)
+- Multi-language support (Go 1.24.x, Python 3.12/3.13, Node.js 18+)
 - Enterprise security and licensing integration
 - Comprehensive CI/CD pipeline
 - Production-ready containerization
@@ -22,7 +24,7 @@ This is a comprehensive project template incorporating best practices and patter
   - Web applications and APIs
   - Business logic and data processing
   - Integration services and connectors
-- **Go 1.23.x**: ONLY for high-traffic/performance-critical applications
+- **Go 1.24.x**: ONLY for high-traffic/performance-critical applications
   - Applications handling >10K requests/second
   - Network-intensive services
   - Low-latency requirements (<10ms)
@@ -30,8 +32,12 @@ This is a comprehensive project template incorporating best practices and patter
 
 **Python Stack:**
 - **Python**: 3.13 for all applications (3.12+ minimum)
-- **Web Framework**: Flask + Flask-Security-Too (mandatory)
-- **Database ORM**: PyDAL (mandatory for all Python applications)
+- **Web Framework**:
+  - **Flask + Flask-Security-Too**: Standard choice for typical applications (mandatory)
+  - **Quart**: Async-first framework for high-performance/high-concurrency applications (>100 concurrent requests, <10ms latency requirements). Drop-in Flask replacement with native async/await support.
+- **Database Libraries** (mandatory for all Python applications):
+  - **SQLAlchemy**: Database initialization and schema creation only
+  - **PyDAL**: Runtime database operations and migrations
 - **Performance**: Dataclasses with slots, type hints, async/await required
 
 **Frontend Stack:**
@@ -40,7 +46,7 @@ This is a comprehensive project template incorporating best practices and patter
 - **JavaScript/TypeScript**: Modern ES2022+ standards
 
 **Go Stack (When Required):**
-- **Go**: 1.23.x (latest patch version)
+- **Go**: 1.24.x (latest patch version, minimum 1.24.2)
 - **Database**: Use DAL with PostgreSQL/MySQL cross-support (e.g., GORM, sqlx)
 - Use only for traffic-intensive applications
 
@@ -55,38 +61,31 @@ This is a comprehensive project template incorporating best practices and patter
 ### Databases & Storage
 - **Primary**: PostgreSQL (default, configurable via `DB_TYPE` environment variable)
 - **Cache**: Redis/Valkey with optional TLS and authentication
-- **Database Abstraction Layers (DALs)**:
-  - **Python**: PyDAL (mandatory for ALL Python applications)
-    - Must support ALL PyDAL-supported databases by default
-    - Special support for MariaDB Galera cluster requirements
-    - `DB_TYPE` must match PyDAL connection string prefixes exactly
-  - **Go**: GORM or sqlx (mandatory for cross-database support)
-    - Must support PostgreSQL and MySQL/MariaDB
-    - Stable, well-maintained library required
-- **Migrations**: Automated schema management
-- **Database Support**: Design for ALL PyDAL-supported databases from the start
+- **Supported Databases** (ALL must be supported by default):
+  - **PostgreSQL**: Primary/default database for production
+  - **MySQL**: Full support for MySQL 8.0+
+  - **MariaDB Galera**: Cluster support with WSREP, auto-increment, transaction handling
+  - **SQLite**: Development and lightweight deployments
+- **Database Libraries (Python)**:
+  - **SQLAlchemy + Alembic**: Database schema definition and version-controlled migrations
+  - **PyDAL**: Used for ALL runtime database operations only
+  - `DB_TYPE` must match PyDAL connection string prefixes exactly
+- **Database Libraries (Go)**: GORM or sqlx (mandatory for cross-database support)
+  - Must support PostgreSQL, MySQL/MariaDB, and SQLite
+  - Stable, well-maintained library required
+- **Migrations**: Alembic for schema migrations, PyDAL for runtime operations
 - **MariaDB Galera Support**: Handle Galera-specific requirements (WSREP, auto-increment, transactions)
 
-**Supported DB_TYPE Values (PyDAL prefixes)**:
-- `postgres` / `postgresql` - PostgreSQL (default)
-- `mysql` - MySQL/MariaDB
-- `sqlite` - SQLite
-- `mssql` - Microsoft SQL Server
-- `oracle` - Oracle Database
-- `db2` - IBM DB2
-- `firebird` - Firebird
-- `informix` - IBM Informix
-- `ingres` - Ingres
-- `cubrid` - CUBRID
-- `sapdb` - SAP DB/MaxDB
+📚 **Supported DB_TYPE Values**: See [Database Standards](docs/standards/DATABASE.md) for complete list and configuration details.
 
 ### Security & Authentication
 - **Flask-Security-Too**: Mandatory for all Flask applications
-  - Role-based access control (RBAC)
+  - Role-based access control (RBAC) with OAuth2-style scopes
   - User authentication and session management
   - Password hashing with bcrypt
   - Email confirmation and password reset
   - Two-factor authentication (2FA)
+- **Permissions Model**: Global, container/team, and resource-level roles with custom scope-based permissions
 - **TLS**: Enforce TLS 1.2 minimum, prefer TLS 1.3
 - **HTTP3/QUIC**: Utilize UDP with TLS for high-performance connections where possible
 - **Authentication**: JWT and MFA (standard), mTLS where applicable
@@ -150,14 +149,19 @@ project-name/
 ├── .github/             # CI/CD pipelines and templates
 │   └── workflows/       # GitHub Actions for each container
 ├── services/            # Microservices (separate containers by default)
-│   ├── flask-backend/   # Flask + PyDAL backend (auth, users, standard APIs)
+│   ├── flask-backend/   # Flask + PyDAL teams API backend (auth, teams, users, standard APIs)
 │   ├── go-backend/      # Go high-performance backend (XDP/AF_XDP, NUMA)
 │   ├── webui/           # Node.js + React frontend shell
 │   └── connector/       # Integration services (placeholder)
 ├── shared/              # Shared components
 ├── infrastructure/      # Infrastructure as code
 ├── scripts/             # Utility scripts
-├── tests/               # Test suites (unit, integration, e2e, performance)
+├── tests/               # Test suites (unit, integration, e2e, performance, smoke)
+│   ├── smoke/           # Smoke tests (build, run, API, page loads)
+│   ├── api/             # API tests
+│   ├── unit/            # Unit tests
+│   ├── integration/     # Integration tests
+│   └── e2e/             # End-to-end tests
 ├── docs/                # Documentation
 ├── config/              # Configuration files
 ├── docker-compose.yml   # Production environment
@@ -169,41 +173,16 @@ project-name/
 
 ### Three-Container Architecture
 
-This template provides three base containers representing the core footprints:
-
 | Container | Purpose | When to Use |
 |-----------|---------|-------------|
-| **flask-backend** | Standard APIs, auth, CRUD | <10K req/sec, business logic |
+| **teams-api** (flask-backend) | Standard APIs, auth, teams, user management | <10K req/sec, business logic |
 | **go-backend** | High-performance networking | >10K req/sec, <10ms latency |
 | **webui** | Node.js + React frontend | All frontend applications |
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              NGINX (optional)                               │
-└─────────────────────────────────────────────────────────────────────────────┘
-          │                        │                          │
-┌─────────┴─────────┐   ┌─────────┴─────────┐   ┌────────────┴────────────┐
-│  WebUI Container  │   │  Flask Backend    │   │    Go Backend           │
-│  (Node.js/React)  │   │  (Flask/PyDAL)    │   │    (XDP/AF_XDP)         │
-│                   │   │                   │   │                         │
-│ - React SPA       │   │ - /api/v1/auth/*  │   │ - High-perf networking  │
-│ - Proxies to APIs │   │ - /api/v1/users/* │   │ - XDP packet processing │
-│ - Static assets   │   │ - /api/v1/hello   │   │ - AF_XDP zero-copy      │
-│ - Port 3000       │   │ - Port 5000       │   │ - NUMA-aware memory     │
-└───────────────────┘   └───────────────────┘   │ - Port 8080             │
-                                 │              └─────────────────────────┘
-                        ┌────────┴────────┐
-                        │   PostgreSQL    │
-                        └─────────────────┘
-```
+**Default Roles**: Admin (full access), Maintainer (read/write, no user mgmt), Viewer (read-only)
+**Team Roles**: Owner, Admin, Member, Viewer (team-scoped permissions)
 
-### Default Roles (WebUI)
-
-| Role | Permissions |
-|------|-------------|
-| **Admin** | Full access: user CRUD, settings, all features |
-| **Maintainer** | Read/write access to resources, no user management |
-| **Viewer** | Read-only access to resources |
+📚 **Architecture diagram and details**: [Architecture Standards](docs/standards/ARCHITECTURE.md)
 
 ## Version Management System
 
@@ -223,13 +202,48 @@ This template provides three base containers representing the core footprints:
 
 ## Development Workflow
 
-### Local Development Setup
+### Quick Start
+
 ```bash
 git clone <repository-url>
 cd project-name
 make setup                    # Install dependencies
 make dev                      # Start development environment
+make seed-mock-data          # Populate with 3-4 test items per feature
 ```
+
+### Essential Documentation (Complete for Your Project)
+
+Before starting development on this template, projects MUST complete and maintain these three critical documentation files:
+
+**📚 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)** - LOCAL DEVELOPMENT SETUP GUIDE
+- Prerequisites and installation for your tech stack
+- Environment configuration specifics
+- Starting your services locally
+- Development workflow with mock data injection
+- Common developer tasks and troubleshooting
+- Tips for your specific architecture
+
+**📚 [docs/TESTING.md](docs/TESTING.md)** - TESTING & VALIDATION GUIDE
+- Mock data scripts (3-4 items per feature pattern)
+- Smoke tests (mandatory verification)
+- Unit, integration, and E2E testing
+- Performance testing procedures
+- Cross-architecture testing with QEMU
+- Pre-commit test execution order
+
+**📚 [docs/PRE_COMMIT.md](docs/PRE_COMMIT.md)** - PRE-COMMIT CHECKLIST
+- Required steps before every git commit
+- Smoke tests (mandatory, <2 min)
+- Mock data seeding for feature testing
+- Screenshot capture with realistic data
+- Security scanning requirements
+- Build and test verification steps
+
+**🔄 Workflow**: DEVELOPMENT.md → TESTING.md → PRE_COMMIT.md (integrated flow)
+- Developers follow DEVELOPMENT.md to set up locally
+- Reference TESTING.md for testing patterns and mock data
+- Run PRE_COMMIT.md checklist before commits (includes smoke tests + screenshots)
 
 ### Essential Commands
 ```bash
@@ -250,6 +264,7 @@ make deploy-prod              # Deploy to production
 make test-unit               # Run unit tests
 make test-integration        # Run integration tests
 make test-e2e                # Run end-to-end tests
+make smoke-test              # Run smoke tests (build, run, API, page loads)
 
 # License Management
 make license-validate        # Validate license
@@ -286,6 +301,7 @@ make license-check-features  # Check available features
 - ✅ All error cases handled properly
 - ✅ Unit tests cover all code paths
 - ✅ Integration tests verify component interactions
+- ✅ Smoke tests verify build, run, API health, and page loads
 - ✅ Security requirements fully implemented
 - ✅ Performance meets acceptable standards
 - ✅ Documentation complete and accurate
@@ -300,6 +316,7 @@ make license-check-features  # Check available features
 - **NEVER commit automatically** unless explicitly requested by the user
 - **NEVER push to remote repositories** under any circumstances
 - **ONLY commit when explicitly asked** - never assume commit permission
+- **Prefer `gh` CLI over direct GitHub access** - use GitHub CLI (`gh`) for all GitHub operations (PRs, issues, releases, repo info) instead of web scraping or direct API calls
 - Always use feature branches for development
 - Require pull request reviews for main branch
 - Automated testing must pass before merge
@@ -324,10 +341,32 @@ make license-check-features  # Check available features
 - **Command pattern**: `cd services/<service-name> && npm run test:api` or equivalent
 
 **Before Every Commit - Screenshots**:
-- **Run screenshot tool to update UI screenshots in documentation**
-  - Run `cd services/webui && npm run screenshots` to capture current UI state
-  - This automatically removes old screenshots and captures fresh ones
-  - Commit updated screenshots with relevant feature/documentation changes
+- **Requirement**: Update UI screenshots with current application state when features change
+- **Prerequisites**: Start development environment with mock data populated
+  ```bash
+  make dev                    # Start all services
+  make seed-mock-data         # Populate with 3-4 test items per feature
+  ```
+- **Capture screenshots**: Run from project root (auto-removes old, captures fresh)
+  ```bash
+  node scripts/capture-screenshots.cjs
+  # Or via npm script if configured
+  npm run screenshots
+  ```
+- **Purpose**: Screenshots should showcase features with realistic mock data (3-4 items)
+  - Demonstrates feature functionality and purpose
+  - Shows data in context (products list, orders, user profiles, etc.)
+  - Updated whenever UI changes or new features added
+- **Location**: Screenshots saved to `docs/screenshots/`
+- **Commit**: Include updated screenshots with relevant feature/UI changes
+
+**Before Every Commit - Smoke Tests**:
+- **Create and run smoke tests** to verify basic functionality (build, runtime, API health, UI loads)
+- **Mandatory requirements**: All must be created and passing before commit
+- **Run before commit**: `make smoke-test` or `./tests/smoke/run-all.sh`
+- **Continuous validation**: Smoke tests prevent regressions in core functionality
+
+📚 **Detailed smoke testing requirements**: [Testing Documentation](docs/TESTING.md#smoke-tests)
 
 ### Local State Management (Crash Recovery)
 - **ALWAYS maintain local .PLAN and .TODO files** for crash recovery
@@ -385,38 +424,90 @@ make license-check-features  # Check available features
 - **Use Task Agents**: Utilize task agents (subagents) to be more expedient and efficient when making changes to large files, updating or reviewing multiple files, or performing complex multi-step operations
 - **Avoid sed/cat**: Use sed and cat commands only when necessary; prefer dedicated Read/Edit/Write tools for file operations
 
+### Task Agent Usage Guidelines
+
+**Model Selection:**
+- **Haiku model**: Use for the majority of task agent work (file searches, simple edits, routine operations)
+- **Sonnet model**: Use for more complex jobs requiring deeper reasoning (architectural decisions, complex refactoring, multi-file coordination)
+- Default to haiku unless the task explicitly requires complex analysis
+
+**Response Size Requirements:**
+- **CRITICAL**: Task agents MUST return minimal responses to avoid context overload of the orchestration model
+- Agents should return only essential information: file paths, line numbers, brief summaries
+- Avoid returning full file contents or verbose explanations in agent responses
+- Use bullet points and concise formatting in agent outputs
+
+**Concurrency Limits:**
+- **Maximum 10 task agents** running concurrently at any time
+- Even with minimal responses, running more than 10 agents risks context overload
+- Queue additional tasks if the limit would be exceeded
+- Monitor active agent count before spawning new agents
+
+**Best Practices:**
+- Provide clear, specific prompts to agents to get focused responses
+- Request only the information needed, not comprehensive analysis
+- Use agents for parallelizable work (searching multiple directories, checking multiple files)
+- Combine related small tasks into single agent calls when possible
+
 ## Development Standards
 
-Comprehensive development standards are documented separately to keep this file concise.
+**⚠️ Documentation Structure:**
+- **Company-wide standards**: [docs/STANDARDS.md](docs/STANDARDS.md) (index) + [docs/standards/](docs/standards/) (detailed categories)
+- **App-specific standards**: [docs/APP_STANDARDS.md](docs/APP_STANDARDS.md) (application-specific architecture, requirements, context)
 
-📚 **Complete Standards Documentation**: [Development Standards](docs/STANDARDS.md)
+Comprehensive development standards are organized by category in `docs/standards/` directory. The main STANDARDS.md serves as an index with quick reference.
+
+📚 **Complete Standards Documentation**: [Development Standards](docs/STANDARDS.md) (index to 12 category files)
 
 ### Quick Reference
 
 **API Versioning**:
 - ALL REST APIs MUST use versioning: `/api/v{major}/endpoint` format
 - Semantic versioning for major versions only in URL
-- Support current and previous versions (N-1) minimum
+- Support current and 2 previous versions (N-2) minimum
 - Add deprecation headers to old versions
 - Document migration paths for version changes
+- Keep APIs simple and extensible: use flexible inputs, backward-compatible responses
+- Leverage and reuse existing APIs where possible
 
 **Database Standards**:
-- PyDAL mandatory for ALL Python applications
+- SQLAlchemy for database initialization and schema creation only
+- PyDAL mandatory for ALL runtime database operations and migrations
+- Supported databases: PostgreSQL, MySQL, MariaDB Galera, SQLite
 - Thread-safe usage with thread-local connections
 - Environment variable configuration for all database settings
 - Connection pooling and retry logic required
+- Async/multi-threading based on workload (see Performance Optimization)
+
+**API Design Principles**:
+- **Simple & Extensible**: Keep REST and gRPC APIs simple, use flexible input structures and backward-compatible responses
+- **Leverage Existing**: Reuse existing APIs where possible, avoid creating duplicate endpoints
+- **Consistent Versioning**: All APIs use `/api/v{major}/endpoint` versioning for REST and semantic versioning for gRPC
+- **Deprecation Support**: Maintain N-2 API versions minimum (current + 2 previous), include deprecation headers and migration paths
 
 **Protocol Support**:
-- REST API, gRPC, HTTP/1.1, HTTP/2, HTTP/3 support
+- **External Communication** (clients, third-party integrations): REST API over HTTPS
+  - Flask REST endpoints for client-facing APIs
+  - Supports external consumers and web UIs
+  - Versioned: `/api/v1/endpoint`, `/api/v2/endpoint`, etc.
+- **Inter-Container Communication** (within cluster): gRPC preferred for best performance
+  - Service-to-service calls between containers in same namespace/cluster
+  - Binary protocol with Protocol Buffers for lower latency and bandwidth
+  - Use for internal APIs between microservices
+  - Fallback to REST over HTTP/2 if gRPC unavailable
+- **HTTP/3 (QUIC)**: Consider for high-performance inter-container scenarios (>10K req/sec)
+  - UDP-based, reduced latency, connection multiplexing
 - Environment variables for protocol configuration
-- Multi-protocol implementation required
+- Multi-protocol implementation: REST for external, gRPC for internal
 
 **Performance Optimization (Python):**
 - Dataclasses with slots mandatory (30-50% memory reduction)
 - Type hints required for all Python code
-- asyncio for I/O-bound operations
-- threading for blocking I/O
-- multiprocessing for CPU-bound operations
+- **Concurrency selection based on workload:**
+  - `asyncio` + `databases` library for I/O-bound operations (>100 concurrent requests)
+  - `threading` + `ThreadPoolExecutor` for blocking I/O and legacy integrations
+  - `multiprocessing` for CPU-bound operations
+- Connection pool sizing: `(2 * CPU_cores) + disk_spindles`
 - Avoid premature optimization - profile first
 
 **High-Performance Networking (Case-by-Case):**
@@ -432,17 +523,33 @@ Comprehensive development standards are documented separately to keep this file 
 - Independent deployment and scaling
 - Each service has its own Dockerfile and dependencies
 
+**MarchProxy API Gateway/LB Integration**:
+- Applications are expected to run behind MarchProxy (`~/code/MarchProxy`)
+- **DO NOT include MarchProxy in default deployment** - it's external infrastructure
+- **Generate MarchProxy-compatible import configuration** in `config/marchproxy/`
+- Import config via MarchProxy's API: `POST /api/v1/services/import`
+- See [Integration Standards - MarchProxy](docs/standards/INTEGRATIONS.md)
+
 **Docker Standards**:
 - Multi-arch builds (amd64/arm64)
 - Debian-slim base images
 - Docker Compose for local development
 - Minimal host port exposure
+- **Cross-Architecture Testing**: Before final commit, test on alternate architecture:
+  - If developing on amd64: Use QEMU to build and test arm64 (`docker buildx build --platform linux/arm64 ...`)
+  - If developing on arm64: Use QEMU to build and test amd64 (`docker buildx build --platform linux/amd64 ...`)
+  - Ensures multi-architecture compatibility and prevents platform-specific bugs
+  - Command: `docker buildx build --platform linux/amd64,linux/arm64 -t image:tag --push .`
 
 **Testing**:
 - Unit tests: Network isolated, mocked dependencies
 - Integration tests: Component interactions
 - E2E tests: Critical workflows
 - Performance tests: Scalability validation
+- Smoke tests: Build, run, API health, page/tab load verification (mandatory)
+- Mock data: 3-4 items per feature/entity for development
+
+📚 **Complete Testing Guide**: [Testing Documentation](docs/TESTING.md) includes smoke tests, unit tests, integration tests, E2E tests, performance tests, mock data scripts, and cross-architecture testing with QEMU
 
 **Security**:
 - TLS 1.2+ required
@@ -471,295 +578,114 @@ Comprehensive development standards are documented separately to keep this file 
 - Resilience
 - Continuous deployment
 
-📚 **Detailed Architecture Patterns**: See [Development Standards - Microservices Architecture](docs/STANDARDS.md#microservices-architecture)
+📚 **Detailed Architecture Patterns**: See [Architecture Standards](docs/standards/ARCHITECTURE.md)
 
 ## Common Integration Patterns
 
-### Flask + Flask-Security-Too + PyDAL
-```python
-from flask import Flask
-from flask_security import Security, SQLAlchemyUserDatastore, auth_required, hash_password
-from pydal import DAL, Field
-from dataclasses import dataclass
-from typing import Optional
+📚 **Complete code examples and integration patterns**: [Standards Index](docs/STANDARDS.md) | [Authentication](docs/standards/AUTHENTICATION.md) | [Database](docs/standards/DATABASE.md)
 
-app = Flask(__name__)
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
-app.config['SECURITY_PASSWORD_SALT'] = os.getenv('SECURITY_PASSWORD_SALT')
-
-# PyDAL database connection
-db = DAL(
-    f"postgresql://{os.getenv('DB_USER')}:{os.getenv('DB_PASS')}@"
-    f"{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}",
-    pool_size=10
-)
-
-# Define tables with PyDAL
-db.define_table('users',
-    Field('email', 'string', requires=IS_EMAIL(), unique=True),
-    Field('password', 'string'),
-    Field('active', 'boolean', default=True),
-    Field('fs_uniquifier', 'string', unique=True),
-    migrate=True)
-
-db.define_table('roles',
-    Field('name', 'string', unique=True),
-    Field('description', 'text'),
-    migrate=True)
-
-# Flask-Security-Too setup
-from flask_security import Security, PyDALUserDatastore
-user_datastore = PyDALUserDatastore(db, db.users, db.roles)
-security = Security(app, user_datastore)
-
-@app.route('/api/v1/protected')
-@auth_required()
-def protected_resource():
-    return {'message': 'This is a protected endpoint'}
-
-@app.route('/healthz')
-def health():
-    return {'status': 'healthy'}, 200
-```
-
-### Database Integration (PyDAL with Multi-Database Support)
-```python
-from pydal import DAL, Field
-from dataclasses import dataclass
-import os
-
-# Valid PyDAL DB_TYPE values for input validation
-VALID_DB_TYPES = {
-    'postgres', 'postgresql', 'mysql', 'sqlite', 'mssql',
-    'oracle', 'db2', 'firebird', 'informix', 'ingres',
-    'cubrid', 'sapdb'
-}
-
-@dataclass(slots=True, frozen=True)
-class UserModel:
-    """User model with slots for memory efficiency"""
-    id: int
-    email: str
-    name: str
-    active: bool
-
-def get_db_connection() -> DAL:
-    """Initialize PyDAL with environment variables and multi-DB support"""
-    db_type = os.getenv('DB_TYPE', 'postgres')
-
-    # Input validation - ensure DB_TYPE matches PyDAL expectations
-    if db_type not in VALID_DB_TYPES:
-        raise ValueError(f"Invalid DB_TYPE: {db_type}. Must be one of: {VALID_DB_TYPES}")
-
-    # Build connection URI
-    db_uri = f"{db_type}://" \
-             f"{os.getenv('DB_USER')}:{os.getenv('DB_PASS')}@" \
-             f"{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/" \
-             f"{os.getenv('DB_NAME')}"
-
-    # MariaDB Galera specific settings
-    galera_mode = os.getenv('GALERA_MODE', 'false').lower() == 'true'
-
-    dal_kwargs = {
-        'pool_size': int(os.getenv('DB_POOL_SIZE', '10')),
-        'migrate_enabled': True,
-        'check_reserved': ['all'],
-        'lazy_tables': True
-    }
-
-    # Galera-specific: handle wsrep_sync_wait for read-your-writes consistency
-    if galera_mode and db_type == 'mysql':
-        dal_kwargs['driver_args'] = {'init_command': 'SET wsrep_sync_wait=1'}
-
-    return DAL(db_uri, **dal_kwargs)
-```
-
-### ReactJS Frontend Integration
-```javascript
-// API client for Flask backend
-import axios from 'axios';
-
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-
-export const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Add auth token to requests
-apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('authToken');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-// Protected component example
-import React, { useEffect, useState } from 'react';
-
-function ProtectedComponent() {
-  const [data, setData] = useState(null);
-
-  useEffect(() => {
-    apiClient.get('/api/v1/protected')
-      .then(response => setData(response.data))
-      .catch(error => console.error('Error:', error));
-  }, []);
-
-  return <div>{data?.message}</div>;
-}
-```
-
-### License-Gated Features (Python)
-```python
-from shared.licensing import license_client, requires_feature
-from flask_security import auth_required
-
-@app.route('/api/v1/advanced/analytics')
-@auth_required()
-@requires_feature("advanced_analytics")
-def generate_advanced_report():
-    """Requires authentication AND professional+ license"""
-    return {'report': analytics.generate_report()}
-```
-
-### Monitoring Integration
-```python
-from prometheus_client import Counter, Histogram, generate_latest
-
-REQUEST_COUNT = Counter('http_requests_total', 'Total HTTP requests', ['method', 'endpoint'])
-REQUEST_DURATION = Histogram('http_request_duration_seconds', 'HTTP request duration')
-
-@app.route('/metrics')
-def metrics():
-    return generate_latest(), {'Content-Type': 'text/plain'}
-```
+Key integration patterns documented:
+- Flask + Flask-Security-Too + PyDAL authentication
+- Database integration with multi-DB support
+- ReactJS frontend with API client
+- License-gated features
+- Prometheus monitoring integration
 
 ## Website Integration Requirements
 
-**Each project MUST have two dedicated websites**:
-- Marketing/Sales website (Node.js based)
-- Documentation website (Markdown based)
+**Required websites**: Marketing/Sales (Node.js) + Documentation (Markdown)
 
-**Website Design Preferences**:
-- Multi-page design preferred
-- Modern aesthetic with clean appearance
-- Subtle, sophisticated color schemes
-- Gradient usage encouraged
-- Responsive design
-- Performance focused
+**Design**: Multi-page, modern aesthetic, subtle gradients, responsive, performance-focused
 
-**Repository Integration**:
-- Add `github.com/penguintechinc/website` as sparse checkout submodule
-- Only include project-specific folders
-- Folder naming: `{app_name}/` and `{app_name}-docs/`
+**Repository**: Sparse checkout submodule from `github.com/penguintechinc/website` with `{app_name}/` and `{app_name}-docs/` folders
 
 ## Troubleshooting & Support
 
-### Common Issues
-1. **Port Conflicts**: Check docker-compose port mappings
-2. **Database Connections**: Verify connection strings and permissions
-3. **License Validation Failures**: Check license key format and network connectivity
-4. **Build Failures**: Check dependency versions and compatibility
-5. **Test Failures**: Review test environment setup
+**Common Issues**: Port conflicts, database connections, license validation, build failures, test failures
 
-### Debug Commands
-```bash
-# Container debugging
-docker-compose logs -f service-name
-docker exec -it container-name /bin/bash
+**Quick Debug**: `docker-compose logs -f <service>` | `make debug` | `make health`
 
-# Application debugging
-make debug                    # Start with debug flags
-make logs                     # View application logs
-make health                   # Check service health
+**Support**: support@penguintech.io | sales@penguintech.io | https://status.penguintech.io
 
-# License debugging
-make license-debug            # Test license server connectivity
-make license-validate         # Validate current license
-```
-
-### Support Resources
-- **Technical Documentation**: [Development Standards](docs/STANDARDS.md)
-- **License Integration**: [License Server Guide](docs/licensing/license-server-integration.md)
-- **Integration Support**: support@penguintech.io
-- **Sales Inquiries**: sales@penguintech.io
-- **License Server Status**: https://status.penguintech.io
+📚 **Detailed troubleshooting**: [Standards Index](docs/STANDARDS.md) | [License Guide](docs/licensing/license-server-integration.md)
 
 ## CI/CD & Workflows
 
-### Documentation
-- **Complete workflow documentation**: See [`docs/WORKFLOWS.md`](docs/WORKFLOWS.md)
-- **CI/CD standards and requirements**: See [`docs/STANDARDS.md`](docs/STANDARDS.md)
+**Build Tags**: `beta-<epoch64>` (main) | `alpha-<epoch64>` (other) | `vX.X.X-beta` (version release) | `vX.X.X` (tagged release)
 
-### Build Naming Conventions
+**Version**: `.version` file in root, semver format, monitored by all workflows
 
-All container images follow automatic naming based on branch and version changes:
-
-| Scenario | Main Branch | Other Branches |
-|----------|------------|-----------------|
-| Regular build (no `.version` change) | `beta-<epoch64>` | `alpha-<epoch64>` |
-| Version release (`.version` changed) | `vX.X.X-beta` | `vX.X.X-alpha` |
-| Tagged release | `vX.X.X` + `latest` | N/A |
-
-**Example**: Updating `.version` to `1.2.0` on main branch triggers builds tagged `v1.2.0-beta` (and auto-creates a GitHub pre-release).
-
-### Version Management
-
-- **Location**: `.version` file in repository root
-- **Format**: Semantic versioning (e.g., `1.2.3`)
-- **File tracking**: All workflows monitor `.version` for changes
-- **Update command**: Edit `.version` file and commit
-  ```bash
-  echo "1.2.3" > .version
-  git add .version
-  git commit -m "Release v1.2.3"
-  ```
+**Deployment Hosts**:
+- **Beta/Development**: `https://{repo_name_lowercase}.penguintech.io` (if online)
+  - Example: `project-template` → `https://project-template.penguintech.io`
+  - Deployed from `main` branch with `beta-*` tags
+- **Production**: Either custom domain or PenguinCloud subdomain
+  - **Custom Domain**: Application-specific (e.g., `https://waddlebot.io`)
+  - **PenguinCloud**: `https://{repo_name_lowercase}.penguincloud.io`
+  - Deployed from tagged releases (`vX.X.X`)
 
 ### Pre-Commit Checklist
 
-Before committing, run in this order:
+**CRITICAL: You MUST run the pre-commit script before every commit:**
 
-- [ ] **Linters**: `npm run lint` or `golangci-lint run` or equivalent
-- [ ] **Security scans**: `npm audit`, `gosec`, `bandit` (per language)
-- [ ] **Tests**: `npm test`, `go test ./...`, `pytest` (unit tests only)
-- [ ] **Version updates**: Update `.version` if releasing new version
-- [ ] **Documentation**: Update docs if adding/changing workflows
-- [ ] **No secrets**: Verify no credentials, API keys, or tokens in code
-- [ ] **Docker builds**: Verify Dockerfile uses debian-slim base (no alpine)
+```bash
+./scripts/pre-commit/pre-commit.sh
+```
 
-**Only commit when asked** — follow the pre-commit checklist above, then wait for approval before `git commit`.
+Results logged to: `/tmp/pre-commit-<project>-<epoch>/summary.log`
 
-### Full Documentation
+Quick reference (see [docs/PRE_COMMIT.md](docs/PRE_COMMIT.md) for full details):
+1. Linters → 2. Security scans → 3. No secrets → 4. Build & Run → 5. Smoke tests → 6. Tests → 7. Version update → 8. Docker debian-slim
 
-For complete workflow behavior, troubleshooting, and project-specific details, see [`docs/WORKFLOWS.md`](docs/WORKFLOWS.md).
+**Smoke tests are mandatory in pre-commit checklist:**
+- Build verification for all containers
+- Runtime health checks for all services
+- API health endpoint validation
+- Web UI page and tab load verification
+- Must pass before proceeding to full test suite
+
+**Only commit when asked** — run pre-commit script, verify all checks pass, then wait for approval before `git commit`.
+
+### Applying Code Changes
+
+**After making code changes, rebuild and restart containers to apply changes:**
+
+```bash
+# All services
+docker compose down && docker compose up -d --build
+
+# Single service
+docker compose up -d --build <service-name>
+```
+
+**IMPORTANT:** `docker compose restart` and `docker restart` do NOT apply code changes - they only restart the existing container with old code. Always use `--build` to rebuild images with new code.
+
+**Browser Cache & Hard Reload During Development:**
+- Developers will routinely perform hard reloads (Ctrl+Shift+R / Cmd+Shift+R) and cache clearing during development
+- DO NOT assume the browser cache contains stale assets or that developers haven't already cleared it
+- Implement proper cache headers and asset versioning in your frontend/static assets
+- Use content-based cache busting (e.g., hashing filenames: `app.abc123.js`) for production builds
+- Consider setting `Cache-Control: no-cache, must-revalidate` for development builds when appropriate
+
+📚 **Complete CI/CD documentation**: [Workflows](docs/WORKFLOWS.md) | [Standards Index](docs/STANDARDS.md)
 
 ## Template Customization
 
-### Adding New Languages
-1. Create language-specific directory structure
-2. Add Dockerfile and build scripts
-3. Update CI/CD pipeline configuration
-4. Add language-specific linting and testing
-5. Update documentation and examples
+**Adding Languages/Services**: Create in `services/`, add Dockerfile, update CI/CD, add linting/testing, update docs.
 
-### Adding New Services
-1. Use service template in `services/` directory
-2. Configure service discovery and networking
-3. Add monitoring and logging integration
-4. Integrate license checking for service features
-5. Create service-specific tests
-6. Update deployment configurations
+**Enterprise Integration**: License server, multi-tenancy, usage tracking, audit logging, monitoring.
 
-### Enterprise Integration
-- Configure license server integration
-- Set up multi-tenant data isolation
-- Implement usage tracking and reporting
-- Add compliance audit logging
-- Configure enterprise monitoring
+📚 **Detailed customization guides**: [Standards Index](docs/STANDARDS.md)
+
+
+## License & Legal
+
+**License File**: `LICENSE.md` (located at project root)
+
+**License Type**: Limited AGPL-3.0 with commercial use restrictions and Contributor Employer Exception
+
+The `LICENSE.md` file is located at the project root following industry standards. This project uses a modified AGPL-3.0 license with additional exceptions for commercial use and special provisions for companies employing contributors.
+
 
 ---
 

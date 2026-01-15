@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 import {
   Search,
   Bell,
@@ -8,7 +8,7 @@ import {
   Settings,
   LogOut,
   ChevronDown,
-} from 'lucide-react';
+} from "lucide-react";
 
 const Header = () => {
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -18,25 +18,37 @@ const Header = () => {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate("/login");
   };
 
   const handleProfileClick = () => {
     setShowUserMenu(false);
-    navigate('/settings');
+    navigate("/settings");
   };
 
   return (
     <header className="bg-slate-900 border-b border-amber-900/30 px-8 py-4 flex items-center justify-between">
       {/* Logo/Brand */}
       <div className="flex items-center gap-4">
-        <h1 className="text-xl font-bold text-amber-500">Killkrill</h1>
+        <button
+          onClick={() => navigate("/")}
+          className="flex items-center hover:opacity-80 transition-opacity"
+        >
+          <img
+            src="/logo.png"
+            alt="KillKrill"
+            className="h-10 w-auto"
+          />
+        </button>
       </div>
 
       {/* Search Bar */}
       <div className="flex-1 max-w-md mx-8">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-amber-500/60" size={18} />
+          <Search
+            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-amber-500/60"
+            size={18}
+          />
           <input
             type="text"
             placeholder="Search..."
@@ -49,7 +61,10 @@ const Header = () => {
       <div className="flex items-center gap-6">
         {/* Notifications */}
         <button className="relative p-2 hover:bg-slate-800 rounded-lg transition-colors group">
-          <Bell size={20} className="text-amber-500 group-hover:text-amber-400" />
+          <Bell
+            size={20}
+            className="text-amber-500 group-hover:text-amber-400"
+          />
           {notifications > 0 && (
             <span className="absolute top-1 right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-semibold">
               {notifications}
@@ -68,13 +83,13 @@ const Header = () => {
                 <User size={16} className="text-slate-900" />
               </div>
               <span className="text-sm font-medium text-amber-500 group-hover:text-amber-400">
-                {user?.username || 'Admin'}
+                {user?.username || "Admin"}
               </span>
             </div>
             <ChevronDown
               size={16}
               className={`text-amber-500 group-hover:text-amber-400 transition-transform ${
-                showUserMenu ? 'rotate-180' : ''
+                showUserMenu ? "rotate-180" : ""
               }`}
             />
           </button>
@@ -84,10 +99,10 @@ const Header = () => {
             <div className="absolute right-0 mt-2 w-48 bg-slate-800 border border-amber-900/30 rounded-lg shadow-lg overflow-hidden z-10">
               <div className="px-4 py-3 border-b border-amber-900/20">
                 <p className="text-sm font-medium text-amber-500">
-                  {user?.username || 'Admin User'}
+                  {user?.username || "Admin User"}
                 </p>
                 <p className="text-xs text-slate-400">
-                  {user?.email || 'admin@killkrill.local'}
+                  {user?.email || "admin@killkrill.local"}
                 </p>
               </div>
 

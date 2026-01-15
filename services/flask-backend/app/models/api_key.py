@@ -5,15 +5,17 @@ Flask-SQLAlchemy model for API key management.
 """
 
 from datetime import datetime
+
 from .database import db
 
 
 class APIKey(db.Model):
     """API Key model for authentication"""
-    __tablename__ = 'api_key'
+
+    __tablename__ = "api_key"
 
     id = db.Column(db.Integer(), primary_key=True)
-    user_id = db.Column(db.Integer(), db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer(), db.ForeignKey("user.id"), nullable=False)
     key_hash = db.Column(db.String(255), unique=True, nullable=False, index=True)
     name = db.Column(db.String(255), nullable=False)
     description = db.Column(db.String(255))
@@ -21,12 +23,14 @@ class APIKey(db.Model):
     expires_at = db.Column(db.DateTime())
     last_used_at = db.Column(db.DateTime())
     created_at = db.Column(db.DateTime(), default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime(), default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = db.Column(
+        db.DateTime(), default=datetime.utcnow, onupdate=datetime.utcnow
+    )
 
-    user = db.relationship('User', backref=db.backref('api_keys', lazy='dynamic'))
+    user = db.relationship("User", backref=db.backref("api_keys", lazy="dynamic"))
 
     def __repr__(self):
-        return f'<APIKey {self.name}>'
+        return f"<APIKey {self.name}>"
 
     def is_expired(self) -> bool:
         """Check if API key has expired"""
@@ -39,4 +43,4 @@ class APIKey(db.Model):
         return self.is_active and not self.is_expired()
 
 
-__all__ = ['APIKey']
+__all__ = ["APIKey"]
