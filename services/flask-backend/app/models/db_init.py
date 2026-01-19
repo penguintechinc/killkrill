@@ -138,7 +138,7 @@ def _build_connection_string(config: DatabaseConfig) -> str:
         # Normalize postgresql:// to postgres://
         if db_url.startswith("postgresql://"):
             db_url = db_url.replace("postgresql://", "postgres://", 1)
-        logger.info("Using PostgreSQL database", url=_mask_url(db_url))
+        logger.info(f"Using PostgreSQL database. URL: {_mask_url(db_url)}")
 
     elif config.db_type in ("mysql", "mariadb"):
         # Ensure proper MySQL dialect
@@ -156,10 +156,10 @@ def _build_connection_string(config: DatabaseConfig) -> str:
             db_url = _apply_mysql_galera_settings(db_url)
             logger.info("MariaDB Galera cluster mode enabled")
 
-        logger.info("Using MySQL/MariaDB database", url=_mask_url(db_url))
+        logger.info(f"Using MySQL/MariaDB database. URL: {_mask_url(db_url)}")
 
     elif config.db_type == "sqlite":
-        logger.info("Using SQLite database", path=config.database_url)
+        logger.info(f"Using SQLite database. Path: {config.database_url}")
 
     return db_url
 
@@ -175,8 +175,12 @@ def _mask_url(url: str, hide_password: bool = True) -> str:
 
     parsed = urlparse(url)
     if parsed.password:
-        # Replace password with masked version
-        masked = parsed._replace(password="*" * 8 if parsed.password else None)
+        # Reconstruct netloc with masked password
+        masked_netloc = f"{parsed.username}:{'*' * 8}@{parsed.hostname}"
+        if parsed.port:
+            masked_netloc += f":{parsed.port}"
+        # Reconstruct URL with masked netloc
+        masked = parsed._replace(netloc=masked_netloc)
         return urlunparse(masked)
     return url
 
@@ -218,7 +222,7 @@ def _configure_pool(engine: Engine, config: DatabaseConfig) -> None:
     # Pool recycle for long-lived connections
     if config.pool_recycle > 0:
         logger.info(
-            "Connection pool recycle enabled", recycle_seconds=config.pool_recycle
+            f"Connection pool recycle enabled. Recycle Seconds: {config.pool_recycle}"
         )
 
 
@@ -243,14 +247,12 @@ def _verify_database_connection(engine: Engine, config: DatabaseConfig) -> bool:
 
     except OperationalError as e:
         logger.error(
-            "Failed to connect to database", error=str(e), db_type=config.db_type
+            f"Failed to connect to database. Error: {str(e)}, DB Type: {config.db_type}"
         )
         return False
     except Exception as e:
         logger.error(
-            "Unexpected error during database verification",
-            error=str(e),
-            db_type=config.db_type,
+            f"Unexpected error during database verification. Error: {str(e)}, DB Type: {config.db_type}"
         )
         return False
 
@@ -327,16 +329,12 @@ def _create_database_if_needed(engine: Engine, config: DatabaseConfig) -> bool:
 
     except ProgrammingError as e:
         logger.warning(
-            "Could not create database (may not have permissions)",
-            error=str(e),
-            db_type=config.db_type,
+            f"Could not create database (may not have permissions). Error: {str(e)}, DB Type: {config.db_type}"
         )
         return True  # Don't fail if we can't create, might have existing database
     except Exception as e:
         logger.error(
-            "Unexpected error during database creation",
-            error=str(e),
-            db_type=config.db_type,
+            f"Unexpected error during database creation. Error: {str(e)}, DB Type: {config.db_type}"
         )
         return False
 
@@ -388,11 +386,7 @@ def init_database() -> Tuple[Engine, DatabaseConfig]:
             echo_pool = os.getenv("SQLALCHEMY_ECHO_POOL", "false").lower() == "true"
 
         logger.info(
-            "Creating SQLAlchemy engine",
-            db_type=config.db_type,
-            pool_size=pool_size,
-            max_overflow=max_overflow,
-            poolclass=poolclass.__name__,
+            f"Creating SQLAlchemy engine. DB Type: {config.db_type}, Pool Size: {pool_size}, Max Overflow: {max_overflow}, Pool Class: {poolclass.__name__}"
         )
 
         # Create engine
@@ -435,9 +429,7 @@ def init_database() -> Tuple[Engine, DatabaseConfig]:
             )
 
         logger.info(
-            "Database initialization completed successfully",
-            db_type=config.db_type,
-            connection=_mask_url(config.database_url),
+            f"Database initialization completed successfully. DB Type: {config.db_type}, Connection: {_mask_url(config.database_url)}"
         )
 
         return engine, config
@@ -446,9 +438,7 @@ def init_database() -> Tuple[Engine, DatabaseConfig]:
         raise
     except Exception as e:
         logger.error(
-            "Database initialization failed with unexpected error",
-            error=str(e),
-            error_type=type(e).__name__,
+            f"Database initialization failed with unexpected error. Error: {str(e)}, Error Type: {type(e).__name__}"
         )
         raise DatabaseInitializationError(
             f"Failed to initialize database: {str(e)}"
@@ -476,6 +466,137 @@ def get_engine():
 _pydal_connection = None
 
 
+def _parse_database_url(database_url: str) -> dict:
+    """
+    Parse DATABASE_URL into individual components for PyDAL.
+
+    Handles formats like:
+    - postgresql://user:pass@host:port/dbname
+    - mysql://user:pass@host:port/dbname
+    - sqlite:///path/to/db.db
+
+    Returns:
+        dict with keys: db_type, host, port, user, password, dbname
+    """
+    try:
+        parsed = urlparse(database_url)
+
+        # Extract database type
+        db_type = parsed.scheme.lower()
+        if db_type == "postgresql":
+            db_type = "postgres"
+
+        # Extract connection details
+        result = {
+            "db_type": db_type,
+            "host": parsed.hostname or "localhost",
+            "port": parsed.port,
+            "user": parsed.username,
+            "password": parsed.password,
+            "dbname": parsed.path.lstrip("/") if parsed.path else None,
+        }
+
+        # Set default ports if not specified
+        if not result["port"]:
+            if db_type in ("postgres", "postgresql"):
+                result["port"] = 5432
+            elif db_type in ("mysql", "mariadb"):
+                result["port"] = 3306
+
+        logger.info(
+            f"Parsed DATABASE_URL successfully. DB Type: {result['db_type']}, Host: {result['host']}, Port: {result['port']}, DB Name: {result['dbname']}"
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(
+            f"Failed to parse DATABASE_URL. Error: {str(e)}, Database URL: {_mask_url(database_url)}"
+        )
+        raise DatabaseInitializationError(f"Invalid DATABASE_URL format: {str(e)}")
+
+
+def _ensure_tables_exist_sqlalchemy() -> bool:
+    """
+    Use SQLAlchemy to check if required tables exist and create them if needed.
+
+    This function is called on startup to ensure the database schema is initialized.
+    It uses SQLAlchemy's metadata and reflection to check for existing tables.
+
+    Returns:
+        bool: True if tables exist or were created successfully, False otherwise
+    """
+    try:
+        from sqlalchemy import MetaData, Table, Column, String, Boolean, Integer, DateTime, Text, inspect
+        from sqlalchemy.schema import CreateTable
+
+        # Get database connection details
+        database_url = os.getenv("DATABASE_URL")
+        if not database_url:
+            logger.info("DATABASE_URL not set, skipping SQLAlchemy table check")
+            return False
+
+        # Create a simple inspection engine (read-only connection)
+        # Use postgresql+psycopg2 dialect since we have psycopg2 installed
+        inspection_url = database_url.replace("postgresql://", "postgresql+psycopg2://").replace("postgres://", "postgresql+psycopg2://")
+
+        engine = create_engine(inspection_url, pool_pre_ping=True)
+
+        # Get table inspector
+        inspector = inspect(engine)
+        existing_tables = inspector.get_table_names()
+
+        logger.info(f"Existing tables in database: {existing_tables}")
+
+        # Define required tables (minimal schema - just enough for PyDAL to work)
+        required_tables = [
+            'users', 'api_keys', 'audit_log', 'sensor_agents',
+            'sensor_checks', 'sensor_results', 'notifications',
+            'notification_rules', 'teams', 'team_members',
+            'containers', 'container_members', 'roles_users'
+        ]
+
+        # Check if all required tables exist
+        missing_tables = [t for t in required_tables if t not in existing_tables]
+
+        if not missing_tables:
+            logger.info("All required database tables exist")
+            return True
+
+        logger.info(f"Missing tables: {missing_tables}. Initializing with SQLAlchemy...")
+
+        # Import models module which defines all SQLAlchemy models
+        try:
+            from app.models import models
+            from app.models.models import Base
+
+            # Create all tables defined in SQLAlchemy models
+            Base.metadata.create_all(bind=engine)
+            logger.info("Database tables created successfully via SQLAlchemy")
+
+            # Verify tables were created
+            inspector = inspect(engine)
+            existing_tables_after = inspector.get_table_names()
+            still_missing = [t for t in required_tables if t not in existing_tables_after]
+
+            if still_missing:
+                logger.warning(f"Some tables still missing after creation: {still_missing}")
+                return False
+
+            logger.info("All required tables verified to exist")
+            return True
+
+        except ImportError as e:
+            logger.error(f"Failed to import SQLAlchemy models: {str(e)}")
+            logger.info("Skipping table creation - tables will be created by PyDAL with migrate=True")
+            return False
+
+    except Exception as e:
+        logger.error(f"Failed to ensure tables exist. Error: {str(e)}, Error Type: {type(e).__name__}")
+        # Don't raise - allow PyDAL to attempt migration
+        return False
+
+
 def get_pydal_connection():
     """
     Get PyDAL connection for database operations.
@@ -484,289 +605,413 @@ def get_pydal_connection():
     This function returns a PyDAL DAL object for day-to-day operations
     while SQLAlchemy handles initialization.
 
+    Environment Variables (Priority Order):
+    1. DATABASE_URL - Full connection string (recommended for production)
+    2. Individual variables: DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME
+    3. Defaults for local development
+
     Returns:
         DAL: PyDAL database abstraction layer instance with tables defined
+
+    Raises:
+        DatabaseInitializationError: If database connection fails
     """
     global _pydal_connection
 
     if _pydal_connection is not None:
         return _pydal_connection
 
+    # Ensure tables exist using SQLAlchemy before PyDAL connection
+    tables_exist = _ensure_tables_exist_sqlalchemy()
+
     try:
         from pydal import DAL, Field
         from pydal.validators import IS_DATETIME, IS_EMAIL, IS_IN_SET, IS_NOT_EMPTY
-    except ImportError:
-        logger.error("PyDAL not installed. Install with: pip install pydal")
-        raise
+    except ImportError as e:
+        logger.error(f"PyDAL not installed. Install with: pip install pydal. Error: {str(e)}")
+        raise DatabaseInitializationError("PyDAL library not installed") from e
 
     db_type = os.getenv("DB_TYPE", "postgres").lower()
 
-    # Build PyDAL connection URI
-    if db_type in ("postgres", "postgresql"):
-        db_host = os.getenv("DB_HOST", "localhost")
-        db_port = os.getenv("DB_PORT", "5432")
-        db_user = os.getenv("DB_USER", "killkrill")
-        db_pass = os.getenv("DB_PASS", "killkrill123")
-        db_name = os.getenv("DB_NAME", "killkrill")
-        uri = f"postgres://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
-        folder = "/tmp/pydal_migrations"
-    elif db_type in ("mysql", "mariadb"):
-        db_host = os.getenv("DB_HOST", "localhost")
-        db_port = os.getenv("DB_PORT", "3306")
-        db_user = os.getenv("DB_USER", "killkrill")
-        db_pass = os.getenv("DB_PASS", "killkrill123")
-        db_name = os.getenv("DB_NAME", "killkrill")
-        uri = f"mysql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
-        folder = "/tmp/pydal_migrations"
-    elif db_type == "sqlite":
-        db_path = os.getenv("DB_PATH", "/tmp/killkrill.db")
-        uri = f"sqlite://{db_path}"
-        folder = "/tmp/pydal_migrations"
-    else:
-        # Default to SQLite for safety
-        uri = "sqlite:///tmp/killkrill.db"
-        folder = "/tmp/pydal_migrations"
+    # Check if DATABASE_URL is provided (production standard)
+    database_url = os.getenv("DATABASE_URL")
 
-    # Ensure migrations folder exists
-    os.makedirs(folder, exist_ok=True)
+    try:
+        # Build PyDAL connection URI
+        # NOTE: PyDAL doesn't support all SQLAlchemy URL parameters (like sslmode)
+        # So we always build a clean URI from components
+        if database_url:
+            # Parse DATABASE_URL and extract components
+            logger.info("Using DATABASE_URL for PyDAL connection")
+            parsed = _parse_database_url(database_url)
 
-    logger.info(f"Connecting to PyDAL database: {db_type}")
+            db_type = parsed["db_type"]
+            db_host = parsed["host"]
+            db_port = parsed["port"]
+            db_user = parsed["user"]
+            db_pass = parsed["password"]
+            db_name = parsed["dbname"]
 
-    # Create PyDAL DAL instance
-    # Note: check_reserved disabled as we control table/column naming internally
-    # fake_migrate=True: Track migrations without executing DDL (tables already exist from SQLAlchemy)
-    db = DAL(
-        uri,
-        folder=folder,
-        pool_size=int(os.getenv("DB_POOL_SIZE", "10")),
-        migrate=True,
-        fake_migrate=True,
-        check_reserved=[],  # Disable reserved keyword checks for internal tables
-    )
+            if not db_user or not db_name:
+                raise DatabaseInitializationError(
+                    "DATABASE_URL must include username and database name"
+                )
+
+        else:
+            # Fallback to individual environment variables
+            logger.info("Using individual DB_* environment variables for PyDAL connection")
+            db_host = os.getenv("DB_HOST", "localhost")
+            db_port = os.getenv("DB_PORT")
+            db_user = os.getenv("DB_USER", "killkrill")
+            db_pass = os.getenv("DB_PASS", "killkrill123")
+            db_name = os.getenv("DB_NAME", "killkrill")
+
+        # Sanitize password for URI (handle None case)
+        if db_pass is None:
+            db_pass = ""
+
+        # Build connection URI based on database type
+        # IMPORTANT: Build clean URI without query parameters (PyDAL doesn't support them)
+        if db_type in ("postgres", "postgresql"):
+            if not db_port:
+                db_port = 5432
+            # Clean URI without query parameters
+            uri = f"postgres://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
+            folder = "/tmp/pydal_migrations"
+            logger.info(
+                f"Configuring PostgreSQL connection. Host: {db_host}, Port: {db_port}, Database: {db_name}, User: {db_user}, Clean URI (no query params): {_mask_url(uri)}"
+            )
+
+        elif db_type in ("mysql", "mariadb"):
+            if not db_port:
+                db_port = 3306
+            uri = f"mysql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
+            folder = "/tmp/pydal_migrations"
+            logger.info(
+                f"Configuring MySQL/MariaDB connection. Host: {db_host}, Port: {db_port}, Database: {db_name}, User: {db_user}"
+            )
+
+        elif db_type == "sqlite":
+            db_path = os.getenv("DB_PATH", "/tmp/killkrill.db")
+            uri = f"sqlite://{db_path}"
+            folder = "/tmp/pydal_migrations"
+            logger.info(f"Configuring SQLite connection. Path: {db_path}")
+
+        else:
+            # Default to SQLite for safety
+            logger.warning(
+                f"Unsupported DB_TYPE '{db_type}', defaulting to SQLite. DB Type: {db_type}"
+            )
+            uri = "sqlite:///tmp/killkrill.db"
+            folder = "/tmp/pydal_migrations"
+
+        # Ensure migrations folder exists
+        try:
+            os.makedirs(folder, exist_ok=True)
+            logger.info(f"Created migrations folder: {folder}")
+        except OSError as e:
+            logger.error(
+                f"Failed to create migrations folder. Folder: {folder}, Error: {str(e)}"
+            )
+            raise DatabaseInitializationError(f"Cannot create migrations folder: {str(e)}")
+
+        logger.info(
+            f"Attempting PyDAL connection. DB Type: {db_type}, URI Masked: {_mask_url(uri)}, Folder: {folder}"
+        )
+
+        # Create PyDAL DAL instance
+        # Note: check_reserved disabled as we control table/column naming internally
+        # fake_migrate=True: Track migrations without executing DDL (tables already exist from SQLAlchemy)
+        logger.info(f"Calling DAL() with URI type: {type(uri)}, folder type: {type(folder)}")
+
+        # Try to create DAL without additional driver_args first
+        # Use regular migration (not fake) to let PyDAL create tables
+        pool_size_val = int(os.getenv("DB_POOL_SIZE", "10"))
+        logger.info(f"DAL parameters - URI: {_mask_url(uri)}, Folder: {folder}, Pool Size: {pool_size_val}")
+
+        try:
+            # Strategy: Let PyDAL create tables if they don't exist
+            # SQLAlchemy check runs first, but if it can't create tables (missing models.py),
+            # PyDAL will handle table creation via migrate=True
+            # PyDAL is smart enough to skip tables that already exist
+            db = DAL(
+                uri,
+                folder=folder,
+                pool_size=pool_size_val,
+                migrate=True,  # Enable migration to create missing tables
+                fake_migrate=False,  # Actually create tables if they don't exist
+                check_reserved=[],  # Disable reserved keyword checks for internal tables
+            )
+        except TypeError as te:
+            logger.error(f"TypeError creating DAL: {str(te)}. URI type: {type(uri)}, folder type: {type(folder)}, pool_size type: {type(pool_size_val)}")
+            raise
+
+        logger.info("PyDAL DAL instance created successfully")
+
+    except DatabaseInitializationError:
+        raise
+    except Exception as e:
+        logger.error(
+            f"Failed to create PyDAL connection. Error: {str(e)}, Error Type: {type(e).__name__}, DB Type: {db_type}"
+        )
+        raise DatabaseInitializationError(f"PyDAL connection failed: {str(e)}") from e
 
     # Define all tables needed by API blueprints
+    try:
+        logger.info("Defining PyDAL database tables")
 
-    # Users table
-    db.define_table(
-        "users",
-        Field("id", "string", length=64),
-        Field("email", "string", length=255, unique=True),
-        Field("password_hash", "string", length=255),
-        Field("name", "string", length=255),
-        Field("role", "string", length=32, default="viewer"),
-        Field("is_active", "boolean", default=True),
-        Field("fs_uniquifier", "string", length=64, unique=True),
-        Field("created_at", "datetime"),
-        Field("updated_at", "datetime"),
-        migrate=True,
-    )
+        # Users table
+        db.define_table(
+            "users",
+            Field("id", "string", length=64),
+            Field("email", "string", length=255, unique=True),
+            Field("password_hash", "string", length=255),
+            Field("name", "string", length=255),
+            Field("role", "string", length=32, default="viewer"),
+            Field("is_active", "boolean", default=True),
+            Field("fs_uniquifier", "string", length=64, unique=True),
+            Field("created_at", "datetime"),
+            Field("updated_at", "datetime"),
+            migrate=True,  # Create table if it doesn't exist
+        )
 
-    # API Keys table
-    db.define_table(
-        "api_keys",
-        Field("id", "string", length=64),
-        Field("user_id", "string", length=64),
-        Field("name", "string", length=128),
-        Field("key_hash", "string", length=64),
-        Field("permissions", "json"),
-        Field("expires_at", "datetime"),
-        Field("last_used_at", "datetime"),
-        Field("is_active", "boolean", default=True),
-        Field("created_at", "datetime"),
-        migrate=True,
-    )
+        # API Keys table
+        db.define_table(
+            "api_keys",
+            Field("id", "string", length=64),
+            Field("user_id", "string", length=64),
+            Field("name", "string", length=128),
+            Field("key_hash", "string", length=64),
+            Field("permissions", "json"),
+            Field("expires_at", "datetime"),
+            Field("last_used_at", "datetime"),
+            Field("is_active", "boolean", default=True),
+            Field("created_at", "datetime"),
+            migrate=True,  # Create table if it doesn't exist
+        )
 
-    # Audit Log table (note: 'action' renamed to 'audit_action' to avoid reserved keyword)
-    db.define_table(
-        "audit_log",
-        Field("id", "string", length=64),
-        Field("user_id", "string", length=64),
-        Field("audit_action", "string", length=128),
-        Field("resource_type", "string", length=64),
-        Field("resource_id", "string", length=64),
-        Field("details", "json"),
-        Field("ip_address", "string", length=45),
-        Field("user_agent", "string", length=512),
-        Field("created_at", "datetime"),
-        migrate=True,
-    )
+        # Audit Log table (note: 'action' renamed to 'audit_action' to avoid reserved keyword)
+        db.define_table(
+            "audit_log",
+            Field("id", "string", length=64),
+            Field("user_id", "string", length=64),
+            Field("audit_action", "string", length=128),
+            Field("resource_type", "string", length=64),
+            Field("resource_id", "string", length=64),
+            Field("details", "json"),
+            Field("ip_address", "string", length=45),
+            Field("user_agent", "string", length=512),
+            Field("created_at", "datetime"),
+            migrate=True,  # Create table if it doesn't exist
+        )
 
-    # Sensor Agents table (note: 'version' renamed to 'agent_version' to avoid reserved keyword)
-    db.define_table(
-        "sensor_agents",
-        Field("id", "string", length=64),
-        Field("agent_id", "string", length=64, unique=True),
-        Field("name", "string", length=128),
-        Field("hostname", "string", length=255),
-        Field("ip_address", "string", length=45),
-        Field("api_key_hash", "string", length=64),
-        Field("agent_version", "string", length=32),
-        Field("is_active", "boolean", default=True),
-        Field("last_heartbeat", "datetime"),
-        Field("created_at", "datetime"),
-        Field("updated_at", "datetime"),
-        migrate=True,
-    )
+        # Sensor Agents table (note: 'version' renamed to 'agent_version' to avoid reserved keyword)
+        db.define_table(
+            "sensor_agents",
+            Field("id", "string", length=64),
+            Field("agent_id", "string", length=64, unique=True),
+            Field("name", "string", length=128),
+            Field("hostname", "string", length=255),
+            Field("ip_address", "string", length=45),
+            Field("api_key_hash", "string", length=64),
+            Field("agent_version", "string", length=32),
+            Field("is_active", "boolean", default=True),
+            Field("last_heartbeat", "datetime"),
+            Field("created_at", "datetime"),
+            Field("updated_at", "datetime"),
+            migrate=True,  # Create table if it doesn't exist
+        )
 
-    # Sensor Checks table
-    db.define_table(
-        "sensor_checks",
-        Field("id", "string", length=64),
-        Field("name", "string", length=128),
-        Field("check_type", "string", length=16),
-        Field("target", "string", length=255),
-        Field("port", "integer"),
-        Field("interval_seconds", "integer", default=60),
-        Field("timeout_seconds", "integer", default=30),
-        Field("is_active", "boolean", default=True),
-        Field("created_at", "datetime"),
-        Field("updated_at", "datetime"),
-        migrate=True,
-    )
+        # Sensor Checks table
+        db.define_table(
+            "sensor_checks",
+            Field("id", "string", length=64),
+            Field("name", "string", length=128),
+            Field("check_type", "string", length=16),
+            Field("target", "string", length=255),
+            Field("port", "integer"),
+            Field("interval_seconds", "integer", default=60),
+            Field("timeout_seconds", "integer", default=30),
+            Field("is_active", "boolean", default=True),
+            Field("created_at", "datetime"),
+            Field("updated_at", "datetime"),
+            migrate=True,  # Create table if it doesn't exist
+        )
 
-    # Sensor Results table
-    db.define_table(
-        "sensor_results",
-        Field("id", "string", length=64),
-        Field("check_id", "string", length=64),
-        Field("agent_id", "string", length=64),
-        Field("status", "string", length=16),
-        Field("response_time_ms", "integer"),
-        Field("status_code", "integer"),
-        Field("error_message", "string", length=1000),
-        Field("ssl_valid", "boolean"),
-        Field("ssl_expiry", "datetime"),
-        Field("created_at", "datetime"),
-        migrate=True,
-    )
+        # Sensor Results table
+        db.define_table(
+            "sensor_results",
+            Field("id", "string", length=64),
+            Field("check_id", "string", length=64),
+            Field("agent_id", "string", length=64),
+            Field("status", "string", length=16),
+            Field("response_time_ms", "integer"),
+            Field("status_code", "integer"),
+            Field("error_message", "string", length=1000),
+            Field("ssl_valid", "boolean"),
+            Field("ssl_expiry", "datetime"),
+            Field("created_at", "datetime"),
+            migrate=True,  # Create table if it doesn't exist
+        )
 
-    # Fleet Hosts table
-    db.define_table(
-        "fleet_hosts",
-        Field("id", "string", length=64),
-        Field("hostname", "string", length=255),
-        Field("platform", "string", length=64),
-        Field("os_version", "string", length=64),
-        Field("agent_version", "string", length=32),
-        Field("enrolled_at", "datetime"),
-        Field("last_seen", "datetime"),
-        Field("status", "string", length=16, default="online"),
-        Field("labels", "json"),
-        Field("created_at", "datetime"),
-        Field("updated_at", "datetime"),
-        migrate=True,
-    )
+        # Fleet Hosts table
+        db.define_table(
+            "fleet_hosts",
+            Field("id", "string", length=64),
+            Field("hostname", "string", length=255),
+            Field("platform", "string", length=64),
+            Field("os_version", "string", length=64),
+            Field("agent_version", "string", length=32),
+            Field("enrolled_at", "datetime"),
+            Field("last_seen", "datetime"),
+            Field("status", "string", length=16, default="online"),
+            Field("labels", "json"),
+            Field("created_at", "datetime"),
+            Field("updated_at", "datetime"),
+            migrate=True,  # Create table if it doesn't exist
+        )
 
-    # Fleet Queries table
-    db.define_table(
-        "fleet_queries",
-        Field("id", "string", length=64),
-        Field("name", "string", length=128),
-        Field("query", "text"),
-        Field("description", "text"),
-        Field("schedule", "string", length=64),
-        Field("is_active", "boolean", default=True),
-        Field("created_by", "string", length=64),
-        Field("created_at", "datetime"),
-        Field("updated_at", "datetime"),
-        migrate=True,
-    )
+        # Fleet Queries table
+        db.define_table(
+            "fleet_queries",
+            Field("id", "string", length=64),
+            Field("name", "string", length=128),
+            Field("query", "text"),
+            Field("description", "text"),
+            Field("schedule", "string", length=64),
+            Field("is_active", "boolean", default=True),
+            Field("created_by", "string", length=64),
+            Field("created_at", "datetime"),
+            Field("updated_at", "datetime"),
+            migrate=True,  # Create table if it doesn't exist
+        )
 
-    # Fleet Policies table
-    db.define_table(
-        "fleet_policies",
-        Field("id", "string", length=64),
-        Field("name", "string", length=128),
-        Field("description", "text"),
-        Field("queries", "json"),
-        Field("target_labels", "json"),
-        Field("is_active", "boolean", default=True),
-        Field("created_by", "string", length=64),
-        Field("created_at", "datetime"),
-        Field("updated_at", "datetime"),
-        migrate=True,
-    )
+        # Fleet Policies table
+        db.define_table(
+            "fleet_policies",
+            Field("id", "string", length=64),
+            Field("name", "string", length=128),
+            Field("description", "text"),
+            Field("queries", "json"),
+            Field("target_labels", "json"),
+            Field("is_active", "boolean", default=True),
+            Field("created_by", "string", length=64),
+            Field("created_at", "datetime"),
+            Field("updated_at", "datetime"),
+            migrate=True,  # Create table if it doesn't exist
+        )
 
-    # AI Analyses table
-    db.define_table(
-        "ai_analyses",
-        Field("id", "string", length=64),
-        Field("analysis_type", "string", length=32),
-        Field("input_data", "json"),
-        Field("result", "json"),
-        Field("status", "string", length=16, default="pending"),
-        Field("error_message", "text"),
-        Field("created_by", "string", length=64),
-        Field("created_at", "datetime"),
-        Field("completed_at", "datetime"),
-        migrate=True,
-    )
+        # AI Analyses table
+        db.define_table(
+            "ai_analyses",
+            Field("id", "string", length=64),
+            Field("analysis_type", "string", length=32),
+            Field("input_data", "json"),
+            Field("result", "json"),
+            Field("status", "string", length=16, default="pending"),
+            Field("error_message", "text"),
+            Field("created_by", "string", length=64),
+            Field("created_at", "datetime"),
+            Field("completed_at", "datetime"),
+            migrate=True,  # Create table if it doesn't exist
+        )
 
-    # AI Insights table
-    db.define_table(
-        "ai_insights",
-        Field("id", "string", length=64),
-        Field("analysis_id", "string", length=64),
-        Field("insight_type", "string", length=32),
-        Field("title", "string", length=255),
-        Field("description", "text"),
-        Field("priority", "string", length=16, default="medium"),
-        Field("confidence", "double"),
-        Field("metadata", "json"),
-        Field("created_at", "datetime"),
-        migrate=True,
-    )
+        # AI Insights table
+        db.define_table(
+            "ai_insights",
+            Field("id", "string", length=64),
+            Field("analysis_id", "string", length=64),
+            Field("insight_type", "string", length=32),
+            Field("title", "string", length=255),
+            Field("description", "text"),
+            Field("priority", "string", length=16, default="medium"),
+            Field("confidence", "double"),
+            Field("metadata", "json"),
+            Field("created_at", "datetime"),
+            migrate=True,  # Create table if it doesn't exist
+        )
 
-    # AI Anomalies table
-    db.define_table(
-        "ai_anomalies",
-        Field("id", "string", length=64),
-        Field("analysis_id", "string", length=64),
-        Field("anomaly_type", "string", length=32),
-        Field("description", "text"),
-        Field("severity", "string", length=16, default="medium"),
-        Field("score", "double"),
-        Field("source", "string", length=128),
-        Field("metadata", "json"),
-        Field("created_at", "datetime"),
-        migrate=True,
-    )
+        # AI Anomalies table
+        db.define_table(
+            "ai_anomalies",
+            Field("id", "string", length=64),
+            Field("analysis_id", "string", length=64),
+            Field("anomaly_type", "string", length=32),
+            Field("description", "text"),
+            Field("severity", "string", length=16, default="medium"),
+            Field("score", "double"),
+            Field("source", "string", length=128),
+            Field("metadata", "json"),
+            Field("created_at", "datetime"),
+            migrate=True,  # Create table if it doesn't exist
+        )
 
-    # AI Recommendations table
-    db.define_table(
-        "ai_recommendations",
-        Field("id", "string", length=64),
-        Field("analysis_id", "string", length=64),
-        Field("title", "string", length=255),
-        Field("description", "text"),
-        Field("impact", "string", length=16, default="medium"),
-        Field("actions", "json"),
-        Field("metadata", "json"),
-        Field("created_at", "datetime"),
-        migrate=True,
-    )
+        # AI Recommendations table
+        db.define_table(
+            "ai_recommendations",
+            Field("id", "string", length=64),
+            Field("analysis_id", "string", length=64),
+            Field("title", "string", length=255),
+            Field("description", "text"),
+            Field("impact", "string", length=16, default="medium"),
+            Field("actions", "json"),
+            Field("metadata", "json"),
+            Field("created_at", "datetime"),
+            migrate=True,  # Create table if it doesn't exist
+        )
 
-    # AI Providers table (configured AI endpoints for chat/analysis)
-    # Free tier: 1 Ollama endpoint with tinyllama model only
-    # Licensed tier: Multiple endpoints, OpenAI, Claude, custom models
-    db.define_table(
-        "ai_providers",
-        Field("id", "string", length=64),
-        Field("name", "string", length=128),
-        Field("provider_type", "string", length=32),  # ollama, openai, claude
-        Field("endpoint_url", "string", length=512),
-        Field("api_key", "string", length=256),  # Encrypted/hashed in production
-        Field("model", "string", length=128, default="tinyllama"),
-        Field("is_default", "boolean", default=False),
-        Field("is_active", "boolean", default=True),
-        Field("created_at", "datetime"),
-        Field("updated_at", "datetime"),
-        migrate=True,
-    )
+        # AI Providers table (configured AI endpoints for chat/analysis)
+        # Free tier: 1 Ollama endpoint with tinyllama model only
+        # Licensed tier: Multiple endpoints, OpenAI, Claude, custom models
+        db.define_table(
+            "ai_providers",
+            Field("id", "string", length=64),
+            Field("name", "string", length=128),
+            Field("provider_type", "string", length=32),  # ollama, openai, claude
+            Field("endpoint_url", "string", length=512),
+            Field("api_key", "string", length=256),  # Encrypted/hashed in production
+            Field("model", "string", length=128, default="tinyllama"),
+            Field("is_default", "boolean", default=False),
+            Field("is_active", "boolean", default=True),
+            Field("created_at", "datetime"),
+            Field("updated_at", "datetime"),
+            migrate=True,  # Create table if it doesn't exist
+        )
 
-    logger.info("PyDAL tables defined successfully")
+        logger.info(f"PyDAL tables defined successfully. Table Count: {len(db.tables)}")
+
+        # IMPORTANT: Force PyDAL to create tables by calling commit()
+        # PyDAL's migration is lazy - tables are only created when needed
+        # Calling commit() forces the migration to run immediately
+        try:
+            db.commit()
+            logger.info("PyDAL migration completed - tables created if they didn't exist")
+        except Exception as commit_error:
+            logger.warning(f"PyDAL commit during table creation raised exception: {str(commit_error)}")
+            # Continue anyway - this might be expected in some cases
+
+    except Exception as e:
+        logger.error(
+            f"Failed to define PyDAL tables. Error: {str(e)}, Error Type: {type(e).__name__}"
+        )
+        raise DatabaseInitializationError(f"Failed to define database tables: {str(e)}") from e
+
+    # Test database connection with a simple query
+    try:
+        logger.info("Testing PyDAL database connection with query")
+        # Try to count users table (should work even if empty)
+        user_count = db(db.users).count()
+        logger.info(f"Database connection test successful. User Count: {user_count}")
+    except Exception as e:
+        logger.error(
+            f"Database connection test failed. Error: {str(e)}, Error Type: {type(e).__name__}"
+        )
+        raise DatabaseInitializationError(
+            f"Database connection test failed: {str(e)}"
+        ) from e
 
     _pydal_connection = db
+    logger.info("PyDAL connection fully initialized and cached")
     return db
 
 

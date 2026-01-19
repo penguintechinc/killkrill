@@ -257,8 +257,50 @@ def login():
             400,
         )
 
-    db = get_engine()
-    user = get_user_by_email(db, req.email)
+    # Get database connection with error handling
+    try:
+        db = get_engine()
+    except Exception as e:
+        logger.error(
+            "login_database_connection_error",
+            error=str(e),
+            error_type=type(e).__name__,
+            correlation_id=g.get("correlation_id"),
+        )
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "Database connection error",
+                    "message": "Unable to connect to database. Please contact support.",
+                    "correlation_id": g.get("correlation_id"),
+                }
+            ),
+            500,
+        )
+
+    # Get user with error handling
+    try:
+        user = get_user_by_email(db, req.email)
+    except Exception as e:
+        logger.error(
+            "login_user_lookup_error",
+            email=req.email,
+            error=str(e),
+            error_type=type(e).__name__,
+            correlation_id=g.get("correlation_id"),
+        )
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "Database query error",
+                    "message": "Unable to process login request. Please contact support.",
+                    "correlation_id": g.get("correlation_id"),
+                }
+            ),
+            500,
+        )
 
     if not user or not verify_password(req.password, user["password_hash"]):
         logger.warning("login_failed", email=req.email)

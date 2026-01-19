@@ -217,23 +217,36 @@ services:
   # KillKrill Flask Backend (REST API + gRPC)
   flask-backend:
     build:
-      context: ./services/flask-backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./services/flask-backend/Dockerfile
     container_name: killkrill-flask-backend
     environment:
+      # Database configuration - both DATABASE_URL (SQLAlchemy) and individual vars (PyDAL)
       - DB_TYPE=${DB_TYPE:-postgresql}
       - DATABASE_URL=postgresql://${POSTGRES_USER:-killkrill}:${POSTGRES_PASSWORD:-killkrill123}@postgres:5432/${POSTGRES_DB:-killkrill}?sslmode=disable
+      # PyDAL individual connection parameters (parsed from DATABASE_URL if not set)
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=${POSTGRES_USER:-killkrill}
+      - DB_PASS=${POSTGRES_PASSWORD:-killkrill123}
+      - DB_NAME=${POSTGRES_DB:-killkrill}
+      - DB_POOL_SIZE=20
+      # Redis configuration
       - REDIS_URL=redis://:${REDIS_PASSWORD:-killkrill123}@redis:6379/0
+      # Licensing
       - LICENSE_KEY=${LICENSE_KEY}
       - PRODUCT_NAME=${PRODUCT_NAME:-killkrill}
       - LICENSE_SERVER_URL=${LICENSE_SERVER_URL:-https://license.penguintech.io}
+      # Flask configuration
       - FLASK_PORT=5000
       - GRPC_PORT=50051
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - RELEASE_MODE=${RELEASE_MODE:-false}
+      # JWT configuration
+      - JWT_SECRET=${JWT_SECRET:-killkrill-secret-dev-only}
     ports:
       - "${FLASK_PORT:-5000}:5000"
-      - "${GRPC_PORT:-50051}:50051"
+      - "${GRPC_PORT:-50060}:50051"
     depends_on:
       postgres:
         condition: service_healthy
@@ -251,8 +264,8 @@ services:
   # KillKrill WebUI (React/Node.js)
   webui:
     build:
-      context: ./services/webui
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./services/webui/Dockerfile
     container_name: killkrill-webui
     environment:
       - NODE_ENV=production
@@ -391,6 +404,3 @@ volumes:
 networks:
   killkrill-network:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16
