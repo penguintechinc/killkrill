@@ -67,10 +67,7 @@ export class GrpcClient {
   private options: Required<ClientOptions>;
   private _credentials: grpc.ChannelCredentials;
 
-  constructor(
-    public readonly target: string,
-    options: ClientOptions = {}
-  ) {
+  constructor(public readonly target: string, options: ClientOptions = {}) {
     this.options = { ...DEFAULT_OPTIONS, ...options };
     this._credentials = this.createCredentials();
 
@@ -95,7 +92,11 @@ export class GrpcClient {
       'grpc.http2.max_pings_without_data': 0,
     };
 
-    const channel = grpc.createChannel(this.target, this._credentials, channelOptions);
+    const channel = grpc.createChannel(
+      this.target,
+      this._credentials,
+      channelOptions
+    );
 
     console.log(
       `${this.options.enableTLS ? 'Secure' : 'Insecure'} gRPC channel created to ${this.target}`
@@ -176,7 +177,10 @@ export class GrpcClient {
             this.options.maxBackoffMs
           );
         } else {
-          console.error(`RPC failed after ${this.options.maxRetries} attempts:`, error);
+          console.error(
+            `RPC failed after ${this.options.maxRetries} attempts:`,
+            error
+          );
         }
       }
     }

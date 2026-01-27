@@ -18,7 +18,10 @@ import { v4 as uuidv4 } from 'uuid';
  * ]);
  * ```
  */
-export function authInterceptor(secretKey: string, publicMethods: string[] = []): grpc.Interceptor {
+export function authInterceptor(
+  secretKey: string,
+  publicMethods: string[] = []
+): grpc.Interceptor {
   const publicMethodSet = new Set(publicMethods);
 
   return (options, nextCall) => {

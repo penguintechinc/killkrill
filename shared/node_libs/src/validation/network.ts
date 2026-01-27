@@ -18,8 +18,7 @@ export function email(options: EmailOptions = {}): Validator<string, string> {
   const errorMessage = options.errorMessage ?? 'Invalid email address';
 
   // RFC 5322 compliant email regex (simplified but robust)
-  const emailRegex =
-    /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+  const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
 
   return (value: string): ValidationResult<string> => {
     if (typeof value !== 'string') {
@@ -60,10 +59,13 @@ export interface UrlOptions {
  * Validates that a string is a valid URL.
  */
 export function url(options: UrlOptions = {}): Validator<string, string> {
-  const { requireTld = true, allowedSchemes = ['http', 'https'] } = options;
+  const {
+    requireTld = true,
+    allowedSchemes = ['http', 'https'],
+  } = options;
   const errorMessage = options.errorMessage ?? 'Invalid URL';
 
-  const schemeSet = new Set(allowedSchemes.map((s) => s.toLowerCase()));
+  const schemeSet = new Set(allowedSchemes.map(s => s.toLowerCase()));
 
   return (value: string): ValidationResult<string> => {
     if (typeof value !== 'string') {
@@ -117,12 +119,10 @@ export function ipAddress(options: IpAddressOptions = {}): Validator<string, str
   const { version } = options;
 
   // IPv4 regex
-  const ipv4Regex =
-    /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+  const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
 
   // Simplified IPv6 regex (covers most common formats)
-  const ipv6Regex =
-    /^(?:(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|(?:[0-9a-fA-F]{1,4}:){1,7}:|(?:[0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|(?:[0-9a-fA-F]{1,4}:){1,5}(?::[0-9a-fA-F]{1,4}){1,2}|(?:[0-9a-fA-F]{1,4}:){1,4}(?::[0-9a-fA-F]{1,4}){1,3}|(?:[0-9a-fA-F]{1,4}:){1,3}(?::[0-9a-fA-F]{1,4}){1,4}|(?:[0-9a-fA-F]{1,4}:){1,2}(?::[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:(?::[0-9a-fA-F]{1,4}){1,6}|:(?:(?::[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(?::[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]+|::(?:ffff(?::0{1,4})?:)?(?:(?:25[0-5]|(?:2[0-4]|1?[0-9])?[0-9])\.){3}(?:25[0-5]|(?:2[0-4]|1?[0-9])?[0-9])|(?:[0-9a-fA-F]{1,4}:){1,4}:(?:(?:25[0-5]|(?:2[0-4]|1?[0-9])?[0-9])\.){3}(?:25[0-5]|(?:2[0-4]|1?[0-9])?[0-9]))$/;
+  const ipv6Regex = /^(?:(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|(?:[0-9a-fA-F]{1,4}:){1,7}:|(?:[0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|(?:[0-9a-fA-F]{1,4}:){1,5}(?::[0-9a-fA-F]{1,4}){1,2}|(?:[0-9a-fA-F]{1,4}:){1,4}(?::[0-9a-fA-F]{1,4}){1,3}|(?:[0-9a-fA-F]{1,4}:){1,3}(?::[0-9a-fA-F]{1,4}){1,4}|(?:[0-9a-fA-F]{1,4}:){1,2}(?::[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:(?::[0-9a-fA-F]{1,4}){1,6}|:(?:(?::[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(?::[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]+|::(?:ffff(?::0{1,4})?:)?(?:(?:25[0-5]|(?:2[0-4]|1?[0-9])?[0-9])\.){3}(?:25[0-5]|(?:2[0-4]|1?[0-9])?[0-9])|(?:[0-9a-fA-F]{1,4}:){1,4}:(?:(?:25[0-5]|(?:2[0-4]|1?[0-9])?[0-9])\.){3}(?:25[0-5]|(?:2[0-4]|1?[0-9])?[0-9]))$/;
 
   const getErrorMessage = (): string => {
     if (options.errorMessage) return options.errorMessage;
@@ -170,7 +170,10 @@ export interface HostnameOptions {
  * Validates that a string is a valid hostname.
  */
 export function hostname(options: HostnameOptions = {}): Validator<string, string> {
-  const { allowIp = false, requireTld = false } = options;
+  const {
+    allowIp = false,
+    requireTld = false,
+  } = options;
   const errorMessage = options.errorMessage ?? 'Invalid hostname';
 
   // RFC 1123 hostname pattern

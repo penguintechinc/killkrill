@@ -192,7 +192,9 @@ export class HttpClient {
         this.circuitState.successCount = 0;
       } else {
         const retryAfter = (this.circuitConfig.timeout - elapsed) / 1000;
-        throw new Error(`Circuit breaker is OPEN (retry after ${retryAfter.toFixed(1)}s)`);
+        throw new Error(
+          `Circuit breaker is OPEN (retry after ${retryAfter.toFixed(1)}s)`
+        );
       }
     }
   }
@@ -234,7 +236,9 @@ export class HttpClient {
     } else if (this.circuitState.state === CircuitState.CLOSED) {
       this.circuitState.failureCount++;
       if (this.circuitState.failureCount >= this.circuitConfig.failureThreshold) {
-        this.logger(`Circuit breaker opening after ${this.circuitState.failureCount} failures`);
+        this.logger(
+          `Circuit breaker opening after ${this.circuitState.failureCount} failures`
+        );
         this.circuitState.state = CircuitState.OPEN;
       }
     }
@@ -278,7 +282,9 @@ export class HttpClient {
    * @param config - Axios request configuration
    * @returns Promise resolving to response
    */
-  private async requestWithRetry<T = any>(config: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+  private async requestWithRetry<T = any>(
+    config: AxiosRequestConfig
+  ): Promise<AxiosResponse<T>> {
     this.checkCircuitBreaker();
 
     let lastError: Error | undefined;
@@ -330,7 +336,10 @@ export class HttpClient {
   /**
    * Execute GET request with retry logic.
    */
-  async get<T = any>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+  async get<T = any>(
+    url: string,
+    config?: AxiosRequestConfig
+  ): Promise<AxiosResponse<T>> {
     return this.requestWithRetry<T>({ ...config, method: 'GET', url });
   }
 
@@ -370,21 +379,30 @@ export class HttpClient {
   /**
    * Execute DELETE request with retry logic.
    */
-  async delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+  async delete<T = any>(
+    url: string,
+    config?: AxiosRequestConfig
+  ): Promise<AxiosResponse<T>> {
     return this.requestWithRetry<T>({ ...config, method: 'DELETE', url });
   }
 
   /**
    * Execute HEAD request with retry logic.
    */
-  async head<T = any>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+  async head<T = any>(
+    url: string,
+    config?: AxiosRequestConfig
+  ): Promise<AxiosResponse<T>> {
     return this.requestWithRetry<T>({ ...config, method: 'HEAD', url });
   }
 
   /**
    * Execute OPTIONS request with retry logic.
    */
-  async options<T = any>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+  async options<T = any>(
+    url: string,
+    config?: AxiosRequestConfig
+  ): Promise<AxiosResponse<T>> {
     return this.requestWithRetry<T>({ ...config, method: 'OPTIONS', url });
   }
 }

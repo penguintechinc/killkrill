@@ -86,11 +86,7 @@ export interface IntInRangeOptions {
 /**
  * Validates that an integer is within a specified range.
  */
-export function intInRange(
-  min: number,
-  max: number,
-  options: IntInRangeOptions = {}
-): Validator<NumericInput, number> {
+export function intInRange(min: number, max: number, options: IntInRangeOptions = {}): Validator<NumericInput, number> {
   return (value: NumericInput): ValidationResult<number> => {
     const intResult = isInt().call(null, value);
     if (!intResult.isValid) {
@@ -114,10 +110,7 @@ export function intInRange(
 /**
  * Validates minimum integer value.
  */
-export function intMin(
-  min: number,
-  options: IntInRangeOptions = {}
-): Validator<NumericInput, number> {
+export function intMin(min: number, options: IntInRangeOptions = {}): Validator<NumericInput, number> {
   return (value: NumericInput): ValidationResult<number> => {
     const intResult = isInt().call(null, value);
     if (!intResult.isValid) {
@@ -137,10 +130,7 @@ export function intMin(
 /**
  * Validates maximum integer value.
  */
-export function intMax(
-  max: number,
-  options: IntInRangeOptions = {}
-): Validator<NumericInput, number> {
+export function intMax(max: number, options: IntInRangeOptions = {}): Validator<NumericInput, number> {
   return (value: NumericInput): ValidationResult<number> => {
     const intResult = isInt().call(null, value);
     if (!intResult.isValid) {
@@ -164,11 +154,7 @@ export interface FloatInRangeOptions {
 /**
  * Validates that a float is within a specified range.
  */
-export function floatInRange(
-  min: number,
-  max: number,
-  options: FloatInRangeOptions = {}
-): Validator<NumericInput, number> {
+export function floatInRange(min: number, max: number, options: FloatInRangeOptions = {}): Validator<NumericInput, number> {
   return (value: NumericInput): ValidationResult<number> => {
     const floatResult = isFloat().call(null, value);
     if (!floatResult.isValid) {

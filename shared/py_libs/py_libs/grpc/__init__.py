@@ -5,15 +5,15 @@ Provides server helpers, client utilities, and security interceptors
 for gRPC services following project standards.
 """
 
+from .server import create_server, register_health_check
 from .client import GrpcClient
 from .interceptors import (
-    AuditInterceptor,
     AuthInterceptor,
-    CorrelationInterceptor,
     RateLimitInterceptor,
+    AuditInterceptor,
+    CorrelationInterceptor,
     RecoveryInterceptor,
 )
-from .server import create_server, register_health_check
 
 __all__ = [
     "create_server",
